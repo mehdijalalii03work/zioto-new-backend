@@ -1,0 +1,114 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@font-face {
+    font-family: 'IRANSansX';
+    src:
+        url('../../../fonts/iransansx/IRANSansXV.woff2') format('woff2'),
+        url('../../../fonts/iransansx/IRANSansXV.woff') format('woff');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@theme {
+    --font-sans: 'IRANSansX', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-primary-50: #FBF7EE;
+    --color-primary-100: #F5EDD6;
+    --color-primary-200: #EDDFB7;
+    --color-primary-300: #E0CC91;
+    --color-primary-400: #D0B873;
+    --color-primary-500: #BFA772;
+    --color-primary-600: #A88E5D;
+    --color-primary-700: #8C754A;
+    --color-primary-800: #705E3C;
+    --color-primary-900: #5A4C30;
+    --color-primary-950: #332B1A;
+
+    --color-zimo-bg: #ffffff;
+    --color-zimo-surface: #ffffff;
+    --color-zimo-surface-muted: #f0f0f2;
+    --color-zimo-panel: #ebf0f3;
+    --color-zimo-text: #0d0d12;
+    --color-zimo-text-muted: rgba(13, 13, 18, 0.6);
+    --color-zimo-border: #e4e4e8;
+    --color-zimo-border-strong: #d5d5db;
+    --shadow-zimo-soft: 0 2px 8px rgba(15, 15, 20, 0.04), 0 8px 32px rgba(15, 15, 20, 0.05);
+    --shadow-zimo-card: 0 4px 16px rgba(15, 15, 20, 0.05), 0 12px 40px rgba(15, 15, 20, 0.06);
+}
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+@layer base {
+    html {
+        font-size: 94%;
+    }
+
+    :root {
+        --primary-400: #D0B873;
+        --primary-500: #BFA772;
+        --primary-600: #A88E5D;
+        --primary-700: #8C754A;
+    }
+}
+
+@layer base {
+    html,
+    :host {
+        font-family: var(--font-sans);
+    }
+
+    body,
+    input,
+    button,
+    textarea,
+    select {
+        font-family: inherit;
+    }
+}
+
+@layer components {
+    .fi-sidebar {
+        @apply bg-white lg:bg-white;
+    }
+
+    .fi-sidebar-header {
+        @apply bg-white lg:bg-white;
+    }
+
+    .fi-sidebar-nav-item {
+        @apply text-gray-700 hover:bg-gray-100;
+    }
+
+    .fi-topbar-nav-groups {
+        @apply lg:flex-nowrap lg:overflow-x-auto lg:whitespace-nowrap lg:gap-x-2 lg:mx-2;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .fi-topbar-nav-groups::-webkit-scrollbar {
+        display: none;
+    }
+
+    .fi-topbar-item-btn {
+        @apply lg:px-2 lg:gap-x-1;
+    }
+
+    .fi-sidebar-nav-item[aria-current="page"] {
+        @apply bg-gray-100 text-gray-900;
+    }
+
+    .fi-sidebar-nav-group-label {
+        @apply text-gray-500;
+    }
+
+    .fi-sidebar-brand {
+        @apply text-gray-900;
+    }
+
+    .fi-simple-header {
+        margin-bottom: 2.5rem;
+    }
+}
