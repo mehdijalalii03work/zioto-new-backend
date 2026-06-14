@@ -34,7 +34,7 @@ function renderHome() {
             </div>
             <div class="flex items-center gap-2">
               <svg class="w-5 h-5 text-zioto-gold" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-              <span>ارسال رایگان</span>
+              <span>ارسال به همه نقاط ایران</span>
             </div>
             <div class="flex items-center gap-2">
               <svg class="w-5 h-5 text-zioto-gold" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
@@ -84,14 +84,14 @@ function renderHome() {
               <svg class="w-8 h-8 text-zioto-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
             </div>
             <h3 class="text-xl font-bold text-zioto-gold mb-3">پرداخت اقساطی</h3>
-            <p class="text-white/60 leading-7">امکان خرید اقساطی از طریق درگاه بانک ملی ایران ویژه کارمندان محترم.</p>
+            <p class="text-white/60 leading-7">امکان خرید اقساطی از طریق نوپی ویژه کارمندان محترم.</p>
           </div>
           <div class="text-center p-8 rounded-2xl bg-[#1A1D23]/60 border border-zioto-gold/20 hover:border-zioto-gold/40 transition-all">
             <div class="w-16 h-16 bg-zioto-gold/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <svg class="w-8 h-8 text-zioto-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
             </div>
-            <h3 class="text-xl font-bold text-zioto-gold mb-3">ارسال رایگان</h3>
-            <p class="text-white/60 leading-7">ارسال رایگان و بیمه‌شده تمامی محصولات به سراسر کشور.</p>
+            <h3 class="text-xl font-bold text-zioto-gold mb-3">ارسال به همه نقاط ایران</h3>
+            <p class="text-white/60 leading-7">ارسال به همه نقاط ایران و بیمه‌شده تمامی محصولات به سراسر کشور.</p>
           </div>
         </div>
       </div>

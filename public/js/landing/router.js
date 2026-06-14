@@ -30,12 +30,30 @@ function navigateTo(page, data = null, pushState = true) {
   renderPage();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
+  const path = pageToPath(page, data);
+
   if (pushState) {
-    const path = pageToPath(page, data);
     if (window.location.pathname !== path) {
       history.pushState({ page, slug: data?.slug || null }, '', path);
     }
   }
+
+  updateActiveNav(path);
+}
+
+function updateActiveNav(currentPath) {
+  const path = currentPath || window.location.pathname;
+  document.querySelectorAll('#main-header nav a, #mobile-menu a').forEach(link => {
+    const href = link.getAttribute('href');
+    const isActive = href === path || (href !== '/' && path.startsWith(href));
+    if (isActive) {
+      link.classList.remove('text-white/70', 'hover:text-white', 'hover:bg-white/5');
+      link.classList.add('bg-zioto-gold/15', 'text-zioto-gold');
+    } else {
+      link.classList.remove('bg-zioto-gold/15', 'text-zioto-gold');
+      link.classList.add('text-white/70', 'hover:text-white', 'hover:bg-white/5');
+    }
+  });
 }
 
 function renderPage() {
@@ -72,4 +90,5 @@ window.addEventListener('popstate', (e) => {
       navigateTo(page, null, false);
     }
   }
+  updateActiveNav();
 });

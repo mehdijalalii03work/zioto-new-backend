@@ -155,15 +155,15 @@ function updateAuthButtons() {
   if (!container) return;
   if (STATE.isLoggedIn) {
     container.innerHTML = `
-      <button onclick="navigateTo('profile')" class="flex items-center gap-2 p-2 text-white/80 hover:text-zioto-gold transition-colors">
-        <div class="w-8 h-8 bg-zioto-gold/20 rounded-full flex items-center justify-center">
-          <svg class="w-5 h-5 text-zioto-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <button onclick="navigateTo('profile')" class="flex items-center gap-2 p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-all">
+        <div class="w-7 h-7 bg-white/10 rounded-full flex items-center justify-center">
+          <svg class="w-4 h-4 text-zioto-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
         </div>
         <span class="hidden md:inline text-sm">${STATE.userData.name.split(' ')[0]}</span>
       </button>
     `;
   } else {
-    container.innerHTML = `<button onclick="navigateTo('login')" class="btn-gold text-sm px-4 py-2">ورود / ثبت‌نام</button>`;
+    container.innerHTML = `<button onclick="navigateTo('login')" class="btn-gold text-sm px-4 py-2 rounded-lg">ورود / ثبت‌نام</button>`;
   }
 }
 

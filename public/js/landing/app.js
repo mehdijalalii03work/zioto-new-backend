@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   updateAuthButtons();
+  updateActiveNav();
 
   window.addEventListener('scroll', () => {
     const header = document.getElementById('main-header');
