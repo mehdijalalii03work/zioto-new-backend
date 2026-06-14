@@ -16,21 +16,21 @@ function renderAbout() {
           <p class="text-white/70 leading-8 mb-6">زیوتو با بیش از یک دهه تجربه در حوزه فلزات گران‌بها، امروز به عنوان یکی از معتبرترین مراکز فروش شمش طلا و نقره در ایران شناخته می‌شود.</p>
           <p class="text-white/70 leading-8 mb-6">همکاری ما با بانک ملی ایران این امکان را فراهم کرده تا کارمندان محترم این بانک بتوانند شمش طلا و نقره مورد نیاز خود را به صورت اقساطی و با شرایط ویژه خریداری کنند.</p>
         </div>
-        <div class="bg-gradient-to-br from-zioto-green-light to-zioto-green rounded-3xl p-8 border border-zioto-gold/20">
+        <div class="bg-gradient-to-br from-[#1A1D23] to-[#111318] rounded-3xl p-8 border border-zioto-gold/20">
           <div class="grid grid-cols-2 gap-4">
-            <div class="bg-zioto-green-dark/50 rounded-2xl p-6 text-center">
+            <div class="bg-[#1A1D23]/80 rounded-2xl p-6 text-center">
               <p class="text-3xl font-black text-zioto-gold mb-2">۹۹۹.۹</p>
               <p class="text-sm text-white/60">عیار طلا</p>
             </div>
-            <div class="bg-zioto-green-dark/50 rounded-2xl p-6 text-center">
+            <div class="bg-[#1A1D23]/80 rounded-2xl p-6 text-center">
               <p class="text-3xl font-black text-zioto-gold mb-2">۹۹۹</p>
               <p class="text-sm text-white/60">عیار نقره</p>
             </div>
-            <div class="bg-zioto-green-dark/50 rounded-2xl p-6 text-center">
+            <div class="bg-[#1A1D23]/80 rounded-2xl p-6 text-center">
               <p class="text-3xl font-black text-zioto-gold mb-2">۱۲</p>
               <p class="text-sm text-white/60">ماه اقساط</p>
             </div>
-            <div class="bg-zioto-green-dark/50 rounded-2xl p-6 text-center">
+            <div class="bg-[#1A1D23]/80 rounded-2xl p-6 text-center">
               <p class="text-3xl font-black text-zioto-gold mb-2">۰%</p>
               <p class="text-sm text-white/60">سود اقساط</p>
             </div>

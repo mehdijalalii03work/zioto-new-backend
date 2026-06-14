@@ -25,7 +25,7 @@ function showNotification(message, type = 'success') {
   notification.className = `fixed top-24 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-2xl text-sm font-medium transition-all transform translate-y-0 opacity-100 ${
     type === 'error' ? 'bg-red-500/90 text-white' :
     type === 'info' ? 'bg-blue-500/90 text-white' :
-    'bg-zioto-gold/90 text-zioto-green'
+    'bg-zioto-gold/90 text-[#111318]'
   }`;
   notification.textContent = message;
   document.body.appendChild(notification);

@@ -13,9 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('scroll', () => {
     const header = document.getElementById('main-header');
     if (window.scrollY > 50) {
-      header.classList.add('bg-zioto-green-dark/95', 'backdrop-blur-sm', 'shadow-lg');
+      header.classList.add('bg-[#111318]/95', 'backdrop-blur-sm', 'shadow-lg');
     } else {
-      header.classList.remove('bg-zioto-green-dark/95', 'backdrop-blur-sm', 'shadow-lg');
+      header.classList.remove('bg-[#111318]/95', 'backdrop-blur-sm', 'shadow-lg');
     }
   });
 });

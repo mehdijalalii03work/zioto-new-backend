@@ -3,7 +3,7 @@ function renderProfile() {
     <section class="container mx-auto px-4 py-12">
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div class="lg:col-span-1">
-          <div class="bg-zioto-green-dark/80 rounded-2xl p-6 border border-zioto-gold/20 sticky top-24">
+          <div class="bg-[#1A1D23] rounded-2xl p-6 border border-zioto-gold/20 sticky top-24">
             <div class="text-center mb-6 pb-6 border-b border-white/10">
               <div class="w-20 h-20 bg-zioto-gold/20 rounded-full mx-auto mb-4 flex items-center justify-center">
                 <svg class="w-10 h-10 text-zioto-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
@@ -70,26 +70,26 @@ function renderOrdersTab() {
       <p class="text-white/50">تاریخچه تمامی سفارشات شما</p>
     </div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-      <div class="bg-zioto-green-dark/80 rounded-xl p-4 border border-zioto-gold/10 text-center">
+      <div class="bg-[#1A1D23] rounded-xl p-4 border border-zioto-gold/10 text-center">
         <p class="text-2xl font-bold text-zioto-gold">${STATE.ordersData.length}</p>
         <p class="text-xs text-white/50">کل سفارشات</p>
       </div>
-      <div class="bg-zioto-green-dark/80 rounded-xl p-4 border border-zioto-gold/10 text-center">
+      <div class="bg-[#1A1D23] rounded-xl p-4 border border-zioto-gold/10 text-center">
         <p class="text-2xl font-bold text-green-400">${STATE.ordersData.filter(o => o.status === 'success').length}</p>
         <p class="text-xs text-white/50">تحویل شده</p>
       </div>
-      <div class="bg-zioto-green-dark/80 rounded-xl p-4 border border-zioto-gold/10 text-center">
+      <div class="bg-[#1A1D23] rounded-xl p-4 border border-zioto-gold/10 text-center">
         <p class="text-2xl font-bold text-yellow-400">${STATE.ordersData.filter(o => o.status === 'pending').length}</p>
         <p class="text-xs text-white/50">در حال پردازش</p>
       </div>
-      <div class="bg-zioto-green-dark/80 rounded-xl p-4 border border-zioto-gold/10 text-center">
+      <div class="bg-[#1A1D23] rounded-xl p-4 border border-zioto-gold/10 text-center">
         <p class="text-2xl font-bold text-red-400">${STATE.ordersData.filter(o => o.status === 'failed' || o.status === 'cancelled').length}</p>
         <p class="text-xs text-white/50">ناموفق/لغو</p>
       </div>
     </div>
     <div class="space-y-4">
       ${STATE.ordersData.map(order => `
-        <div class="bg-zioto-green-dark/80 rounded-2xl p-6 border border-zioto-gold/10 hover:border-zioto-gold/20 transition-all">
+        <div class="bg-[#1A1D23] rounded-2xl p-6 border border-zioto-gold/10 hover:border-zioto-gold/20 transition-all">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
             <div>
               <div class="flex items-center gap-3 mb-1">
@@ -103,7 +103,7 @@ function renderOrdersTab() {
               <p class="text-xs text-white/50">${order.paymentMethod === 'installment' ? 'اقساطی' : 'نقدی'}</p>
             </div>
           </div>
-          <div class="bg-zioto-green/30 rounded-xl p-4 mb-4">
+          <div class="bg-[#1A1D23]/40 rounded-xl p-4 mb-4">
             ${order.items.map(item => `
               <div class="flex justify-between items-center py-2 ${order.items.indexOf(item) < order.items.length - 1 ? 'border-b border-white/5' : ''}">
                 <div class="flex items-center gap-3">
@@ -158,7 +158,7 @@ function renderPaymentsTab() {
         <p class="text-2xl font-bold text-red-400">${formatPriceToman(totalFailed)}</p>
       </div>
     </div>
-    <div class="bg-zioto-green-dark/80 rounded-2xl border border-zioto-gold/10 overflow-hidden">
+    <div class="bg-[#1A1D23] rounded-2xl border border-zioto-gold/10 overflow-hidden">
       ${STATE.paymentsData.map(payment => `
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-b border-white/5 hover:bg-white/5 transition-colors">
           <div>
@@ -182,7 +182,7 @@ function renderInstallmentsTab() {
       <h2 class="text-2xl font-bold text-white mb-2">اقساط فعال</h2>
       <p class="text-white/50">مدیریت اقساط در حال پرداخت شما</p>
     </div>
-    <div class="bg-zioto-green-dark/80 rounded-2xl p-6 border border-zioto-gold/10 text-center py-16">
+    <div class="bg-[#1A1D23] rounded-2xl p-6 border border-zioto-gold/10 text-center py-16">
       <svg class="w-16 h-16 text-white/20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
       <p class="text-white/50">اقساط فعالی وجود ندارد</p>
     </div>
@@ -195,7 +195,7 @@ function renderSettingsTab() {
       <h2 class="text-2xl font-bold text-white mb-2">تنظیمات حساب</h2>
       <p class="text-white/50">مدیریت اطلاعات شخصی و امنیت حساب</p>
     </div>
-    <div class="bg-zioto-green-dark/80 rounded-2xl p-6 border border-zioto-gold/20 mb-6">
+    <div class="bg-[#1A1D23] rounded-2xl p-6 border border-zioto-gold/20 mb-6">
       <h3 class="text-lg font-bold text-white mb-6">اطلاعات شخصی</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -217,7 +217,7 @@ function renderSettingsTab() {
       </div>
       <button onclick="showNotification('اطلاعات با موفقیت بروزرسانی شد')" class="btn-gold mt-6 px-6 py-2">ذخیره تغییرات</button>
     </div>
-    <div class="bg-zioto-green-dark/80 rounded-2xl p-6 border border-zioto-gold/20">
+    <div class="bg-[#1A1D23] rounded-2xl p-6 border border-zioto-gold/20">
       <h3 class="text-lg font-bold text-white mb-6">تغییر رمز عبور</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>

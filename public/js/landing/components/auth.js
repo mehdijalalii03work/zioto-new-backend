@@ -14,7 +14,7 @@ function renderLogin() {
             ${STATE.authStep === 'phone' ? 'شماره موبایل خود را وارد کنید' : `کد ۶ رقمی ارسال شده به ${formatPhoneDisplay(STATE.authPhone)} را وارد کنید`}
           </p>
         </div>
-        <div class="bg-zioto-green-dark/80 rounded-2xl p-8 border border-zioto-gold/20 login-card">
+        <div class="bg-[#1A1D23] rounded-2xl p-8 border border-zioto-gold/20 login-card">
           ${STATE.authStep === 'phone' ? renderPhoneStep() : renderOTPStep()}
         </div>
         <div class="text-center mt-6">
@@ -41,7 +41,7 @@ function renderPhoneStep() {
       <button type="submit" class="btn-gold w-full py-4 text-lg">ارسال کد تایید</button>
       <div class="relative my-8">
         <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-white/10"></div></div>
-        <div class="relative flex justify-center text-sm"><span class="px-4 bg-zioto-green-dark text-white/40">یا</span></div>
+        <div class="relative flex justify-center text-sm"><span class="px-4 bg-[#111318] text-white/40">یا</span></div>
       </div>
       <button type="button" onclick="showNotification('ورود با شماره کارمندی به زودی فعال می‌شود', 'info')" class="w-full px-4 py-2 bg-zioto-gold/20 text-zioto-gold rounded-lg text-sm hover:bg-zioto-gold/30 transition-colors">
         ورود با شماره کارمندی
@@ -58,7 +58,7 @@ function renderOTPStep() {
         <div class="flex justify-center gap-2" dir="ltr">
           ${[0,1,2,3,4,5].map(i => `
             ${i === 3 ? '<span class="text-zioto-gold self-center text-xl font-bold">-</span>' : ''}
-            <input type="text" maxlength="1" class="otp-input w-12 h-14 text-center text-xl font-bold bg-zioto-green/50 border-2 border-white/20 rounded-xl text-white focus:border-zioto-gold focus:outline-none transition-colors" data-index="${i}" oninput="handleOTPInput(this, ${i})" onkeydown="handleOTPKeydown(event, ${i})">
+            <input type="text" maxlength="1" class="otp-input w-12 h-14 text-center text-xl font-bold bg-[#1A1D23]/80 border-2 border-white/20 rounded-xl text-white focus:border-zioto-gold focus:outline-none transition-colors" data-index="${i}" oninput="handleOTPInput(this, ${i})" onkeydown="handleOTPKeydown(event, ${i})">
           `).join('')}
         </div>
       </div>

@@ -65,28 +65,28 @@ function renderHome() {
       </div>
     </section>
 
-    <section class="bg-zioto-green-dark/50 py-16">
+    <section class="bg-[#1A1D23]/80 py-16">
       <div class="container mx-auto px-4">
         <div class="text-center mb-12">
           <h2 class="text-3xl font-bold text-white mb-4">چرا زیوتو؟</h2>
           <div class="w-20 h-1 bg-zioto-gold mx-auto rounded-full"></div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div class="text-center p-8 rounded-2xl bg-zioto-green/50 border border-zioto-gold/20 hover:border-zioto-gold/40 transition-all">
+          <div class="text-center p-8 rounded-2xl bg-[#1A1D23]/60 border border-zioto-gold/20 hover:border-zioto-gold/40 transition-all">
             <div class="w-16 h-16 bg-zioto-gold/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <svg class="w-8 h-8 text-zioto-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
             </div>
             <h3 class="text-xl font-bold text-zioto-gold mb-3">ضمانت اصالت</h3>
             <p class="text-white/60 leading-7">تمامی محصولات دارای گواهی اصالت و شماره سریال منحصربفرد هستند.</p>
           </div>
-          <div class="text-center p-8 rounded-2xl bg-zioto-green/50 border border-zioto-gold/20 hover:border-zioto-gold/40 transition-all">
+          <div class="text-center p-8 rounded-2xl bg-[#1A1D23]/60 border border-zioto-gold/20 hover:border-zioto-gold/40 transition-all">
             <div class="w-16 h-16 bg-zioto-gold/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <svg class="w-8 h-8 text-zioto-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
             </div>
             <h3 class="text-xl font-bold text-zioto-gold mb-3">پرداخت اقساطی</h3>
             <p class="text-white/60 leading-7">امکان خرید اقساطی از طریق درگاه بانک ملی ایران ویژه کارمندان محترم.</p>
           </div>
-          <div class="text-center p-8 rounded-2xl bg-zioto-green/50 border border-zioto-gold/20 hover:border-zioto-gold/40 transition-all">
+          <div class="text-center p-8 rounded-2xl bg-[#1A1D23]/60 border border-zioto-gold/20 hover:border-zioto-gold/40 transition-all">
             <div class="w-16 h-16 bg-zioto-gold/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <svg class="w-8 h-8 text-zioto-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
             </div>
@@ -98,7 +98,7 @@ function renderHome() {
     </section>
 
     <section class="container mx-auto px-4 py-16">
-      <div class="bg-gradient-to-l from-zioto-green-light to-zioto-green rounded-3xl p-8 md:p-12 text-center border border-zioto-gold/20">
+      <div class="bg-gradient-to-l from-[#1A1D23] to-[#111318] rounded-3xl p-8 md:p-12 text-center border border-zioto-gold/20">
         <h2 class="text-2xl md:text-3xl font-bold text-white mb-4">آماده سرمایه‌گذاری هستید؟</h2>
         <p class="text-white/70 mb-8 max-w-xl mx-auto">همین الان شمش طلا یا نقره مورد نظرتان را با بهترین قیمت و امکان اقساط خریداری کنید.</p>
         <button onclick="document.getElementById('products-section').scrollIntoView({behavior:'smooth'})" class="btn-gold text-lg px-10 py-4">
@@ -111,7 +111,7 @@ function renderHome() {
 
 function renderProductCards(products) {
   return products.map(p => `
-    <div class="product-card bg-zioto-green-dark/80 rounded-2xl overflow-hidden cursor-pointer w-[325px] mx-auto" onclick="navigateTo('product', PRODUCTS.find(p => p.slug === '${p.slug}'))">
+    <div class="product-card bg-[#1A1D23] rounded-2xl overflow-hidden cursor-pointer w-[325px] mx-auto" onclick="navigateTo('product', PRODUCTS.find(p => p.slug === '${p.slug}'))">
       <div class="p-4 flex justify-center">
         <img src="${p.image}" alt="${p.name}" class="product-image w-[175px] aspect-[517/800] object-cover rounded-xl">
       </div>
@@ -141,11 +141,11 @@ function filterProducts(category) {
   document.getElementById('products-grid').innerHTML = renderProductCards(filtered);
 
   document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.remove('active', 'bg-zioto-gold', 'text-zioto-green');
+    btn.classList.remove('active', 'bg-zioto-gold', 'text-white');
     btn.classList.add('bg-white/10', 'text-white/70');
   });
 
   const activeBtn = document.querySelector(`[data-filter="${category}"]`);
-  activeBtn.classList.add('active', 'bg-zioto-gold', 'text-zioto-green');
+  activeBtn.classList.add('active', 'bg-zioto-gold', 'text-white');
   activeBtn.classList.remove('bg-white/10', 'text-white/70');
 }

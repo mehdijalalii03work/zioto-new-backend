@@ -5,7 +5,7 @@ function renderCheckout() {
       <h1 class="text-3xl font-bold text-white mb-8">تکمیل خرید</h1>
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="lg:col-span-2 space-y-6">
-          <div class="bg-zioto-green-dark/80 rounded-2xl p-6 border border-zioto-gold/20">
+          <div class="bg-[#1A1D23] rounded-2xl p-6 border border-zioto-gold/20">
             <h3 class="text-xl font-bold text-white mb-6">اطلاعات شخصی</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><label class="form-label">نام و نام خانوادگی *</label><input type="text" class="form-input" placeholder="نام کامل" id="checkout-name"></div>
@@ -14,7 +14,7 @@ function renderCheckout() {
               <div><label class="form-label">شماره کارمندی بانک ملی *</label><input type="text" class="form-input" placeholder="شماره کارمندی" id="checkout-employee-id" dir="ltr"></div>
             </div>
           </div>
-          <div class="bg-zioto-green-dark/80 rounded-2xl p-6 border border-zioto-gold/20">
+          <div class="bg-[#1A1D23] rounded-2xl p-6 border border-zioto-gold/20">
             <h3 class="text-xl font-bold text-white mb-6">روش پرداخت</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="payment-method active" onclick="STATE.selectedPaymentMethod='installment'">
@@ -34,7 +34,7 @@ function renderCheckout() {
           <button onclick="submitOrder()" class="btn-gold w-full text-lg py-4">ثبت سفارش و پرداخت</button>
         </div>
         <div class="lg:col-span-1">
-          <div class="bg-zioto-green-dark/80 rounded-2xl p-6 border border-zioto-gold/20 sticky top-24">
+          <div class="bg-[#1A1D23] rounded-2xl p-6 border border-zioto-gold/20 sticky top-24">
             <h3 class="text-xl font-bold text-white mb-6">سفارش شما</h3>
             <div class="space-y-4 mb-6">
               ${STATE.cart.map(item => `

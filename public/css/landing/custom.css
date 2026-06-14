@@ -22,7 +22,7 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0F2B1F;
+  background: #111318;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -36,7 +36,7 @@ html {
 
 /* Hero section gradient */
 .hero-gradient {
-  background: linear-gradient(135deg, #1B4332 0%, #0F2B1F 50%, #1B4332 100%);
+  background: linear-gradient(135deg, #111318 0%, #1A1D23 50%, #111318 100%);
   position: relative;
 }
 
@@ -98,18 +98,18 @@ html {
 
 .badge-gold {
   background: linear-gradient(135deg, #C8A84E, #D4B96A);
-  color: #1B4332;
+  color: #111318;
 }
 
 .badge-green {
-  background: linear-gradient(135deg, #2D6A4F, #40916C);
+  background: linear-gradient(135deg, #374151, #4B5563);
   color: white;
 }
 
 /* Button styles */
 .btn-gold {
   background: linear-gradient(135deg, #C8A84E 0%, #D4B96A 100%);
-  color: #1B4332;
+  color: #111318;
   font-weight: 600;
   padding: 12px 24px;
   border-radius: 8px;
@@ -137,11 +137,11 @@ html {
 
 .btn-outline-gold:hover {
   background: #C8A84E;
-  color: #1B4332;
+  color: #111318;
 }
 
 .btn-green {
-  background: linear-gradient(135deg, #2D6A4F 0%, #40916C 100%);
+  background: linear-gradient(135deg, #374151 0%, #4B5563 100%);
   color: white;
   font-weight: 600;
   padding: 12px 24px;
@@ -152,13 +152,13 @@ html {
 }
 
 .btn-green:hover {
-  background: linear-gradient(135deg, #40916C 0%, #52B788 100%);
+  background: linear-gradient(135deg, #4B5563 0%, #6B7280 100%);
   transform: translateY(-2px);
 }
 
 /* Installment badge */
 .installment-badge {
-  background: linear-gradient(135deg, rgba(45, 106, 79, 0.8), rgba(27, 67, 50, 0.8));
+  background: linear-gradient(135deg, rgba(26, 29, 35, 0.9), rgba(17, 19, 24, 0.9));
   border: 1px solid rgba(200, 168, 78, 0.3);
   backdrop-filter: blur(10px);
 }

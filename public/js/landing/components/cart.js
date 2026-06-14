@@ -50,7 +50,7 @@ function renderCart() {
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="lg:col-span-2 space-y-4">
           ${STATE.cart.map(item => `
-            <div class="cart-item bg-zioto-green-dark/80 rounded-xl p-4 flex gap-4">
+            <div class="cart-item bg-[#1A1D23] rounded-xl p-4 flex gap-4">
               <img src="${item.image}" alt="${item.name}" class="w-20 aspect-[517/800] object-cover rounded-lg">
               <div class="flex-1">
                 <h3 class="font-bold text-white">${item.name}</h3>
@@ -71,7 +71,7 @@ function renderCart() {
           `).join('')}
         </div>
         <div class="lg:col-span-1">
-          <div class="bg-zioto-green-dark/80 rounded-2xl p-6 border border-zioto-gold/20 sticky top-24">
+          <div class="bg-[#1A1D23] rounded-2xl p-6 border border-zioto-gold/20 sticky top-24">
             <h3 class="text-xl font-bold text-white mb-6">خلاصه سفارش</h3>
             <div class="space-y-3 mb-6">
               <div class="flex justify-between text-white/70">
