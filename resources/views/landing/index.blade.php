@@ -41,8 +41,8 @@
         <span class="text-zioto-gold text-2xl font-bold tracking-tight">ZIOTO</span>
       </div>
       <nav class="hidden md:flex items-center gap-6 text-sm">
-        <a href="#" onclick="navigateTo('home'); return false;" class="text-white/80 hover:text-zioto-gold transition-colors">خانه</a>
-        <a href="#" onclick="navigateTo('about'); return false;" class="text-white/80 hover:text-zioto-gold transition-colors">درباره ما</a>
+        <a href="/" onclick="navigateTo('home'); return false;" class="text-white/80 hover:text-zioto-gold transition-colors">خانه</a>
+        <a href="/about" onclick="navigateTo('about'); return false;" class="text-white/80 hover:text-zioto-gold transition-colors">درباره ما</a>
       </nav>
       <div class="flex items-center gap-4">
         <button onclick="navigateTo('cart')" class="relative p-2 text-white/80 hover:text-zioto-gold transition-colors">
@@ -61,8 +61,8 @@
     </div>
     <div id="mobile-menu" class="hidden md:hidden bg-zioto-green-dark/95 backdrop-blur-sm border-t border-white/10">
       <div class="container mx-auto px-4 py-4 flex flex-col gap-3">
-        <a href="#" onclick="navigateTo('home'); toggleMobileMenu(); return false;" class="text-white/80 hover:text-zioto-gold transition-colors py-2">خانه</a>
-        <a href="#" onclick="navigateTo('about'); toggleMobileMenu(); return false;" class="text-white/80 hover:text-zioto-gold transition-colors py-2">درباره ما</a>
+        <a href="/" onclick="navigateTo('home'); toggleMobileMenu(); return false;" class="text-white/80 hover:text-zioto-gold transition-colors py-2">خانه</a>
+        <a href="/about" onclick="navigateTo('about'); toggleMobileMenu(); return false;" class="text-white/80 hover:text-zioto-gold transition-colors py-2">درباره ما</a>
       </div>
     </div>
   </header>
@@ -112,12 +112,24 @@
       </div>
       <div class="border-t border-white/10 mt-8 pt-8 text-center text-white/40 text-sm">
         <p>© ۱۴۰۵ زیوتو. تمامی حقوق محفوظ است.</p>
-        <p class="mt-2">ویژه کارمندان محترم بانک ملی ایران</p>
+        <p class="mt-2">ویژه مشتریان و کارمندان محترم بانک ملی ایران</p>
       </div>
     </div>
   </footer>
 
+  <script>
+    const PRODUCTS = @json($products);
+  </script>
   <script src="{{ asset('js/landing/data.js') }}"></script>
+  <script src="{{ asset('js/landing/state.js') }}"></script>
+  <script src="{{ asset('js/landing/router.js') }}"></script>
+  <script src="{{ asset('js/landing/components/home.js') }}"></script>
+  <script src="{{ asset('js/landing/components/product.js') }}"></script>
+  <script src="{{ asset('js/landing/components/cart.js') }}"></script>
+  <script src="{{ asset('js/landing/components/checkout.js') }}"></script>
+  <script src="{{ asset('js/landing/components/auth.js') }}"></script>
+  <script src="{{ asset('js/landing/components/profile.js') }}"></script>
+  <script src="{{ asset('js/landing/components/about.js') }}"></script>
   <script src="{{ asset('js/landing/app.js') }}"></script>
 </body>
 </html>

@@ -60,7 +60,7 @@ class ProductForm
                                     ->label('قیمت')
                                     ->required()
                                     ->numeric()
-                                    ->prefix('$')
+                                    ->suffix('تومان')
                                     ->minValue(0),
 
                                 TextInput::make('weight')
@@ -93,6 +93,8 @@ class ProductForm
                                         FileUpload::make('image_path')
                                             ->label('تصویر')
                                             ->image()
+                                            ->disk('public')
+                                            ->directory('products')
                                             ->required()
                                             ->columnSpan(2),
 

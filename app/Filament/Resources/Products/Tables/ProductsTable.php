@@ -20,8 +20,8 @@ class ProductsTable
                     ->sortable(),
 
                 TextColumn::make('price')
-                    ->label('قیمت')
-                    ->money('USD')
+                    ->label('قیمت (تومان)')
+                    ->numeric()
                     ->sortable(),
 
                 TextColumn::make('stock_quantity')
