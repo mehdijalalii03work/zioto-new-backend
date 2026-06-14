@@ -17,7 +17,7 @@ function renderHome() {
             <span class="text-white">با خیال راحت اقساطی بخرید</span>
           </h1>
           <p class="hero-subtitle text-lg md:text-xl text-white/70 mb-10 max-w-2xl mx-auto leading-8">
-            خرید مطمئن شمش طلا و نقره خالص با گواهی اصالت و امکان پرداخت اقساطی از طریق درگاه بانک ملی ایران
+            خرید مطمئن شمش طلا و نقره خالص با گواهی اصالت و امکان پرداخت اقساطی از نوپی
           </p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <button onclick="document.getElementById('products-section').scrollIntoView({behavior:'smooth'})" class="btn-gold text-lg px-8 py-4 pulse-gold">
