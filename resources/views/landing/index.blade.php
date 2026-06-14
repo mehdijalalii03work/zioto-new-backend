@@ -69,27 +69,27 @@
 
   <main id="app" class="pt-20"></main>
 
-  <footer class="bg-zioto-green-dark border-t border-white/10 mt-20">
+  <footer class="bg-[#0A1F15] border-t border-zioto-gold/20 mt-20">
     <div class="container mx-auto px-4 py-12">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
         <div>
           <div class="flex items-center gap-2 mb-4">
             <span class="text-zioto-gold text-xl font-bold">ZIOTO</span>
           </div>
-          <p class="text-white/60 text-sm leading-7">
+          <p class="text-white/80 text-sm leading-7">
             زیوتو، معتبرترین مرکز فروش شمش طلا و نقره با امکان خرید اقساطی ویژه مشتریان و کارمندان بانک ملی ایران.
           </p>
         </div>
         <div>
           <h3 class="text-zioto-gold font-bold mb-4">دسترسی سریع</h3>
-          <ul class="space-y-2 text-sm text-white/60">
+          <ul class="space-y-2 text-sm text-white/80">
             <li><a href="#" class="hover:text-zioto-gold transition-colors">شرایط اقساط</a></li>
             <li><a href="#" class="hover:text-zioto-gold transition-colors">سوالات متداول</a></li>
           </ul>
         </div>
         <div>
           <h3 class="text-zioto-gold font-bold mb-4">خدمات</h3>
-          <ul class="space-y-2 text-sm text-white/60">
+          <ul class="space-y-2 text-sm text-white/80">
             <li>خرید نقدی</li>
             <li>خرید اقساطی</li>
             <li>مشاوره سرمایه‌گذاری</li>
@@ -98,7 +98,7 @@
         </div>
         <div>
           <h3 class="text-zioto-gold font-bold mb-4">تماس با ما</h3>
-          <ul class="space-y-2 text-sm text-white/60">
+          <ul class="space-y-2 text-sm text-white/80">
             <li class="flex items-center gap-2">
               <svg class="w-4 h-4 text-zioto-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
               <span>۰۲۱-XXXXXXXX</span>
@@ -110,7 +110,7 @@
           </ul>
         </div>
       </div>
-      <div class="border-t border-white/10 mt-8 pt-8 text-center text-white/40 text-sm">
+      <div class="border-t border-zioto-gold/20 mt-8 pt-8 text-center text-white/60 text-sm">
         <p>© ۱۴۰۵ زیوتو. تمامی حقوق محفوظ است.</p>
         <p class="mt-2">ویژه مشتریان و کارمندان محترم بانک ملی ایران</p>
       </div>
