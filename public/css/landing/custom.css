@@ -1,0 +1,345 @@
+/* Custom Styles for Zioto Landing Page */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Vazirmatn', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0F2B1F;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C8A84E;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #D4B96A;
+}
+
+/* Hero section gradient */
+.hero-gradient {
+  background: linear-gradient(135deg, #1B4332 0%, #0F2B1F 50%, #1B4332 100%);
+  position: relative;
+}
+
+.hero-gradient::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center, rgba(200, 168, 78, 0.1) 0%, transparent 70%);
+}
+
+/* Gold shimmer animation */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.gold-shimmer {
+  background: linear-gradient(90deg, #C8A84E 0%, #D4B96A 25%, #E8D5A0 50%, #D4B96A 75%, #C8A84E 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+
+/* Product card hover effect */
+.product-card {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid rgba(200, 168, 78, 0.2);
+}
+
+.product-card:hover {
+  transform: translateY(-8px);
+  border-color: rgba(200, 168, 78, 0.5);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(200, 168, 78, 0.1);
+}
+
+.product-card:hover .product-image {
+  transform: scale(1.05);
+}
+
+.product-image {
+  transition: transform 0.4s ease;
+}
+
+/* Badge styles */
+.badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-gold {
+  background: linear-gradient(135deg, #C8A84E, #D4B96A);
+  color: #1B4332;
+}
+
+.badge-green {
+  background: linear-gradient(135deg, #2D6A4F, #40916C);
+  color: white;
+}
+
+/* Button styles */
+.btn-gold {
+  background: linear-gradient(135deg, #C8A84E 0%, #D4B96A 100%);
+  color: #1B4332;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-gold:hover {
+  background: linear-gradient(135deg, #D4B96A 0%, #E8D5A0 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(200, 168, 78, 0.3);
+}
+
+.btn-outline-gold {
+  background: transparent;
+  color: #C8A84E;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: 2px solid #C8A84E;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-outline-gold:hover {
+  background: #C8A84E;
+  color: #1B4332;
+}
+
+.btn-green {
+  background: linear-gradient(135deg, #2D6A4F 0%, #40916C 100%);
+  color: white;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-green:hover {
+  background: linear-gradient(135deg, #40916C 0%, #52B788 100%);
+  transform: translateY(-2px);
+}
+
+/* Installment badge */
+.installment-badge {
+  background: linear-gradient(135deg, rgba(45, 106, 79, 0.8), rgba(27, 67, 50, 0.8));
+  border: 1px solid rgba(200, 168, 78, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+/* Price tag */
+.price-original {
+  text-decoration: line-through;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Cart item */
+.cart-item {
+  border: 1px solid rgba(200, 168, 78, 0.2);
+  transition: all 0.3s ease;
+}
+
+.cart-item:hover {
+  border-color: rgba(200, 168, 78, 0.4);
+}
+
+/* Checkout form */
+.form-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(200, 168, 78, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: white;
+  width: 100%;
+  transition: all 0.3s ease;
+  font-family: 'Vazirmatn', sans-serif;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #C8A84E;
+  box-shadow: 0 0 0 3px rgba(200, 168, 78, 0.1);
+}
+
+.form-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.form-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+/* Payment method card */
+.payment-method {
+  border: 2px solid rgba(200, 168, 78, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.payment-method:hover,
+.payment-method.active {
+  border-color: #C8A84E;
+  background: rgba(200, 168, 78, 0.1);
+}
+
+/* Floating particles */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.5; }
+  50% { transform: translateY(-20px) rotate(180deg); opacity: 0.8; }
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #C8A84E;
+  border-radius: 50%;
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Success animation */
+@keyframes checkmark {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.success-check {
+  animation: checkmark 0.5s ease-in-out;
+}
+
+/* Fade in animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+/* Pulse animation for CTA */
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 168, 78, 0.4); }
+  50% { box-shadow: 0 0 0 15px rgba(200, 168, 78, 0); }
+}
+
+.pulse-gold {
+  animation: pulse-gold 2s infinite;
+}
+
+/* OTP Input styles */
+.otp-input:focus {
+  border-color: #C8A84E;
+  box-shadow: 0 0 0 3px rgba(200, 168, 78, 0.2);
+  background: rgba(200, 168, 78, 0.1);
+}
+
+.otp-input.filled {
+  border-color: #C8A84E;
+  background: rgba(200, 168, 78, 0.1);
+}
+
+/* Login card animation */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-card {
+  animation: slideUp 0.4s ease-out;
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.toggle-switch.active {
+  background: #C8A84E;
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+.toggle-switch.active::after {
+  transform: translateX(20px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+}
