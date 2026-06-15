@@ -38,7 +38,7 @@ function renderPhoneStep() {
           <span class="text-sm text-white/60">شرایط و قوانین استفاده را مطالعه کرده و می‌پذیرم</span>
         </label>
       </div>
-      <button type="submit" class="btn-gold w-full py-4 text-lg">ارسال کد تایید</button>
+      <button type="submit" class="btn-gold w-full py-4 text-lg" id="send-otp-btn">ارسال کد تایید</button>
       <div class="relative my-8">
         <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-white/10"></div></div>
         <div class="relative flex justify-center text-sm"><span class="px-4 bg-[#111318] text-white/40">یا</span></div>
@@ -65,7 +65,7 @@ function renderOTPStep() {
       <div class="text-center mb-6">
         ${STATE.otpCountdown > 0 ? `<p class="text-white/50 text-sm">ارسال مجدد کد تا <span id="otp-countdown" class="text-zioto-gold font-bold">${toPersianNum(STATE.otpCountdown)}</span> ثانیه دیگر</p>` : `<button type="button" onclick="resendOTP()" class="text-zioto-gold text-sm hover:text-zioto-gold-light transition-colors">ارسال مجدد کد تایید</button>`}
       </div>
-      <button type="submit" class="btn-gold w-full py-4 text-lg">تایید و ورود</button>
+      <button type="submit" class="btn-gold w-full py-4 text-lg" id="verify-otp-btn">تایید و ورود</button>
       <button type="button" onclick="goToPhoneStep()" class="w-full mt-4 text-white/50 hover:text-white text-sm transition-colors">تغییر شماره موبایل</button>
     </form>
   `;
@@ -86,12 +86,39 @@ function sendOTP(e) {
     showNotification('شماره موبایل معتبر نیست', 'error');
     return;
   }
-  STATE.authPhone = phone;
-  STATE.authStep = 'otp';
-  renderPage();
-  startOTPCountdown();
-  setTimeout(() => { const firstInput = document.querySelector('.otp-input'); if (firstInput) firstInput.focus(); }, 100);
-  showNotification('کد تایید ارسال شد', 'success');
+  const btn = document.getElementById('send-otp-btn');
+  btn.disabled = true;
+  btn.textContent = 'در حال ارسال...';
+
+  fetch('/api/auth/send-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ phone }),
+  })
+  .then(res => res.json().then(data => ({ status: res.status, data })))
+  .then(({ status, data }) => {
+    if (status === 429) {
+      showNotification(data.message || 'لطفاً کمی صبر کنید', 'error');
+      return;
+    }
+    if (status !== 200) {
+      showNotification(data.message || 'خطا در ارسال کد', 'error');
+      return;
+    }
+    STATE.authPhone = phone;
+    STATE.authStep = 'otp';
+    renderPage();
+    startOTPCountdown();
+    setTimeout(() => { const firstInput = document.querySelector('.otp-input'); if (firstInput) firstInput.focus(); }, 100);
+    showNotification(data.message || 'کد تایید ارسال شد', 'success');
+  })
+  .catch(() => {
+    showNotification('خطا در ارتباط با سرور', 'error');
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = 'ارسال کد تایید';
+  });
 }
 
 function handleOTPInput(input, index) {
@@ -117,21 +144,59 @@ function verifyOTP(e) {
   const allInputs = document.querySelectorAll('.otp-input');
   const otp = Array.from(allInputs).map(i => i.value).join('');
   if (otp.length !== 6) { showNotification('لطفاً کد ۶ رقمی را کامل وارد کنید', 'error'); return; }
-  showNotification('در حال تایید...', 'info');
-  setTimeout(() => {
+
+  const btn = document.getElementById('verify-otp-btn');
+  btn.disabled = true;
+  btn.textContent = 'در حال تایید...';
+
+  fetch('/api/auth/verify-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ phone: STATE.authPhone, code: otp }),
+  })
+  .then(res => res.json().then(data => ({ status: res.status, data })))
+  .then(({ status, data }) => {
+    if (status !== 200) {
+      showNotification(data.message || 'کد تایید نامعتبر است', 'error');
+      return;
+    }
     STATE.isLoggedIn = true;
     STATE.authStep = 'phone';
     STATE.authPhone = '';
+    STATE.userData = { ...STATE.userData, ...(data.user || {}), phone: STATE.authPhone };
     updateAuthButtons();
-    showNotification(`خوش آمدید ${STATE.userData.name}!`, 'success');
+    showNotification(`خوش آمدید!`, 'success');
     navigateTo('home');
-  }, 1000);
+  })
+  .catch(() => {
+    showNotification('خطا در ارتباط با سرور', 'error');
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = 'تایید و ورود';
+  });
 }
 
 function resendOTP() {
   if (STATE.otpCountdown > 0) return;
-  showNotification('کد تایید جدید ارسال شد', 'success');
-  startOTPCountdown();
+  const phone = STATE.authPhone;
+  fetch('/api/auth/send-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ phone }),
+  })
+  .then(res => res.json().then(data => ({ status: res.status, data })))
+  .then(({ status, data }) => {
+    if (status !== 200) {
+      showNotification(data.message || 'خطا در ارسال مجدد کد', 'error');
+      return;
+    }
+    showNotification('کد تایید جدید ارسال شد', 'success');
+    startOTPCountdown();
+  })
+  .catch(() => {
+    showNotification('خطا در ارتباط با سرور', 'error');
+  });
 }
 
 function startOTPCountdown() {
@@ -159,7 +224,7 @@ function updateAuthButtons() {
         <div class="w-7 h-7 bg-white/10 rounded-full flex items-center justify-center">
           <svg class="w-4 h-4 text-zioto-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
         </div>
-        <span class="hidden md:inline text-sm">${STATE.userData.name.split(' ')[0]}</span>
+        <span class="hidden md:inline text-sm">${(STATE.userData.name || 'کاربر').split(' ')[0]}</span>
       </button>
     `;
   } else {
@@ -168,6 +233,7 @@ function updateAuthButtons() {
 }
 
 function logout() {
+  fetch('/api/auth/logout', { method: 'POST', headers: { 'Accept': 'application/json' } }).catch(() => {});
   STATE.isLoggedIn = false;
   STATE.authStep = 'phone';
   STATE.authPhone = '';
