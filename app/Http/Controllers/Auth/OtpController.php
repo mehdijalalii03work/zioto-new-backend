@@ -13,7 +13,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 
 class OtpController extends Controller
@@ -30,25 +29,22 @@ class OtpController extends Controller
     public function send(SendOtpRequest $request): JsonResponse
     {
         $phone = $request->input('phone');
+        $key = "otp:{$phone}";
 
-        $existing = Redis::get("otp:{$phone}");
-        if ($existing) {
-            $ttl = Redis::ttl("otp:{$phone}");
-            if ($ttl > 90) {
-                return response()->json([
-                    'message' => 'کد تایید قبلی هنوز معتبر است، لطفاً پس از ۲ دقیقه دوباره تلاش کنید',
-                ], 429);
-            }
+        if (Cache::has($key)) {
+            return response()->json([
+                'message' => 'کد تایید قبلی هنوز معتبر است، لطفاً پس از ۲ دقیقه دوباره تلاش کنید',
+            ], 429);
         }
 
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        Redis::setex("otp:{$phone}", self::OTP_TTL, $code);
+        Cache::put($key, $code, self::OTP_TTL);
 
         $sent = $this->sms->sendVerificationCode($phone, $code);
 
         if (! $sent) {
-            Redis::del("otp:{$phone}");
+            Cache::forget($key);
 
             return response()->json([
                 'message' => 'ارسال پیامک با مشکل مواجه شد، لطفا دقایقی دیگر تلاش کنید',
@@ -64,8 +60,9 @@ class OtpController extends Controller
     {
         $phone = $request->input('phone');
         $code = $request->input('code');
+        $key = "otp:{$phone}";
 
-        $stored = Redis::get("otp:{$phone}");
+        $stored = Cache::get($key);
 
         if (! $stored || $stored !== $code) {
             return response()->json([
@@ -73,7 +70,7 @@ class OtpController extends Controller
             ], 422);
         }
 
-        Redis::del("otp:{$phone}");
+        Cache::forget($key);
 
         $user = User::where('phone', $phone)->first();
 

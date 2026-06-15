@@ -38,7 +38,7 @@ class ShahkarService
             $response = Http::withHeaders([
                 'Authorization' => "Bearer {$token}",
                 'Content-Type' => 'application/json',
-            ])->timeout(15)->get("{$this->baseUrl}/services/matching", [
+            ])->timeout(15)->get("{$this->baseUrl}/v1/services/matching", [
                 'nationalCode' => $nationalCode,
                 'mobileNumber' => $mobile,
             ]);
@@ -77,7 +77,7 @@ class ShahkarService
         }
 
         try {
-            $response = Http::timeout(15)->post("{$this->baseUrl}/tokens/generate", [
+            $response = Http::timeout(15)->post("{$this->baseUrl}/v1/tokens/generate", [
                 'apiKey' => $this->apiKey,
                 'secretKey' => $this->secretKey,
             ]);

@@ -7,6 +7,6 @@
     <div class="flex items-center h-full">
         <img src="{{ asset('images/zioto-logo.png') }}" alt="Zioto"
              class="h-4 sm:h-5 lg:h-9 w-auto"
-             style="margin-top: 5px;max;width: 150px;height: 28px;">
+             style="margin-top: 5px;max;width: 150px;height: 25px;">
     </div>
 @endif

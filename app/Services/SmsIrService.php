@@ -41,7 +41,7 @@ class SmsIrService
             'mobile' => $mobile,
             'templateId' => (int) $this->templateId,
             'parameters' => [
-                ['name' => 'Code', 'value' => $code],
+                ['name' => 'OTP', 'value' => $code],
             ],
         ]);
 
