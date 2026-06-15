@@ -462,39 +462,40 @@ function logout() {
 }
 
 function persianToGregorian(py, pm, pd) {
-  const persianDays = [0, 31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
-  const gregorianDays = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  const gregorianLeapDays = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-  let y = py - 979;
-  let monthDays = 0;
-  for (let i = 1; i < pm; i++) monthDays += persianDays[i];
-  let persianDayOfYear = monthDays + pd;
-
-  let jy = 0;
-  if (persianDayOfYear <= 286) {
-    jy = y + 621;
-    monthDays = 0;
-    for (let i = 1; i <= 12; i++) {
-      const daysInMonths = (jy % 4 === 0 && (jy % 100 !== 0 || jy % 400 === 0)) ? gregorianLeapDays[i] : gregorianDays[i];
-      if (persianDayOfYear > monthDays + daysInMonths) {
-        monthDays += daysInMonths;
-      } else {
-        return `${jy}-${String(i).padStart(2, '0')}-${String(persianDayOfYear - monthDays).padStart(2, '0')}`;
-      }
-    }
-  } else {
-    jy = y + 622;
-    persianDayOfYear -= 286;
-    monthDays = 0;
-    for (let i = 1; i <= 12; i++) {
-      const daysInMonths = (jy % 4 === 0 && (jy % 100 !== 0 || jy % 400 === 0)) ? gregorianLeapDays[i] : gregorianDays[i];
-      if (persianDayOfYear > monthDays + daysInMonths) {
-        monthDays += daysInMonths;
-      } else {
-        return `${jy}-${String(i).padStart(2, '0')}-${String(persianDayOfYear - monthDays).padStart(2, '0')}`;
-      }
-    }
+  function isLeap(py) {
+    const y = (py - 474) % 2820 + 474;
+    const rem = y % 33;
+    return rem === 1 || rem === 5 || rem === 9 || rem === 13 ||
+           rem === 17 || rem === 22 || rem === 26 || rem === 30;
   }
-  return null;
+
+  function monthDays(py, pm) {
+    if (pm <= 6) return 31;
+    if (pm <= 11) return 30;
+    return isLeap(py) ? 30 : 29;
+  }
+
+  let days = (py + 1595) * 365 + Math.floor((py + 1595) / 33) * 8 +
+             Math.floor(((py + 1595) % 33 + 3) / 4) - 355668;
+  for (let i = 1; i < pm; i++) days += monthDays(py, i);
+  days += pd;
+
+  let gy = 400 * Math.floor(days / 146097);
+  days %= 146097;
+  if (days > 36524) { days--; gy += 100 * Math.floor(days / 36524); days %= 36524; if (days >= 365) days++; }
+  gy += 4 * Math.floor(days / 1461);
+  days %= 1461;
+  if (days > 365) { gy += Math.floor((days - 1) / 365); days = (days - 1) % 365; }
+
+  let gDay = days + 1;
+  const gDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if ((gy % 4 === 0 && gy % 100 !== 0) || gy % 400 === 0) gDays[1] = 29;
+
+  let gm = 1;
+  for (let i = 0; i < 12; i++) {
+    if (gDay <= gDays[i]) { gm = i + 1; break; }
+    gDay -= gDays[i];
+  }
+
+  return `${gy}-${String(gm).padStart(2, '0')}-${String(gDay).padStart(2, '0')}`;
 }

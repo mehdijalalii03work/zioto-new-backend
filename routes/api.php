@@ -13,4 +13,5 @@ Route::middleware('web')->group(function () {
     });
 
     Route::get('/profile', [ProfileController::class, 'show'])->middleware('auth');
+    Route::put('/profile', [ProfileController::class, 'update'])->middleware('auth');
 });
