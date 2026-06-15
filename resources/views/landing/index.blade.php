@@ -39,7 +39,7 @@
     <div class="container mx-auto px-4 py-4 flex items-center justify-between">
       <div class="flex items-center gap-8">
         <a href="/" onclick="navigateTo('home'); return false;">
-          <img src="{{ asset('images/zioto-logo.png') }}" alt="ZIOTO" class="h-5">
+          <img src="{{ asset('images/zioto-logo.png') }}" alt="ZIOTO" class="h-3">
         </a>
         <nav class="hidden md:flex items-center gap-1">
           <a href="/" onclick="navigateTo('home'); return false;" class="px-4 py-2 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/5 transition-all">خانه</a>
