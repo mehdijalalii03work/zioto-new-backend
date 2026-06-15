@@ -55,10 +55,10 @@ function renderHome() {
         <p class="text-white/60 max-w-xl mx-auto">شمش طلا و نقره خالص با بهترین قیمت و امکان خرید اقساطی</p>
         <div class="w-20 h-1 bg-zioto-gold mx-auto mt-4 rounded-full"></div>
       </div>
-      <div class="flex justify-center gap-4 mb-10">
-        <button onclick="filterProducts('all')" class="filter-btn active px-6 py-2 rounded-full text-sm font-medium transition-all" data-filter="all">همه</button>
-        <button onclick="filterProducts('gold')" class="filter-btn px-6 py-2 rounded-full text-sm font-medium transition-all" data-filter="gold">شمش طلا</button>
-        <button onclick="filterProducts('silver')" class="filter-btn px-6 py-2 rounded-full text-sm font-medium transition-all" data-filter="silver">شمش نقره</button>
+      <div class="flex justify-center gap-3 mb-10">
+        <button onclick="filterProducts('all')" class="filter-btn active px-5 py-2 rounded-full text-sm font-medium transition-all bg-zioto-gold text-[#111318]" data-filter="all">همه</button>
+        <button onclick="filterProducts('gold')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium transition-all bg-white/10 text-white/70 hover:bg-white/15" data-filter="gold">شمش طلا</button>
+        <button onclick="filterProducts('silver')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium transition-all bg-white/10 text-white/70 hover:bg-white/15" data-filter="silver">شمش نقره</button>
       </div>
       <div id="products-grid" class="flex flex-wrap justify-center gap-6">
         ${renderProductCards(PRODUCTS)}
@@ -141,11 +141,11 @@ function filterProducts(category) {
   document.getElementById('products-grid').innerHTML = renderProductCards(filtered);
 
   document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.remove('active', 'bg-zioto-gold', 'text-white');
+    btn.classList.remove('active', 'bg-zioto-gold', 'text-[#111318]');
     btn.classList.add('bg-white/10', 'text-white/70');
   });
 
   const activeBtn = document.querySelector(`[data-filter="${category}"]`);
-  activeBtn.classList.add('active', 'bg-zioto-gold', 'text-white');
+  activeBtn.classList.add('active', 'bg-zioto-gold', 'text-[#111318]');
   activeBtn.classList.remove('bg-white/10', 'text-white/70');
 }
