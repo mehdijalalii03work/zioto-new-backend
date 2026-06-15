@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'shahkar' => [
+        'api_key' => env('SHAHKAR_API_KEY'),
+        'secret_key' => env('SHAHKAR_SECRET_KEY'),
+        'base_url' => env('SHAHKAR_BASE_URL', 'https://napi.jibit.ir/ide'),
+    ],
+
 ];

@@ -8,14 +8,14 @@ function renderLogin() {
             <span class="text-zioto-gold text-2xl font-bold">Z</span>
           </div>
           <h1 class="text-2xl font-bold text-white mb-2">
-            ${STATE.authStep === 'phone' ? 'ورود به حساب کاربری' : 'تایید شماره موبایل'}
+            ${getAuthTitle()}
           </h1>
           <p class="text-white/50 text-sm">
-            ${STATE.authStep === 'phone' ? 'شماره موبایل خود را وارد کنید' : `کد ۶ رقمی ارسال شده به ${formatPhoneDisplay(STATE.authPhone)} را وارد کنید`}
+            ${getAuthSubtitle()}
           </p>
         </div>
         <div class="bg-[#1A1D23] rounded-2xl p-8 border border-zioto-gold/20 login-card">
-          ${STATE.authStep === 'phone' ? renderPhoneStep() : renderOTPStep()}
+          ${getAuthStep()}
         </div>
         <div class="text-center mt-6">
           <p class="text-white/40 text-xs">با ورود به سایت، شرایط و قوانین زیوتو را می‌پذیرید.</p>
@@ -23,6 +23,33 @@ function renderLogin() {
       </div>
     </section>
   `;
+}
+
+function getAuthTitle() {
+  switch (STATE.authStep) {
+    case 'phone': return 'ورود به حساب کاربری';
+    case 'otp': return 'تایید شماره موبایل';
+    case 'register': return 'تکمیل اطلاعات';
+    default: return 'ورود به حساب کاربری';
+  }
+}
+
+function getAuthSubtitle() {
+  switch (STATE.authStep) {
+    case 'phone': return 'شماره موبایل خود را وارد کنید';
+    case 'otp': return `کد ۶ رقمی ارسال شده به ${formatPhoneDisplay(STATE.authPhone)} را وارد کنید`;
+    case 'register': return 'لطفاً اطلاعات هویتی خود را وارد کنید';
+    default: return 'شماره موبایل خود را وارد کنید';
+  }
+}
+
+function getAuthStep() {
+  switch (STATE.authStep) {
+    case 'phone': return renderPhoneStep();
+    case 'otp': return renderOTPStep();
+    case 'register': return renderRegisterStep();
+    default: return renderPhoneStep();
+  }
 }
 
 function renderPhoneStep() {
@@ -65,8 +92,30 @@ function renderOTPStep() {
       <div class="text-center mb-6">
         ${STATE.otpCountdown > 0 ? `<p class="text-white/50 text-sm">ارسال مجدد کد تا <span id="otp-countdown" class="text-zioto-gold font-bold">${toPersianNum(STATE.otpCountdown)}</span> ثانیه دیگر</p>` : `<button type="button" onclick="resendOTP()" class="text-zioto-gold text-sm hover:text-zioto-gold-light transition-colors">ارسال مجدد کد تایید</button>`}
       </div>
-      <button type="submit" class="btn-gold w-full py-4 text-lg" id="verify-otp-btn">تایید و ورود</button>
+      <button type="submit" class="btn-gold w-full py-4 text-lg" id="verify-otp-btn">تایید کد</button>
       <button type="button" onclick="goToPhoneStep()" class="w-full mt-4 text-white/50 hover:text-white text-sm transition-colors">تغییر شماره موبایل</button>
+    </form>
+  `;
+}
+
+function renderRegisterStep() {
+  return `
+    <form onsubmit="submitShahkar(event)">
+      <div class="mb-4">
+        <label class="form-label">نام</label>
+        <input type="text" class="form-input" placeholder="نام خود را وارد کنید" id="reg-first-name" required>
+      </div>
+      <div class="mb-4">
+        <label class="form-label">نام خانوادگی</label>
+        <input type="text" class="form-input" placeholder="نام خانوادگی خود را وارد کنید" id="reg-last-name" required>
+      </div>
+      <div class="mb-6">
+        <label class="form-label">کد ملی</label>
+        <input type="text" class="form-input text-left" placeholder="۱۰ رقم" id="reg-national-code" maxlength="10" dir="ltr" required>
+        <p class="text-white/40 text-xs mt-1">کد ملی باید با شماره موبایل ثبت‌شده مطابقت داشته باشد</p>
+      </div>
+      <button type="submit" class="btn-gold w-full py-4 text-lg" id="shahkar-btn">احراز هویت و ثبت‌نام</button>
+      <button type="button" onclick="goToOTPStep()" class="w-full mt-4 text-white/50 hover:text-white text-sm transition-colors">بازگشت</button>
     </form>
   `;
 }
@@ -160,9 +209,17 @@ function verifyOTP(e) {
       showNotification(data.message || 'کد تایید نامعتبر است', 'error');
       return;
     }
+    if (data.requires_registration) {
+      STATE.authToken = data.token;
+      STATE.authStep = 'register';
+      renderPage();
+      setTimeout(() => { const nameInput = document.getElementById('reg-first-name'); if (nameInput) nameInput.focus(); }, 100);
+      return;
+    }
     STATE.isLoggedIn = true;
     STATE.authStep = 'phone';
     STATE.authPhone = '';
+    STATE.authToken = '';
     STATE.userData = { ...STATE.userData, ...(data.user || {}), phone: STATE.authPhone };
     updateAuthButtons();
     showNotification(`خوش آمدید!`, 'success');
@@ -173,8 +230,68 @@ function verifyOTP(e) {
   })
   .finally(() => {
     btn.disabled = false;
-    btn.textContent = 'تایید و ورود';
+    btn.textContent = 'تایید کد';
   });
+}
+
+function submitShahkar(e) {
+  e.preventDefault();
+  const firstName = document.getElementById('reg-first-name').value.trim();
+  const lastName = document.getElementById('reg-last-name').value.trim();
+  const nationalCode = document.getElementById('reg-national-code').value.replace(/\D/g, '');
+
+  if (firstName.length < 2) { showNotification('نام باید حداقل ۲ کاراکتر باشد', 'error'); return; }
+  if (lastName.length < 2) { showNotification('نام خانوادگی باید حداقل ۲ کاراکتر باشد', 'error'); return; }
+  if (nationalCode.length !== 10) { showNotification('کد ملی باید ۱۰ رقم باشد', 'error'); return; }
+  if (!validateNationalCode(nationalCode)) { showNotification('کد ملی نامعتبر است', 'error'); return; }
+
+  const btn = document.getElementById('shahkar-btn');
+  btn.disabled = true;
+  btn.textContent = 'در حال احراز هویت...';
+
+  fetch('/api/auth/shahkar-verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      token: STATE.authToken,
+      first_name: firstName,
+      last_name: lastName,
+      national_code: nationalCode,
+    }),
+  })
+  .then(res => res.json().then(data => ({ status: res.status, data })))
+  .then(({ status, data }) => {
+    if (status !== 200) {
+      showNotification(data.message || 'خطا در احراز هویت', 'error');
+      return;
+    }
+    STATE.isLoggedIn = true;
+    STATE.authStep = 'phone';
+    STATE.authPhone = '';
+    STATE.authToken = '';
+    STATE.userData = { ...STATE.userData, ...(data.user || {}), phone: STATE.authPhone };
+    updateAuthButtons();
+    showNotification('احراز هویت با موفقیت انجام شد!', 'success');
+    navigateTo('home');
+  })
+  .catch(() => {
+    showNotification('خطا در ارتباط با سرور', 'error');
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = 'احراز هویت و ثبت‌نام';
+  });
+}
+
+function validateNationalCode(code) {
+  if (!/^\d{10}$/.test(code)) return false;
+  const invalidPatterns = ['0000000000','1111111111','2222222222','3333333333','4444444444','5555555555','6666666666','7777777777','8888888888','9999999999'];
+  if (invalidPatterns.includes(code)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(code.charAt(i)) * (10 - i);
+  const remainder = sum % 11;
+  const checkDigit = parseInt(code.charAt(9));
+  return remainder < 2 ? checkDigit === remainder : checkDigit === (11 - remainder);
 }
 
 function resendOTP() {
@@ -212,6 +329,14 @@ function startOTPCountdown() {
 
 function goToPhoneStep() {
   STATE.authStep = 'phone';
+  STATE.authPhone = '';
+  STATE.authToken = '';
+  renderPage();
+}
+
+function goToOTPStep() {
+  STATE.authStep = 'otp';
+  STATE.authToken = '';
   renderPage();
 }
 
@@ -237,6 +362,7 @@ function logout() {
   STATE.isLoggedIn = false;
   STATE.authStep = 'phone';
   STATE.authPhone = '';
+  STATE.authToken = '';
   updateAuthButtons();
   showNotification('با موفقیت خارج شدید');
   navigateTo('home');

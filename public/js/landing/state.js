@@ -8,6 +8,7 @@ const STATE = {
   isLoggedIn: false,
   authStep: 'phone',
   authPhone: '',
+  authToken: '',
   otpCountdown: 0,
   otpTimer: null,
 

@@ -6,5 +6,6 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('auth')->group(function () {
     Route::post('/send-otp', [OtpController::class, 'send']);
     Route::post('/verify-otp', [OtpController::class, 'verify']);
+    Route::post('/shahkar-verify', [OtpController::class, 'shahkarVerify']);
     Route::post('/logout', [OtpController::class, 'logout']);
 });
