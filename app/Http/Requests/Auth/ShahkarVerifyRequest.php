@@ -18,6 +18,7 @@ class ShahkarVerifyRequest extends FormRequest
             'first_name' => ['required', 'string', 'min:2', 'max:50'],
             'last_name' => ['required', 'string', 'min:2', 'max:50'],
             'national_code' => ['required', 'string', 'size:10', 'regex:/^\d{10}$/'],
+            'birth_date' => ['nullable', 'date', 'before:today'],
         ];
     }
 
@@ -32,6 +33,7 @@ class ShahkarVerifyRequest extends FormRequest
             'national_code.required' => 'کد ملی الزامی است',
             'national_code.size' => 'کد ملی باید ۱۰ رقم باشد',
             'national_code.regex' => 'کد ملی باید شامل ۱۰ رقم باشد',
+            'birth_date.before' => 'تاریخ تولد نامعتبر است',
         ];
     }
 }

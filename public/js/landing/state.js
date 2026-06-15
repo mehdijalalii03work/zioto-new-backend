@@ -6,21 +6,26 @@ const STATE = {
   quantity: 1,
 
   isLoggedIn: false,
+  profileLoaded: false,
   authStep: 'phone',
   authPhone: '',
   authToken: '',
   otpCountdown: 0,
+  otpExpiresAt: 0,
   otpTimer: null,
 
   cart: [],
 
   userData: {
-    name: 'علی محمدی',
-    phone: '۰۹۱۲۱۲۳۴۵۶۷',
-    email: 'ali.mohammadi@email.com',
-    nationalId: '۱۲۳۴۵۶۷۸۹۰',
-    employeeId: 'BM-۱۲۳۴۵',
-    joinDate: '۱۴۰۳/۰۳/۱۵',
+    first_name: '',
+    last_name: '',
+    name: '',
+    phone: '',
+    email: '',
+    nationalId: '',
+    employeeId: '',
+    joinDate: '',
+    birthDate: '',
     avatar: null,
   },
 

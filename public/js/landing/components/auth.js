@@ -78,6 +78,9 @@ function renderPhoneStep() {
 }
 
 function renderOTPStep() {
+  const now = Date.now();
+  const remaining = STATE.otpExpiresAt > now ? Math.floor((STATE.otpExpiresAt - now) / 1000) : 0;
+  const expired = remaining <= 0 && STATE.otpExpiresAt > 0;
   return `
     <form onsubmit="verifyOTP(event)">
       <div class="mb-6">
@@ -85,17 +88,34 @@ function renderOTPStep() {
         <div class="flex justify-center gap-2" dir="ltr">
           ${[0,1,2,3,4,5].map(i => `
             ${i === 3 ? '<span class="text-zioto-gold self-center text-xl font-bold">-</span>' : ''}
-            <input type="text" maxlength="1" class="otp-input w-12 h-14 text-center text-xl font-bold bg-[#1A1D23]/80 border-2 border-white/20 rounded-xl text-white focus:border-zioto-gold focus:outline-none transition-colors" data-index="${i}" oninput="handleOTPInput(this, ${i})" onkeydown="handleOTPKeydown(event, ${i})">
+            <input type="text" maxlength="1" class="otp-input w-12 h-14 text-center text-xl font-bold bg-[#1A1D23]/80 border-2 border-white/20 rounded-xl text-white focus:border-zioto-gold focus:outline-none transition-colors" data-index="${i}" oninput="handleOTPInput(this, ${i})" onkeydown="handleOTPKeydown(event, ${i})" ${expired ? 'disabled' : ''}>
           `).join('')}
         </div>
       </div>
-      <div class="text-center mb-6">
-        ${STATE.otpCountdown > 0 ? `<p class="text-white/50 text-sm">ارسال مجدد کد تا <span id="otp-countdown" class="text-zioto-gold font-bold">${toPersianNum(STATE.otpCountdown)}</span> ثانیه دیگر</p>` : `<button type="button" onclick="resendOTP()" class="text-zioto-gold text-sm hover:text-zioto-gold-light transition-colors">ارسال مجدد کد تایید</button>`}
+      <div class="text-center mb-4">
+        ${expired
+          ? `<p class="text-red-400 text-sm">کد تایید منقضی شد</p>`
+          : STATE.otpExpiresAt > 0
+            ? `<p class="text-white/50 text-sm">کد تا <span id="otp-expiry" class="text-zioto-gold font-bold">${formatOTPTimer(remaining)}</span> دیگر منقضی می‌شود</p>`
+            : ''
+        }
       </div>
-      <button type="submit" class="btn-gold w-full py-4 text-lg" id="verify-otp-btn">تایید کد</button>
+      <div class="text-center mb-6">
+        ${STATE.otpCountdown > 0
+          ? `<p class="text-white/50 text-sm">ارسال مجدد کد تا <span id="otp-countdown" class="text-zioto-gold font-bold">${toPersianNum(STATE.otpCountdown)}</span> ثانیه دیگر</p>`
+          : `<button type="button" onclick="resendOTP()" class="text-zioto-gold text-sm hover:text-zioto-gold-light transition-colors">ارسال مجدد کد تایید</button>`
+        }
+      </div>
+      <button type="submit" class="btn-gold w-full py-4 text-lg" id="verify-otp-btn" ${expired ? 'disabled' : ''}>${expired ? 'کد منقضی شد' : 'تایید کد'}</button>
       <button type="button" onclick="goToPhoneStep()" class="w-full mt-4 text-white/50 hover:text-white text-sm transition-colors">تغییر شماره موبایل</button>
     </form>
   `;
+}
+
+function formatOTPTimer(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${toPersianNum(m)}:${toPersianNum(s < 10 ? '0' + s : s)}`;
 }
 
 function renderRegisterStep() {
@@ -109,15 +129,54 @@ function renderRegisterStep() {
         <label class="form-label">نام خانوادگی</label>
         <input type="text" class="form-input" placeholder="نام خانوادگی خود را وارد کنید" id="reg-last-name" required>
       </div>
-      <div class="mb-6">
+      <div class="mb-4">
         <label class="form-label">کد ملی</label>
         <input type="text" class="form-input text-left" placeholder="۱۰ رقم" id="reg-national-code" maxlength="10" dir="ltr" required>
         <p class="text-white/40 text-xs mt-1">کد ملی باید با شماره موبایل ثبت‌شده مطابقت داشته باشد</p>
+      </div>
+      <div class="mb-6">
+        <label class="form-label">تاریخ تولد</label>
+        <div class="grid grid-cols-3 gap-2" dir="ltr">
+          <select class="form-input" id="reg-birth-year">
+            <option value="">سال</option>
+            ${renderPersianYearOptions()}
+          </select>
+          <select class="form-input" id="reg-birth-month">
+            <option value="">ماه</option>
+            ${renderPersianMonthOptions()}
+          </select>
+          <select class="form-input" id="reg-birth-day">
+            <option value="">روز</option>
+            ${renderPersianDayOptions()}
+          </select>
+        </div>
       </div>
       <button type="submit" class="btn-gold w-full py-4 text-lg" id="shahkar-btn">احراز هویت و ثبت‌نام</button>
       <button type="button" onclick="goToOTPStep()" class="w-full mt-4 text-white/50 hover:text-white text-sm transition-colors">بازگشت</button>
     </form>
   `;
+}
+
+function renderPersianYearOptions() {
+  const currentYear = 1404;
+  let html = '';
+  for (let y = currentYear - 60; y <= currentYear; y++) {
+    html += `<option value="${y}">${toPersianNum(y)}</option>`;
+  }
+  return html;
+}
+
+function renderPersianMonthOptions() {
+  const months = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+  return months.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+}
+
+function renderPersianDayOptions() {
+  let html = '';
+  for (let d = 1; d <= 31; d++) {
+    html += `<option value="${d}">${toPersianNum(d)}</option>`;
+  }
+  return html;
 }
 
 function formatPhoneDisplay(phone) {
@@ -156,6 +215,7 @@ function sendOTP(e) {
     }
     STATE.authPhone = phone;
     STATE.authStep = 'otp';
+    STATE.otpExpiresAt = Date.now() + 180000;
     renderPage();
     startOTPCountdown();
     setTimeout(() => { const firstInput = document.querySelector('.otp-input'); if (firstInput) firstInput.focus(); }, 100);
@@ -220,7 +280,8 @@ function verifyOTP(e) {
     STATE.authStep = 'phone';
     STATE.authPhone = '';
     STATE.authToken = '';
-    STATE.userData = { ...STATE.userData, ...(data.user || {}), phone: STATE.authPhone };
+    STATE.otpExpiresAt = 0;
+    STATE.userData = { ...STATE.userData, ...(data.user || {}), phone: (data.user?.phone) || STATE.authPhone };
     updateAuthButtons();
     showNotification(`خوش آمدید!`, 'success');
     navigateTo('home');
@@ -239,6 +300,10 @@ function submitShahkar(e) {
   const firstName = document.getElementById('reg-first-name').value.trim();
   const lastName = document.getElementById('reg-last-name').value.trim();
   const nationalCode = document.getElementById('reg-national-code').value.replace(/\D/g, '');
+  const birthYear = document.getElementById('reg-birth-year').value;
+  const birthMonth = document.getElementById('reg-birth-month').value;
+  const birthDay = document.getElementById('reg-birth-day').value;
+  const birthDate = birthYear && birthMonth && birthDay ? persianToGregorian(parseInt(birthYear), parseInt(birthMonth), parseInt(birthDay)) : null;
 
   if (firstName.length < 2) { showNotification('نام باید حداقل ۲ کاراکتر باشد', 'error'); return; }
   if (lastName.length < 2) { showNotification('نام خانوادگی باید حداقل ۲ کاراکتر باشد', 'error'); return; }
@@ -257,6 +322,7 @@ function submitShahkar(e) {
       first_name: firstName,
       last_name: lastName,
       national_code: nationalCode,
+      birth_date: birthDate,
     }),
   })
   .then(res => res.json().then(data => ({ status: res.status, data })))
@@ -269,7 +335,13 @@ function submitShahkar(e) {
     STATE.authStep = 'phone';
     STATE.authPhone = '';
     STATE.authToken = '';
-    STATE.userData = { ...STATE.userData, ...(data.user || {}), phone: STATE.authPhone };
+    STATE.otpExpiresAt = 0;
+    STATE.userData = {
+      ...STATE.userData,
+      ...(data.user || {}),
+      name: `${firstName} ${lastName}`,
+      phone: (data.user?.phone) || STATE.authPhone,
+    };
     updateAuthButtons();
     showNotification('احراز هویت با موفقیت انجام شد!', 'success');
     navigateTo('home');
@@ -308,6 +380,7 @@ function resendOTP() {
       showNotification(data.message || 'خطا در ارسال مجدد کد', 'error');
       return;
     }
+    STATE.otpExpiresAt = Date.now() + 180000;
     showNotification('کد تایید جدید ارسال شد', 'success');
     startOTPCountdown();
   })
@@ -323,7 +396,25 @@ function startOTPCountdown() {
     STATE.otpCountdown--;
     const countdownEl = document.getElementById('otp-countdown');
     if (countdownEl) countdownEl.textContent = toPersianNum(STATE.otpCountdown);
-    if (STATE.otpCountdown <= 0) { clearInterval(STATE.otpTimer); STATE.otpTimer = null; renderPage(); }
+
+    const expiryEl = document.getElementById('otp-expiry');
+    const remaining = Math.floor((STATE.otpExpiresAt - Date.now()) / 1000);
+    if (expiryEl) {
+      if (remaining > 0) {
+        expiryEl.textContent = formatOTPTimer(remaining);
+      } else {
+        clearInterval(STATE.otpTimer);
+        STATE.otpTimer = null;
+        renderPage();
+        return;
+      }
+    }
+
+    if (STATE.otpCountdown <= 0 && remaining <= 0) {
+      clearInterval(STATE.otpTimer);
+      STATE.otpTimer = null;
+      renderPage();
+    }
   }, 1000);
 }
 
@@ -331,6 +422,7 @@ function goToPhoneStep() {
   STATE.authStep = 'phone';
   STATE.authPhone = '';
   STATE.authToken = '';
+  STATE.otpExpiresAt = 0;
   renderPage();
 }
 
@@ -360,10 +452,49 @@ function updateAuthButtons() {
 function logout() {
   fetch('/api/auth/logout', { method: 'POST', headers: { 'Accept': 'application/json' } }).catch(() => {});
   STATE.isLoggedIn = false;
+  STATE.profileLoaded = false;
   STATE.authStep = 'phone';
   STATE.authPhone = '';
   STATE.authToken = '';
   updateAuthButtons();
   showNotification('با موفقیت خارج شدید');
   navigateTo('home');
+}
+
+function persianToGregorian(py, pm, pd) {
+  const persianDays = [0, 31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
+  const gregorianDays = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const gregorianLeapDays = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+  let y = py - 979;
+  let monthDays = 0;
+  for (let i = 1; i < pm; i++) monthDays += persianDays[i];
+  let persianDayOfYear = monthDays + pd;
+
+  let jy = 0;
+  if (persianDayOfYear <= 286) {
+    jy = y + 621;
+    monthDays = 0;
+    for (let i = 1; i <= 12; i++) {
+      const daysInMonths = (jy % 4 === 0 && (jy % 100 !== 0 || jy % 400 === 0)) ? gregorianLeapDays[i] : gregorianDays[i];
+      if (persianDayOfYear > monthDays + daysInMonths) {
+        monthDays += daysInMonths;
+      } else {
+        return `${jy}-${String(i).padStart(2, '0')}-${String(persianDayOfYear - monthDays).padStart(2, '0')}`;
+      }
+    }
+  } else {
+    jy = y + 622;
+    persianDayOfYear -= 286;
+    monthDays = 0;
+    for (let i = 1; i <= 12; i++) {
+      const daysInMonths = (jy % 4 === 0 && (jy % 100 !== 0 || jy % 400 === 0)) ? gregorianLeapDays[i] : gregorianDays[i];
+      if (persianDayOfYear > monthDays + daysInMonths) {
+        monthDays += daysInMonths;
+      } else {
+        return `${jy}-${String(i).padStart(2, '0')}-${String(persianDayOfYear - monthDays).padStart(2, '0')}`;
+      }
+    }
+  }
+  return null;
 }

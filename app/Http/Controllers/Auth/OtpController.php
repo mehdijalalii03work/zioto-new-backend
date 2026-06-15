@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 
 class OtpController extends Controller
 {
-    private const OTP_TTL = 120;
+    private const OTP_TTL = 180;
 
     private const SHAHKAR_TOKEN_TTL = 600;
 
@@ -82,6 +82,8 @@ class OtpController extends Controller
                 'message' => 'با موفقیت وارد شدید',
                 'user' => [
                     'id' => $user->id,
+                    'first_name' => $user->first_name,
+                    'last_name' => $user->last_name,
                     'name' => $user->name,
                     'phone' => $user->phone,
                 ],
@@ -104,6 +106,7 @@ class OtpController extends Controller
         $firstName = $request->input('first_name');
         $lastName = $request->input('last_name');
         $nationalCode = $request->input('national_code');
+        $birthDate = $request->input('birth_date');
 
         $phone = Cache::pull("shahkar_register_token:{$token}");
 
@@ -137,12 +140,15 @@ class OtpController extends Controller
 
         $user = User::create([
             'name' => $firstName.' '.$lastName,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'phone' => $phone,
-            'email' => $phone.'@user.nopay',
+            'email' => null,
             'password' => Hash::make(Str::random(32)),
             'phone_verified_at' => now(),
             'national_code' => $nationalCode,
             'shahkar_verified' => true,
+            'birth_date' => $birthDate,
         ]);
 
         Auth::login($user);
@@ -151,7 +157,8 @@ class OtpController extends Controller
             'message' => 'احراز هویت با موفقیت انجام شد',
             'user' => [
                 'id' => $user->id,
-                'name' => $user->name,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
                 'phone' => $user->phone,
             ],
         ]);
