@@ -19,7 +19,7 @@ class SmsIrService
     {
         $this->apiKey = config('sms.smsir.api_key');
         $this->lineNumber = config('sms.smsir.line_number');
-        $this->templateId = config('sms.smsir.template_id');
+        $this->templateId = config('sms.smsir.template_id') ? (int) config('sms.smsir.template_id') : null;
     }
 
     public function sendVerificationCode(string $mobile, string $code): bool
