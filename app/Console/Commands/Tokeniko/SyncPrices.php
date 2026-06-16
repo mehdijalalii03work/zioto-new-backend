@@ -67,7 +67,7 @@ class SyncPrices extends Command
                     continue;
                 }
                 $key = mb_strtolower(trim($item['Name']));
-                $apiPrices[$key] = (string) round(((float) $item['SellPrice']) / 10);
+                $apiPrices[$key] = (string) round(((float) $item['SellPrice']));
             }
 
             $skus = array_values(self::SKU_MAP);
