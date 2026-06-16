@@ -23,7 +23,7 @@ class ProductForm
                     ->icon('heroicon-o-information-circle')
                     ->collapsible()
                     ->schema([
-                        Grid::make(2)
+                        Grid::make(3)
                             ->schema([
                                 TextInput::make('name')
                                     ->label('نام محصول')
@@ -36,6 +36,11 @@ class ProductForm
                                     ->required()
                                     ->unique(ignoreRecord: true)
                                     ->helperText('به صورت خودکار از نام محصول تولید می‌شود'),
+
+                                TextInput::make('sku')
+                                    ->label('SKU')
+                                    ->unique(ignoreRecord: true)
+                                    ->helperText('کد اختصاصی محصول (اختیاری)'),
                             ]),
 
                         RichEditor::make('description')

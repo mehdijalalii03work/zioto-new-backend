@@ -19,6 +19,11 @@ class ProductsTable
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('sku')
+                    ->label('SKU')
+                    ->searchable()
+                    ->sortable(),
+
                 TextColumn::make('price')
                     ->label('قیمت (تومان)')
                     ->numeric()
