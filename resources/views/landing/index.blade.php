@@ -117,9 +117,7 @@
         <div>
           <h3 class="text-zioto-gold font-bold mb-4">نمادهای اعتماد</h3>
           <div class="flex gap-4">
-            <a href="https://trustseal.enamad.ir/?id=354082&Code=K6PnBvoemGcHmsZwvETZ" target="_blank" rel="noopener noreferrer" class="bg-white rounded-xl p-3 hover:shadow-lg hover:shadow-zioto-gold/10 transition-all">
-              <img src="{{ asset('images/enamad-logo.png') }}" alt="اینماد" class="h-20">
-            </a>
+            <a target="_blank" href="https://trustseal.enamad.ir/?id=602261&Code=zOehq8kZr8PVLm4qwxyDPYrSnMQla0go"><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=602261&Code=zOehq8kZr8PVLm4qwxyDPYrSnMQla0go' alt='' style='cursor:pointer' code='zOehq8kZr8PVLm4qwxyDPYrSnMQla0go'></a>
             <a href="https://logo.samandehi.ir/Verify.aspx?id=372622&p=xlaojyoeuiwkgvkauiwkuiwk" target="_blank" rel="noopener noreferrer" class="bg-white rounded-xl p-3 hover:shadow-lg hover:shadow-zioto-gold/10 transition-all">
               <img src="{{ asset('images/samandehi-logo.jpg') }}" alt="ساماندهی" class="h-20">
             </a>
