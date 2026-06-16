@@ -124,9 +124,7 @@ function renderProductCards(products) {
         <div class="flex items-center justify-between">
           <div>
             <span class="text-zioto-gold font-bold text-xl">${formatPriceToman(p.price)}</span>
-            <span class="price-original text-sm mr-2">${formatPriceToman(p.originalPrice)}</span>
           </div>
-          <span class="text-xs text-green-400">%${getDiscountPercent(p.originalPrice, p.price)} تخفیف</span>
         </div>
         <button class="w-full mt-4 btn-gold text-sm py-3" onclick="event.stopPropagation(); navigateTo('product', PRODUCTS.find(p => p.slug === '${p.slug}'))">
           مشاهده و خرید

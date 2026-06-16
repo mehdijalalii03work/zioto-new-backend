@@ -34,8 +34,6 @@ function renderProductDetail(product) {
             <div class="bg-[#1A1D23]/80 rounded-xl p-6 mb-6 border border-zioto-gold/10">
               <div class="flex items-center gap-3 mb-4">
                 <span class="text-zioto-gold text-3xl font-black">${formatPriceToman(product.price)}</span>
-                <span class="price-original text-lg">${formatPriceToman(product.originalPrice)}</span>
-                <span class="bg-green-500/20 text-green-400 text-sm px-2 py-1 rounded">%${getDiscountPercent(product.originalPrice, product.price)} تخفیف</span>
               </div>
               <div class="flex items-center gap-2 text-sm text-zioto-gold">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
