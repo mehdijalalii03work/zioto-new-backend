@@ -240,6 +240,7 @@
         <div>
           <h3 class="text-zioto-gold font-bold mb-4">نمادهای اعتماد</h3>
           <div class="flex gap-4">
+
 {{--            <a target="_blank" href="https://trustseal.enamad.ir/?id=602261&Code=zOehq8kZr8PVLm4qwxyDPYrSnMQla0go" class="bg-white rounded-xl p-3 hover:shadow-lg hover:shadow-zioto-gold/10 transition-all">--}}
 {{--              <img referrerpolicy="origin" src="https://trustseal.enamad.ir/logo.aspx?id=602261&Code=zOehq8kZr8PVLm4qwxyDPYrSnMQla0go" alt="اینماد" style="cursor:pointer" code="zOehq8kZr8PVLm4qwxyDPYrSnMQla0go" class="h-20">--}}
 {{--            </a>--}}

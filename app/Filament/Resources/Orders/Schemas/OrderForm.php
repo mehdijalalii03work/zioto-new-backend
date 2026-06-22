@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Orders\Schemas;
 
+use App\Models\UserAddress;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -69,13 +70,46 @@ class OrderForm
                                     ->default('pending'),
                             ]),
 
-                        Textarea::make('shipping_address')
-                            ->label('آدرس ارسال')
-                            ->rows(3),
-
                         Textarea::make('notes')
                             ->label('یادداشت‌ها')
                             ->rows(3),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('آدرس ارسال')
+                    ->description('اطلاعات آدرس تحویل سفارش')
+                    ->icon('heroicon-o-map-pin')
+                    ->collapsible()
+                    ->schema([
+                        Select::make('user_address_id')
+                            ->label('آدرس ذخیره شده')
+                            ->relationship('address', 'id')
+                            ->getOptionLabelFromRecordUsing(fn ($record) => $record->full_address)
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set) {
+                                if (! $state) {
+                                    $set('shipping_address_snapshot', null);
+
+                                    return;
+                                }
+                                $address = UserAddress::with(['province', 'city'])->find($state);
+                                if ($address) {
+                                    $set('shipping_address_snapshot', $address->full_address);
+                                }
+                            }),
+
+                        Textarea::make('shipping_address_snapshot')
+                            ->label('متن آدرس')
+                            ->rows(3)
+                            ->placeholder('متن کامل آدرس در زمان ثبت سفارش'),
+
+                        Textarea::make('shipping_address')
+                            ->label('آدرس قدیمی (متنی)')
+                            ->rows(3)
+                            ->dehydrated(),
                     ])
                     ->columnSpanFull(),
 
