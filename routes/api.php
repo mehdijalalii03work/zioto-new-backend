@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\OrderSubmitController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ShippingController;
 use App\Http\Controllers\Auth\OtpController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,4 +32,14 @@ Route::middleware('web')->group(function () {
         Route::get('/provinces', [LocationController::class, 'provinces']);
         Route::get('/provinces/{province}/cities', [LocationController::class, 'cities']);
     });
+
+    Route::prefix('shipping')->group(function () {
+        Route::get('/methods', [ShippingController::class, 'methods']);
+        Route::get('/methods/{id}', [ShippingController::class, 'show']);
+        Route::post('/calculate', [ShippingController::class, 'calculate']);
+    });
+
+    Route::get('/orders', [OrderSubmitController::class, 'index'])->middleware('auth');
+
+    Route::post('/orders', [OrderSubmitController::class, 'store']);
 });

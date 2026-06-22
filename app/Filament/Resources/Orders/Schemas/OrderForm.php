@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Orders\Schemas;
 
+use App\Models\ShippingMethod;
 use App\Models\UserAddress;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -110,6 +112,48 @@ class OrderForm
                             ->label('آدرس قدیمی (متنی)')
                             ->rows(3)
                             ->dehydrated(),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('اطلاعات ارسال')
+                    ->description('روش ارسال، هزینه و رهگیری')
+                    ->icon('heroicon-o-truck')
+                    ->collapsible()
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                Select::make('shipping.shipping_method_id')
+                                    ->label('روش ارسال')
+                                    ->relationship('shipping', 'shipping_method_id')
+                                    ->options(fn () => ShippingMethod::pluck('name', 'id'))
+                                    ->nullable(),
+
+                                TextInput::make('shipping.shipping_cost')
+                                    ->label('هزینه ارسال (ریال)')
+                                    ->numeric()
+                                    ->nullable(),
+
+                                TextInput::make('shipping.tracking_number')
+                                    ->label('شماره رهگیری')
+                                    ->maxLength(100)
+                                    ->nullable(),
+                            ]),
+
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('shipping.tracking_url')
+                                    ->label('لینک رهگیری')
+                                    ->maxLength(500)
+                                    ->nullable(),
+
+                                DatePicker::make('shipping.pickup_date')
+                                    ->label('تاریخ مراجعه (تحویل حضوری)')
+                                    ->nullable(),
+
+                                DatePicker::make('shipping.delivered_at')
+                                    ->label('تاریخ تحویل')
+                                    ->nullable(),
+                            ]),
                     ])
                     ->columnSpanFull(),
 

@@ -69,6 +69,17 @@ class OrdersTable
                         default => $state,
                     }),
 
+                TextColumn::make('shipping.shipping_method_name')
+                    ->label('روش ارسال')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('shipping.tracking_number')
+                    ->label('رهگیری')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->formatStateUsing(fn ($state) => $state ?: '—'),
+
                 TextColumn::make('created_at')
                     ->label('تاریخ ثبت')
                     ->dateTime()

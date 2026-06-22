@@ -1,0 +1,158 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\ShippingMethod;
+use App\Models\ShippingRate;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class ShippingController extends Controller
+{
+    public function methods(): JsonResponse
+    {
+        $methods = ShippingMethod::active()->with('rates')->get();
+
+        return response()->json([
+            'methods' => $methods,
+        ]);
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        $method = ShippingMethod::active()->with('rates')->findOrFail($id);
+
+        return response()->json([
+            'method' => $method,
+        ]);
+    }
+
+    public function calculate(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'shipping_method_id' => 'required|integer|exists:shipping_methods,id',
+            'province_id' => 'nullable|integer|exists:provinces,id',
+            'city_id' => 'nullable|integer|exists:cities,id',
+            'cart_items' => 'nullable|array',
+            'cart_items.*.product_id' => 'integer',
+            'cart_items.*.quantity' => 'integer|min:1',
+            'cart_items.*.weight' => 'numeric|min:0',
+            'cart_total' => 'nullable|numeric|min:0',
+        ]);
+
+        $method = ShippingMethod::active()->findOrFail($validated['shipping_method_id']);
+
+        $totalWeight = 0;
+        if (! empty($validated['cart_items'])) {
+            foreach ($validated['cart_items'] as $item) {
+                $totalWeight += ($item['weight'] ?? 0) * ($item['quantity'] ?? 1);
+            }
+        }
+
+        $cartTotal = $validated['cart_total'] ?? 0;
+        $provinceId = $validated['province_id'] ?? null;
+        $cityId = $validated['city_id'] ?? null;
+
+        $rate = $this->findMatchingRate($method, $totalWeight, $cartTotal, $provinceId, $cityId);
+
+        if (! $rate) {
+            return response()->json([
+                'message' => 'تعرفه مناسبی برای این روش ارسال یافت نشد',
+            ], 404);
+        }
+
+        $shippingCost = (int) $rate->base_rate;
+
+        if ($rate->per_kg_rate && $totalWeight > 0) {
+            $extraKg = max(0, ceil($totalWeight / 1000) - 1);
+            $shippingCost += $extraKg * (int) $rate->per_kg_rate;
+        }
+
+        $insuranceCost = 0;
+        $hasInsurance = false;
+
+        if ($method->code === 'post_precious') {
+            $hasInsurance = true;
+            if ($cartTotal <= 50000000) {
+                $insuranceCost = (int) ($cartTotal * 0.005);
+            } else {
+                $insuranceCost = (int) ($cartTotal * 0.01);
+            }
+        }
+
+        $freeShipping = false;
+        if ($rate->free_shipping_min && $cartTotal >= $rate->free_shipping_min) {
+            $shippingCost = 0;
+            $freeShipping = true;
+        }
+
+        $taxAmount = 0;
+        $taxRate = $rate->tax_rate;
+        if ($taxRate && $taxRate > 0 && ! $freeShipping) {
+            $taxAmount = (int) round($shippingCost * $taxRate / 100);
+        }
+
+        $breakdown = [
+            'base_rate' => (int) $rate->base_rate,
+        ];
+
+        if ($rate->per_kg_rate && ! $freeShipping) {
+            $breakdown['weight_surcharge'] = $shippingCost - (int) $rate->base_rate;
+        }
+
+        if ($hasInsurance) {
+            $breakdown['insurance'] = $insuranceCost;
+        }
+
+        if ($taxAmount > 0) {
+            $breakdown['tax'] = $taxAmount;
+        }
+
+        return response()->json([
+            'shipping_method_id' => $method->id,
+            'shipping_method_name' => $method->name,
+            'shipping_cost' => $shippingCost,
+            'estimated_min_days' => $rate->estimated_days_min,
+            'estimated_max_days' => $rate->estimated_days_max,
+            'has_insurance' => $hasInsurance,
+            'insurance_cost' => $insuranceCost,
+            'has_tax' => $taxAmount > 0,
+            'tax_rate' => $taxRate,
+            'tax_amount' => $taxAmount,
+            'total_shipping_cost' => $shippingCost + $insuranceCost + $taxAmount,
+            'free_shipping' => $freeShipping,
+            'breakdown' => $breakdown,
+        ]);
+    }
+
+    private function findMatchingRate(ShippingMethod $method, float $totalWeight, int $cartTotal, ?int $provinceId, ?int $cityId): ?ShippingRate
+    {
+        $rates = $method->rates;
+
+        if ($rates->isEmpty()) {
+            return null;
+        }
+
+        $rateType = $rates->first()->rate_type;
+
+        return match ($rateType) {
+            'flat' => $rates->first(),
+            'weight' => $rates
+                ->filter(fn (ShippingRate $r) => $r->min_weight <= $totalWeight && (! $r->max_weight || $totalWeight <= $r->max_weight))
+                ->sortBy('min_weight')
+                ->first(),
+            'province' => $rates
+                ->filter(fn (ShippingRate $r) => $r->province_id === $provinceId)
+                ->first(),
+            'city' => $rates
+                ->filter(fn (ShippingRate $r) => $r->city_id === $cityId)
+                ->first(),
+            'cart_total' => $rates
+                ->filter(fn (ShippingRate $r) => $r->min_cart_total <= $cartTotal && (! $r->max_cart_total || $cartTotal <= $r->max_cart_total))
+                ->sortBy('min_cart_total')
+                ->first(),
+            default => $rates->first(),
+        };
+    }
+}

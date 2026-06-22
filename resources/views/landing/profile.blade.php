@@ -21,6 +21,12 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             <span>اطلاعات شخصی</span>
           </button>
+          <button @click="activeTab = 'orders'"
+                  :class="activeTab === 'orders' ? 'bg-zioto-gold/20 text-zioto-gold' : 'text-white/70 hover:bg-white/5 hover:text-white'"
+                  class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+            <span>سفارش‌ها</span>
+          </button>
           <button @click="activeTab = 'addresses'"
                   :class="activeTab === 'addresses' ? 'bg-zioto-gold/20 text-zioto-gold' : 'text-white/70 hover:bg-white/5 hover:text-white'"
                   class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all">
@@ -92,6 +98,70 @@
             </div>
             <button type="submit" class="btn-gold mt-6 px-6 py-2" x-text="saving ? 'در حال ذخیره...' : 'ذخیره تغییرات'" :disabled="saving"></button>
           </form>
+        </div>
+      </template>
+
+      <template x-if="activeTab === 'orders'">
+        <div>
+          <div class="mb-6">
+            <h2 class="text-2xl font-bold text-white mb-2">سفارش‌های من</h2>
+            <p class="text-white/50">مشاهده و پیگیری سفارش‌های قبلی</p>
+          </div>
+
+          <template x-if="orders.length === 0">
+            <div class="bg-[#1A1D23] rounded-2xl p-12 border border-zioto-gold/20 text-center">
+              <svg class="w-16 h-16 text-white/20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+              <p class="text-white/50">هنوز سفارشی ثبت نکرده‌اید</p>
+            </div>
+          </template>
+
+          <div class="space-y-4">
+            <template x-for="order in orders" :key="order.id">
+              <div class="bg-[#1A1D23] rounded-2xl p-5 border border-white/10">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center gap-3">
+                    <span class="text-zioto-gold font-bold" x-text="order.order_number"></span>
+                    <span class="px-2 py-0.5 rounded text-xs font-bold"
+                          :class="{
+                            'bg-yellow-500/20 text-yellow-400': order.status === 'pending',
+                            'bg-blue-500/20 text-blue-400': order.status === 'confirmed' || order.status === 'processing',
+                            'bg-green-500/20 text-green-400': order.status === 'delivered',
+                            'bg-red-500/20 text-red-400': order.status === 'cancelled',
+                            'bg-cyan-500/20 text-cyan-400': order.status === 'shipped',
+                          }"
+                          x-text="{
+                            'pending': 'در انتظار بررسی',
+                            'confirmed': 'تایید شده',
+                            'processing': 'در حال پردازش',
+                            'shipped': 'ارسال شده',
+                            'delivered': 'تحویل شده',
+                            'cancelled': 'لغو شده',
+                          }[order.status] || order.status"></span>
+                  </div>
+                  <span class="text-white/50 text-sm" x-text="formatDate(order.created_at)"></span>
+                </div>
+                <div class="text-sm text-white/70 mb-2">
+                  <span>مبلغ: </span>
+                  <span class="text-white font-bold" x-text="formatPriceToman(order.total_amount)"></span>
+                </div>
+                <div x-show="order.shipping" class="text-sm text-white/50 space-y-1">
+                  <div>
+                    <span>روش ارسال: </span>
+                    <span x-text="order.shipping.shipping_method_name || '—'"></span>
+                  </div>
+                  <div x-show="order.shipping.tracking_number">
+                    <span>شماره رهگیری: </span>
+                    <span class="text-zioto-gold" x-text="order.shipping.tracking_number"></span>
+                    <a x-show="order.shipping.tracking_url" :href="order.shipping.tracking_url" target="_blank" class="text-zioto-gold hover:underline mr-2">پیگیری</a>
+                  </div>
+                  <div x-show="order.shipping.shipping_cost > 0">
+                    <span>هزینه ارسال: </span>
+                    <span x-text="formatPriceToman(order.shipping.shipping_cost)"></span>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
         </div>
       </template>
 
@@ -266,6 +336,7 @@
         birthDay: '',
       },
 
+      orders: [],
       addresses: [],
       provinces: [],
       cities: [],
@@ -292,6 +363,7 @@
         }
         await this.fetchProfile();
         await this.fetchProvinces();
+        await this.fetchOrders();
         this.loading = false;
       },
 
@@ -338,6 +410,22 @@
           const data = await res.json();
           if (data?.cities) this.cities = data.cities;
         } catch (e) { this.cities = []; }
+      },
+
+      async fetchOrders() {
+        try {
+          const res = await fetch('/api/orders', { headers: { 'Accept': 'application/json' } });
+          if (res.ok) {
+            const data = await res.json();
+            this.orders = data?.orders || [];
+          }
+        } catch (e) {}
+      },
+
+      formatDate(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        return new Intl.DateTimeFormat('fa-IR', { year: 'numeric', month: 'short', day: 'numeric' }).format(d);
       },
 
       async fetchAddresses() {

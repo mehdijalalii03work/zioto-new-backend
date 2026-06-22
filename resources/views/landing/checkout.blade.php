@@ -53,9 +53,9 @@
                 </button>
               </div>
               <div class="space-y-3">
-                <template x-for="addr in addresses" :key="addr.id">
-                  <label @click="selectedAddressId = addr.id"
-                         class="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
+                  <template x-for="addr in addresses" :key="addr.id">
+                    <label @click="onAddressSelect(addr)"
+                           class="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
                          :class="selectedAddressId === addr.id ? 'border-zioto-gold bg-zioto-gold/10' : 'border-white/10 hover:border-white/20'">
                     <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5"
                          :class="selectedAddressId === addr.id ? 'border-zioto-gold' : 'border-white/30'">
@@ -122,6 +122,58 @@
             </div>
           </template>
 
+          <!-- Shipping Method Selection -->
+          <div class="bg-[#1A1D23] rounded-2xl p-6 border border-zioto-gold/20">
+            <h3 class="text-xl font-bold text-white mb-6">روش ارسال</h3>
+            <div x-show="!shippingMethods.length" class="text-white/50 text-sm py-4 text-center">
+              لطفاً ابتدا آدرس ارسال را انتخاب کنید
+            </div>
+            <div class="space-y-3">
+              <template x-for="method in shippingMethods" :key="method.id">
+                <label @click="selectShippingMethod(method)"
+                       class="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
+                       :class="selectedShippingMethodId === method.id ? 'border-zioto-gold bg-zioto-gold/10' : 'border-white/10 hover:border-white/20'">
+                  <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5"
+                       :class="selectedShippingMethodId === method.id ? 'border-zioto-gold' : 'border-white/30'">
+                    <div class="w-3 h-3 rounded-full" :class="selectedShippingMethodId === method.id ? 'bg-zioto-gold' : 'bg-transparent'"></div>
+                  </div>
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="font-bold text-white" x-text="method.name"></span>
+                      <span x-show="method.is_pickup" class="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded">حضوری</span>
+                    </div>
+                    <p class="text-white/50 text-sm" x-text="method.description"></p>
+                    <div x-show="selectedShippingMethodId === method.id && shippingCalculation" class="mt-2 text-sm">
+                      <div class="flex items-center gap-2 text-zioto-gold">
+                        <span>هزینه ارسال:</span>
+                        <span class="font-bold" x-text="formatPriceToman(shippingCalculation.shipping_cost)"></span>
+                      </div>
+                      <div x-show="shippingCalculation.estimated_min_days !== null" class="text-white/50">
+                        <span>تخمین تحویل: </span>
+                        <span x-text="toPersianNum(shippingCalculation.estimated_min_days) + ' تا ' + toPersianNum(shippingCalculation.estimated_max_days) + ' روز کاری'"></span>
+                      </div>
+                      <div x-show="shippingCalculation.has_insurance" class="text-amber-400 text-xs mt-1">
+                        <span>هزینه بیمه: </span>
+                        <span x-text="formatPriceToman(shippingCalculation.insurance_cost)"></span>
+                      </div>
+                      <div x-show="shippingCalculation.has_tax" class="text-red-400 text-xs mt-1">
+                        <span>مالیات: </span>
+                        <span x-text="formatPriceToman(shippingCalculation.tax_amount) + ' (' + toPersianNum(shippingCalculation.tax_rate) + '%)'"></span>
+                      </div>
+                    </div>
+                    <div x-show="method.is_pickup" class="mt-2 text-xs text-white/50">
+                      <p>آدرس دفتر شرکت: تهران، میدان ونک، خیابان ولیعصر، ساختمان زیوتو</p>
+                      <p>ساعات کاری: شنبه تا چهارشنبه ۹ صبح تا ۱۷</p>
+                    </div>
+                  </div>
+                  <div x-show="selectedShippingMethodId === method.id && shippingCalculation" class="text-left shrink-0">
+                    <p class="text-zioto-gold font-bold" x-text="formatPriceToman(shippingCalculation.total_shipping_cost)"></p>
+                  </div>
+                </label>
+              </template>
+            </div>
+          </div>
+
           <div class="bg-[#1A1D23] rounded-2xl p-6 border border-zioto-gold/20">
             <h3 class="text-xl font-bold text-white mb-6">روش پرداخت</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -173,10 +225,22 @@
                 </div>
               </template>
             </div>
-            <div class="border-t border-white/10 pt-4">
-              <div class="flex justify-between text-white font-bold text-lg">
-                <span>مبلغ نهایی</span>
-                <span class="text-zioto-gold" x-text="formatPriceToman($store.cart.total)"></span>
+            <div class="border-t border-white/10 pt-4 space-y-2">
+              <div class="flex justify-between text-white/70 text-sm">
+                <span>مبلغ کالاها</span>
+                <span x-text="formatPriceToman($store.cart.total)"></span>
+              </div>
+              <div x-show="shippingCalculation" class="flex justify-between text-white/70 text-sm">
+                <span>هزینه ارسال</span>
+                <span x-text="formatPriceToman(shippingCalculation.shipping_cost)"></span>
+              </div>
+              <div x-show="shippingCalculation?.has_tax" class="flex justify-between text-white/70 text-sm">
+                <span>مالیات</span>
+                <span x-text="formatPriceToman(shippingCalculation.tax_amount)"></span>
+              </div>
+              <div class="flex justify-between text-white font-bold text-lg pt-2 border-t border-white/10">
+                <span>مبلغ قابل پرداخت</span>
+                <span class="text-zioto-gold" x-text="formatPriceToman(($store.cart.total || 0) + (shippingCalculation?.total_shipping_cost || 0))"></span>
               </div>
             </div>
           </div>
@@ -262,6 +326,11 @@
 
       addressForm: { province_id: '', city_id: '', district: '', postal_code: '', address_line: '', receiver_name: '', receiver_phone: '' },
 
+      shippingMethods: [],
+      selectedShippingMethodId: null,
+      shippingCalculation: null,
+      shippingAddressSnapshot: null,
+
       async init() {
         await this.fetchProvinces();
         if ($store.auth.isLoggedIn) {
@@ -289,6 +358,7 @@
       async onProvinceChange() {
         this.cities = await this.fetchCities(this.addressForm.province_id);
         this.addressForm.city_id = '';
+        this.fetchShippingMethods();
       },
 
       async onModalProvinceChange() {
@@ -338,25 +408,111 @@
         }
       },
 
+      onAddressSelect(addr) {
+        this.selectedAddressId = addr.id;
+        this.shippingAddressSnapshot = addr.full_address || (addr.province?.name || '') + '، ' + (addr.city?.name || '') + '، ' + addr.address_line;
+        this.fetchShippingMethods();
+      },
+
+      async fetchShippingMethods() {
+        try {
+          const res = await fetch('/api/shipping/methods', { headers: { 'Accept': 'application/json' } });
+          const data = await res.json();
+          if (data?.methods) this.shippingMethods = data.methods;
+        } catch (e) {}
+      },
+
+      async selectShippingMethod(method) {
+        this.selectedShippingMethodId = method.id;
+        this.shippingCalculation = null;
+        await this.calculateShipping(method);
+      },
+
+      async calculateShipping(method) {
+        const cartItems = ($store.cart.items || []).map(item => ({
+          product_id: item.id,
+          quantity: item.quantity,
+          weight: item.weight || 10,
+        }));
+        const body = {
+          shipping_method_id: method.id,
+          cart_items: cartItems,
+          cart_total: $store.cart.total || 0,
+        };
+        try {
+          const res = await fetch('/api/shipping/calculate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            this.shippingCalculation = data;
+          }
+        } catch (e) {}
+      },
+
       validate() {
         this.errors = {};
         if (!this.form.name || this.form.name.length < 3) this.errors.name = 'نام کامل را وارد کنید';
         if (!this.form.phone || !/^09\d{9}$/.test(this.form.phone.replace(/\D/g, ''))) this.errors.phone = 'شماره موبایل معتبر نیست';
         if (!this.form.nationalId || this.form.nationalId.replace(/\D/g, '').length !== 10) this.errors.nationalId = 'کد ملی ۱۰ رقمی را وارد کنید';
         if (!this.form.employeeId) this.errors.employeeId = 'شماره کارمندی را وارد کنید';
+        if (!this.selectedShippingMethodId) {
+          if (typeof showNotification === 'function') showNotification('لطفاً روش ارسال را انتخاب کنید', 'error');
+          return false;
+        }
         return Object.keys(this.errors).length === 0;
       },
 
-      submitOrder() {
+      async submitOrder() {
         if (!this.validate()) {
           if (typeof showNotification === 'function') showNotification('لطفاً خطاهای فرم را برطرف کنید', 'error');
           return;
         }
         this.submitting = true;
-        if (typeof showNotification === 'function') showNotification('در حال ثبت سفارش...', 'info');
-        setTimeout(() => {
-          window.location.href = '{{ route('landing.success') }}';
-        }, 1500);
+        const cartItems = ($store.cart.items || []).map(item => ({
+          product_id: item.id,
+          quantity: item.quantity,
+        }));
+        const body = {
+          name: this.form.name,
+          phone: this.form.phone,
+          national_id: this.form.nationalId,
+          employee_id: this.form.employeeId,
+          payment_method: this.paymentMethod,
+          items: cartItems,
+          shipping_method_id: this.selectedShippingMethodId,
+          shipping_cost: this.shippingCalculation?.total_shipping_cost || 0,
+        };
+        if (this.selectedAddressId) {
+          body.user_address_id = this.selectedAddressId;
+        }
+        if (this.shippingAddressSnapshot) {
+          body.shipping_address_snapshot = this.shippingAddressSnapshot;
+        }
+        try {
+          const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            $store.cart.clear();
+            if (typeof showNotification === 'function') showNotification('سفارش شما با موفقیت ثبت شد', 'success');
+            setTimeout(() => {
+              window.location.href = '{{ route('landing.success') }}?order=' + data.order.order_number;
+            }, 1000);
+          } else {
+            const msg = data?.errors ? Object.values(data.errors).flat().join('، ') : (data.message || 'خطا در ثبت سفارش');
+            if (typeof showNotification === 'function') showNotification(msg, 'error');
+            this.submitting = false;
+          }
+        } catch (e) {
+          if (typeof showNotification === 'function') showNotification('خطا در ارتباط با سرور', 'error');
+          this.submitting = false;
+        }
       },
     }
   }
