@@ -131,6 +131,9 @@ return [
     'uuid' => ':attribute باید یک UUID معتبر باشد.',
     'ulid' => ':attribute باید یک ULID معتبر باشد.',
 
+    '(and :count more errors)' => 'و :count خطای دیگر',
+    '(and :count more error)' => 'و :count خطای دیگر',
+
     'attributes' => [
         'address' => 'آدرس',
         'age' => 'سن',
