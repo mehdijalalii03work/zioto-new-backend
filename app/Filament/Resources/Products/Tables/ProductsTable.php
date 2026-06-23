@@ -19,6 +19,11 @@ class ProductsTable
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('category.name')
+                    ->label('دسته‌بندی')
+                    ->searchable()
+                    ->sortable(),
+
                 TextColumn::make('sku')
                     ->label('SKU')
                     ->searchable()
