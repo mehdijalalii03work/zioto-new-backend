@@ -1,0 +1,11 @@
+{
+    "name": "Blog",
+    "alias": "blog",
+    "description": "Blog posts, categories and tags management",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Blog\\Providers\\BlogServiceProvider"
+    ],
+    "files": []
+}

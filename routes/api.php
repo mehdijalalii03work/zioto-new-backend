@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\HesabfaWebhookController;
 use App\Http\Controllers\Api\LocationController;
@@ -56,6 +57,12 @@ Route::middleware('web')->group(function () {
 
     Route::get('/products', [ProductController::class, 'index']);
     Route::get('/products/{id}', [ProductController::class, 'show']);
+
+    Route::prefix('blog')->group(function () {
+        Route::get('/posts', [BlogController::class, 'posts']);
+        Route::get('/posts/{slugOrId}', [BlogController::class, 'post']);
+        Route::get('/categories', [BlogController::class, 'categories']);
+    });
 
     Route::middleware('auth', 'throttle:60,1')->prefix('cart')->group(function () {
         Route::get('/', [CartController::class, 'index']);
