@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\HesabfaWebhookController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\OrderSubmitController;
 use App\Http\Controllers\Api\PriceBoardController;
+use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ShippingController;
 use App\Http\Controllers\Auth\OtpController;
@@ -51,4 +52,7 @@ Route::middleware('web')->group(function () {
     });
 
     Route::get('/price-board', [PriceBoardController::class, 'index']);
+
+    Route::get('/products', [ProductController::class, 'index']);
+    Route::get('/products/{id}', [ProductController::class, 'show']);
 });

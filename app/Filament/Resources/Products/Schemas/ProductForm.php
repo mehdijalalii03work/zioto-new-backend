@@ -51,6 +51,13 @@ class ProductForm
                             ->preload()
                             ->placeholder('انتخاب دسته‌بندی'),
 
+                        Select::make('brand_id')
+                            ->label('برند')
+                            ->relationship('brand', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->placeholder('انتخاب برند'),
+
                         RichEditor::make('description')
                             ->label('توضیحات کامل')
                             ->toolbarButtons([
@@ -69,9 +76,21 @@ class ProductForm
                     ->schema([
                         Grid::make(4)
                             ->schema([
+                                Select::make('price_type')
+                                    ->label('نوع قیمت‌گذاری')
+                                    ->options([
+                                        'fixed' => 'قیمت ثابت',
+                                        'dynamic' => 'قیمت پویا (از تابلو قیمت)',
+                                    ])
+                                    ->default('fixed')
+                                    ->live()
+                                    ->required(),
+
                                 TextInput::make('price')
                                     ->label('قیمت')
-                                    ->required()
+                                    ->required(fn ($get) => ($get('price_type') ?? 'fixed') === 'fixed')
+                                    ->disabled(fn ($get) => ($get('price_type') ?? 'fixed') === 'dynamic')
+                                    ->dehydrated(fn ($get) => ($get('price_type') ?? 'fixed') === 'fixed')
                                     ->numeric()
                                     ->suffix('تومان')
                                     ->minValue(0),
@@ -79,9 +98,9 @@ class ProductForm
                                 TextInput::make('weight')
                                     ->label('وزن')
                                     ->numeric()
-                                    ->suffix('kg')
+                                    ->suffix('گرم')
                                     ->step(0.01)
-                                    ->placeholder('مثلاً 1.5'),
+                                    ->placeholder('مثلاً 10'),
 
                                 TextInput::make('stock_quantity')
                                     ->label('موجودی انبار')
@@ -89,6 +108,110 @@ class ProductForm
                                     ->numeric()
                                     ->default(0)
                                     ->minValue(0),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('تنظیمات قیمت‌گذاری')
+                    ->description('محاسبه خودکار قیمت از روی تابلو قیمت')
+                    ->icon('heroicon-o-calculator')
+                    ->collapsible()
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                Select::make('price_board_item')
+                                    ->label('آیتم تابلو قیمت')
+                                    ->options([
+                                        'Gold995' => 'طلای ۹۹۵ (شمش)',
+                                        'Gold999' => 'طلای ۹۹۹',
+                                        'Gold9999' => 'طلای ۹۹۹.۹',
+                                        'Gold750' => 'طلای ۱۸ عیار (۷۵۰)',
+                                        'Gold705' => 'طلای ۱۷.۵ عیار (۷۰۵)',
+                                        'Silver990' => 'نقره ۹۹۰',
+                                        'Silver999' => 'نقره ۹۹۹',
+                                        'Silver9999' => 'نقره ۹۹۹.۹',
+                                        'Silver 925' => 'نقره ۹۲۵',
+                                        'Euro' => 'یورو',
+                                        'USDollar' => 'دلار آمریکا',
+                                    ])
+                                    ->placeholder('انتخاب آیتم')
+                                    ->searchable(),
+
+                                TextInput::make('fee_off_hours')
+                                    ->label('اجرت (ساعت ۱۸ تا ۸:۵۹)')
+                                    ->numeric()
+                                    ->suffix('٪')
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->step(0.1)
+                                    ->placeholder('مثلاً 3'),
+
+                                TextInput::make('fee_business_hours')
+                                    ->label('اجرت (ساعت ۹ تا ۱۷:۵۹)')
+                                    ->numeric()
+                                    ->suffix('٪')
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->step(0.1)
+                                    ->placeholder('مثلاً 5'),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('تنظیمات حسابفا')
+                    ->description('همگام‌سازی موجودی با حسابفا')
+                    ->icon('heroicon-o-arrow-path')
+                    ->collapsible()
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('hesabfa_physical_stock')
+                                    ->label('موجودی فیزیکی (حسابفا)')
+                                    ->numeric()
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->helperText('از حسابفا دریافت می‌شود'),
+
+                                TextInput::make('hesabfa_reserved_stock')
+                                    ->label('موجودی رزرو شده')
+                                    ->numeric()
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->helperText('سفارشات در حال پردازش'),
+
+                                TextInput::make('sellable_stock')
+                                    ->label('موجودی قابل فروش')
+                                    ->numeric()
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->helperText('فیزیکی - رزرو شده - رزرو دستی'),
+                            ]),
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('hesabfa_manual_reserved')
+                                    ->label('رزرو دستی')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->minValue(0)
+                                    ->helperText('تعداد رزرو شده توسط مدیر'),
+
+                                Toggle::make('hesabfa_exclude_from_sync')
+                                    ->label('غیرفعال کردن سینک')
+                                    ->helperText('موجودی این محصول از حسابفا سینک نشود')
+                                    ->inline(false),
+
+                                Toggle::make('hesabfa_stock_locked')
+                                    ->label('قفل سینک')
+                                    ->helperText('قفل شده وقتی موجودی دستی صفر شود')
+                                    ->inline(false),
+                            ]),
+                        Grid::make(1)
+                            ->schema([
+                                TextInput::make('hesabfa_stock_synced_at')
+                                    ->label('آخرین همگام‌سازی')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->helperText('تاریخ آخرین دریافت موجودی از حسابفا'),
                             ]),
                     ])
                     ->columnSpanFull(),
