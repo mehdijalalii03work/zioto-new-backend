@@ -28,7 +28,7 @@ class BlogController extends Controller
             'slug' => $post->slug,
             'summary' => strip_tags(mb_substr($content ?? '', 0, 200, 'UTF-8')),
             'content' => $content,
-            'image' => $post->image ? asset('storage/'.$post->image) : null,
+            'image' => $post->getFirstMediaUrl('featured-image') ?: null,
             'status' => $post->status,
             'category' => $post->category ? [
                 'id' => $post->category->id,

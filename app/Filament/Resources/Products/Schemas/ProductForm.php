@@ -7,7 +7,6 @@ use App\Enums\Product\MetalType;
 use App\Enums\Product\ProductShape;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -85,10 +84,16 @@ class ProductForm
 
                         RichEditor::make('description')
                             ->label('توضیحات کامل')
+                            ->fileAttachmentsDisk('public')
+                            ->fileAttachmentsDirectory('products/content')
                             ->toolbarButtons([
-                                'bold', 'italic', 'underline', 'strike',
-                                'link', 'orderedList', 'bulletList',
-                                'h2', 'h3', 'blockquote', 'redo', 'undo',
+                                ['bold', 'italic', 'underline', 'strike', 'link'],
+                                ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+                                ['alignStart', 'alignCenter', 'alignEnd', 'alignJustify'],
+                                ['blockquote', 'codeBlock', 'bulletList', 'orderedList'],
+                                ['attachFiles', 'table', 'horizontalRule'],
+                                ['highlight', 'textColor', 'details'],
+                                ['undo', 'redo'],
                             ])
                             ->extraAttributes(['style' => 'min-height: 400px']),
                     ])
@@ -247,22 +252,6 @@ class ProductForm
                                     ->dehydrated()
                                     ->helperText('تاریخ آخرین دریافت موجودی از حسابفا'),
                             ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('تصاویر محصول')
-                    ->description('مدیریت تصاویر و تعیین تصویر اصلی')
-                    ->icon('heroicon-o-photo')
-                    ->collapsible()
-                    ->schema([
-                        SpatieMediaLibraryFileUpload::make('product-images')
-                            ->label('تصاویر محصول')
-                            ->image()
-                            ->collection('product-images')
-                            ->multiple()
-                            ->reorderable()
-                            ->panelLayout('integrated')
-                            ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
             ]);

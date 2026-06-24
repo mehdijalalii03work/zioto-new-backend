@@ -13,6 +13,8 @@ class ProductController extends Controller
     {
         $price = (int) $p->price;
 
+        $primaryImage = $p->images->firstWhere('is_primary', true) ?? $p->images->first();
+
         return [
             'id' => $p->id,
             'name' => $p->name,
@@ -34,6 +36,7 @@ class ProductController extends Controller
             'badge' => null,
             'stock' => $p->stock_quantity > 0,
             'desc' => strip_tags($p->description ?? ''),
+            'image' => $primaryImage ? asset('storage/'.$primaryImage->image_path) : null,
         ];
     }
 
@@ -46,7 +49,7 @@ class ProductController extends Controller
 
         $products = Cache::remember($cacheKey, 300, function () use ($slugs, $skus) {
             $query = Product::query()
-                ->with(['category:id,name,slug', 'brand:id,name,slug']);
+                ->with(['category:id,name,slug', 'brand:id,name,slug', 'images']);
 
             if ($slugs) {
                 $slugList = array_map('trim', explode(',', $slugs));
@@ -82,9 +85,10 @@ class ProductController extends Controller
         $data = $this->formatProduct($product);
         $data['full_desc'] = $product->description ?? '';
         $data['sku'] = $product->sku;
-        $data['images'] = $product->images->map(fn ($img) => [
+        $data['images'] = $product->images->sortBy('sort_order')->map(fn ($img) => [
             'id' => $img->id,
-            'path' => $img->image_path,
+            'path' => asset('storage/' . $img->image_path),
+            'alt' => $img->alt ?? '',
             'is_primary' => $img->is_primary,
         ]);
 
