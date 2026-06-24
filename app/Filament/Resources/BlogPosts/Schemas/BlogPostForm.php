@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources\BlogPosts\Schemas;
 
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -75,11 +75,10 @@ class BlogPostForm
                     ->icon('heroicon-o-photo')
                     ->collapsible()
                     ->schema([
-                        FileUpload::make('image')
+                        SpatieMediaLibraryFileUpload::make('featured_image')
                             ->label('تصویر شاخص')
                             ->image()
-                            ->disk('public')
-                            ->directory('blog/posts')
+                            ->collection('featured-image')
                             ->nullable(),
                     ])
                     ->columnSpanFull(),

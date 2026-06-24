@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Blog\Database\Factories\BlogPostFactory;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class BlogPost extends Model
+class BlogPost extends Model implements HasMedia
 {
     /** @use HasFactory<BlogPostFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, InteractsWithMedia, SoftDeletes;
 
     protected $table = 'blog_posts';
 
@@ -60,5 +62,15 @@ class BlogPost extends Model
     public function scopeDraft($query)
     {
         return $query->where('status', 'draft');
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('featured-image')
+            ->useDisk('public')
+            ->singleFile();
+
+        $this->addMediaCollection('content-images')
+            ->useDisk('public');
     }
 }

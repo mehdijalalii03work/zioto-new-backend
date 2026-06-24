@@ -5,10 +5,9 @@ namespace App\Filament\Resources\Products\Schemas;
 use App\Enums\Product\Ayar;
 use App\Enums\Product\MetalType;
 use App\Enums\Product\ProductShape;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -256,47 +255,14 @@ class ProductForm
                     ->icon('heroicon-o-photo')
                     ->collapsible()
                     ->schema([
-                        Repeater::make('images')
-                            ->relationship()
-                            ->schema([
-                                Grid::make(4)
-                                    ->schema([
-                                        FileUpload::make('image_path')
-                                            ->label('تصویر')
-                                            ->image()
-                                            ->disk('public')
-                                            ->directory('products')
-                                            ->required()
-                                            ->columnSpan(2),
-
-                                        Toggle::make('is_primary')
-                                            ->label('تصویر اصلی')
-                                            ->inline(false)
-                                            ->live()
-                                            ->afterStateUpdated(function ($state, $set, $get) {
-                                                if ($state) {
-                                                    $items = $get('../../images');
-                                                    if ($items) {
-                                                        foreach ($items as $index => $item) {
-                                                            if ($item['is_primary'] ?? false) {
-                                                                $set("../../images.{$index}.is_primary", false);
-                                                            }
-                                                        }
-                                                    }
-                                                    $set('is_primary', true);
-                                                }
-                                            }),
-
-                                        TextInput::make('sort_order')
-                                            ->label('ترتیب')
-                                            ->numeric()
-                                            ->default(0),
-                                    ]),
-                            ])
-                            ->addActionLabel('افزودن تصویر')
+                        SpatieMediaLibraryFileUpload::make('product-images')
+                            ->label('تصاویر محصول')
+                            ->image()
+                            ->collection('product-images')
+                            ->multiple()
                             ->reorderable()
-                            ->defaultItems(0)
-                            ->collapsible(),
+                            ->panelLayout('integrated')
+                            ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
             ]);

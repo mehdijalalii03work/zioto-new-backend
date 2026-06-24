@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Products\Tables;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -14,6 +15,12 @@ class ProductsTable
     {
         return $table
             ->columns([
+                SpatieMediaLibraryImageColumn::make('product-images')
+                    ->label('تصویر')
+                    ->collection('product-images')
+                    ->circular()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('name')
                     ->label('نام محصول')
                     ->searchable()
