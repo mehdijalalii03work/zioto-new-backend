@@ -6,6 +6,7 @@ use App\Enums\Product\Ayar;
 use App\Enums\Product\MetalType;
 use App\Enums\Product\ProductShape;
 use App\Models\Brand;
+use App\Models\Setting;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -131,6 +132,11 @@ class Product extends Model
         $isOffHours = $currentTime >= $offHoursStart || $currentTime <= $offHoursEnd;
         $fee = $isOffHours ? (float) $this->fee_off_hours : (float) $this->fee_business_hours;
 
-        return round($weightInGrams * $sellPrice * (1 + $fee / 100));
+        $basePrice = $weightInGrams * $sellPrice * (1 + $fee / 100);
+
+        $taxKey = str_starts_with($this->price_board_item, 'Gold') ? 'tax_gold' : 'tax_silver';
+        $taxPercentage = (float) Setting::getValue($taxKey, 0);
+
+        return round($basePrice * (1 + $taxPercentage / 100));
     }
 }
