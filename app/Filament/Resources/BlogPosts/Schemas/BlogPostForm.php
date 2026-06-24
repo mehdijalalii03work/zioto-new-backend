@@ -60,11 +60,16 @@ class BlogPostForm
                         RichEditor::make('content')
                             ->label('محتوا')
                             ->required()
+                            ->fileAttachmentsDisk('public')
+                            ->fileAttachmentsDirectory('blog/content')
                             ->toolbarButtons([
-                                'bold', 'italic', 'underline', 'strike',
-                                'link', 'orderedList', 'bulletList',
-                                'h2', 'h3', 'h4', 'blockquote',
-                                'redo', 'undo',
+                                ['bold', 'italic', 'underline', 'strike', 'link'],
+                                ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+                                ['alignStart', 'alignCenter', 'alignEnd', 'alignJustify'],
+                                ['blockquote', 'codeBlock', 'bulletList', 'orderedList'],
+                                ['attachFiles', 'table', 'horizontalRule'],
+                                ['highlight', 'textColor', 'details'],
+                                ['undo', 'redo'],
                             ])
                             ->extraAttributes(['style' => 'min-height: 400px']),
                     ])

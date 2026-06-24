@@ -22,20 +22,28 @@ class SyncPriceBoard extends Command
         $prices = $priceBoard->fetchAndStore();
 
         if (empty($prices)) {
-            $this->warn('No prices received.');
+            $this->warn('No prices received from API or cache.');
 
             return self::FAILURE;
         }
 
-        broadcast(new PriceBoardUpdated($prices));
+        $lastSync = $priceBoard->getLastSyncAt();
+        $fromApi = $lastSync && $lastSync->diffInSeconds(now()) < 60;
 
-        $this->info('Price board synced and broadcasted.');
+        if (! $fromApi) {
+            $this->warn('Using cached prices (API unavailable).');
+        }
+
+        broadcast(new PriceBoardUpdated($prices));
 
         $updated = $this->recalculateProductPrices();
 
         $this->info("Recalculated prices for {$updated} products.");
 
-        Log::info('[PriceBoard] Sync completed', ['products_updated' => $updated]);
+        Log::info('[PriceBoard] Sync completed', [
+            'products_updated' => $updated,
+            'from_cache' => ! $fromApi,
+        ]);
 
         return self::SUCCESS;
     }

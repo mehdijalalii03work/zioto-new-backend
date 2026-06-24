@@ -4,5 +4,6 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('priceboard:sync')
     ->everyMinute()
-    ->withoutOverlapping()
+    ->withoutOverlapping(5)
+    ->runInBackground()
     ->appendOutputTo(storage_path('logs/priceboard-sync.log'));
