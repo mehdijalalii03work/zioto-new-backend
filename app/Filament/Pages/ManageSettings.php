@@ -23,7 +23,7 @@ class ManageSettings extends Page
 
     protected static ?string $navigationLabel = 'تنظیمات';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'فروشگاه';
+    protected static string|\UnitEnum|null $navigationGroup = 'تنظیمات';
 
     protected static ?int $navigationSort = 7;
 

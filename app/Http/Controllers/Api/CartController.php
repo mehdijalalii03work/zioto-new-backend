@@ -66,6 +66,7 @@ class CartController extends Controller
 
         if ($quantity <= 0) {
             $cart->delete();
+
             return response()->json(['message' => 'از سبد حذف شد']);
         }
 

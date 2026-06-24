@@ -24,7 +24,7 @@ class ShippingMethodResource extends Resource
 
     protected static ?string $navigationLabel = 'روش‌های ارسال';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'فروشگاه';
+    protected static string|\UnitEnum|null $navigationGroup = 'فروش';
 
     protected static ?int $navigationSort = 4;
 

@@ -24,7 +24,7 @@ class OrderResource extends Resource
 
     protected static ?string $navigationLabel = 'سفارشات';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'فروشگاه';
+    protected static string|\UnitEnum|null $navigationGroup = 'فروش';
 
     protected static ?int $navigationSort = 5;
 

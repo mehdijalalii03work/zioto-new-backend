@@ -31,7 +31,7 @@ class BrandResource extends Resource
 
     protected static ?string $navigationLabel = 'برندها';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'فروشگاه';
+    protected static string|\UnitEnum|null $navigationGroup = 'مدیریت کالا';
 
     protected static ?int $navigationSort = 3;
 

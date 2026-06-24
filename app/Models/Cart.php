@@ -23,7 +23,7 @@ class Cart extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     public function product(): BelongsTo

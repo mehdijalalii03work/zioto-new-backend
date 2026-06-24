@@ -28,7 +28,7 @@ class ManageProductPricing extends Page implements HasTable
 
     public static function getNavigationGroup(): string
     {
-        return 'فروشگاه';
+        return 'مدیریت کالا';
     }
 
     public static function getNavigationSort(): ?int

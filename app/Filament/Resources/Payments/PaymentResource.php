@@ -18,13 +18,13 @@ class PaymentResource extends Resource
 {
     protected static ?string $model = Payment::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCurrencyDollar;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
 
     protected static ?string $recordTitleAttribute = 'transaction_id';
 
     protected static ?string $navigationLabel = 'پرداخت‌ها';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'فروشگاه';
+    protected static string|\UnitEnum|null $navigationGroup = 'فروش';
 
     protected static ?int $navigationSort = 6;
 

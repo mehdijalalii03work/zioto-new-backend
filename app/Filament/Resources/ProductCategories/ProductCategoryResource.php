@@ -24,7 +24,7 @@ class ProductCategoryResource extends Resource
 
     protected static ?string $navigationLabel = 'دسته‌بندی‌ها';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'فروشگاه';
+    protected static string|\UnitEnum|null $navigationGroup = 'مدیریت کالا';
 
     protected static ?int $navigationSort = 0;
 
