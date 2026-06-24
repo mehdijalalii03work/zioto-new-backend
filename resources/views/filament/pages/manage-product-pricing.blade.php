@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="flex items-center gap-3 mb-4">
+    <div class="flex items-center gap-4 mb-4">
         <x-filament::button wire:click="toggleEdit"
             :icon="$isEditing ? 'heroicon-o-x-mark' : 'heroicon-o-pencil'"
             :color="$isEditing ? 'danger' : 'primary'"
