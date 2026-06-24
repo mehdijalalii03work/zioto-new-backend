@@ -170,9 +170,9 @@ class ProductForm
                                     ->suffix('٪')
                                     ->minValue(0)
                                     ->maxValue(100)
-                                    ->step(0.1)
+                                    ->step(0.01)
                                     ->nullable()
-                                    ->placeholder('مثلاً 3'),
+                                    ->placeholder('مثلاً 3.5'),
 
                                 TextInput::make('fee_business_hours')
                                     ->label('اجرت (ساعت ۹ تا ۱۷:۵۹)')
@@ -180,7 +180,7 @@ class ProductForm
                                     ->suffix('٪')
                                     ->minValue(0)
                                     ->maxValue(100)
-                                    ->step(0.1)
+                                    ->step(0.01)
                                     ->nullable()
                                     ->placeholder('مثلاً 5'),
                             ]),
