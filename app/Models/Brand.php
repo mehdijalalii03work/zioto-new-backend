@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Modules\Product\Models\Product;
 
 class Brand extends Model
 {
@@ -40,6 +41,6 @@ class Brand extends Model
 
     public function products(): HasMany
     {
-        return $this->hasMany(\Modules\Product\Models\Product::class);
+        return $this->hasMany(Product::class);
     }
 }

@@ -2,6 +2,10 @@
 
 namespace Modules\Product\Models;
 
+use App\Enums\Product\Ayar;
+use App\Enums\Product\MetalType;
+use App\Enums\Product\ProductShape;
+use App\Models\Brand;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +25,9 @@ class Product extends Model
         'sku',
         'price_type',
         'description',
+        'metal_type',
+        'form',
+        'ayar',
         'weight',
         'price_board_item',
         'fee_off_hours',
@@ -39,6 +46,9 @@ class Product extends Model
     protected function casts(): array
     {
         return [
+            'metal_type' => MetalType::class,
+            'form' => ProductShape::class,
+            'ayar' => Ayar::class,
             'weight' => 'decimal:2',
             'fee_off_hours' => 'decimal:2',
             'fee_business_hours' => 'decimal:2',
@@ -61,7 +71,7 @@ class Product extends Model
 
     public function brand(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Brand::class);
+        return $this->belongsTo(Brand::class);
     }
 
     public function images(): HasMany

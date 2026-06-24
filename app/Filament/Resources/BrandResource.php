@@ -10,11 +10,16 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 
 class BrandResource extends Resource
 {
@@ -44,27 +49,26 @@ class BrandResource extends Resource
     {
         return $schema
             ->schema([
-                \Filament\Schemas\Components\Section::make('اطلاعات برند')
+                Section::make('اطلاعات برند')
                     ->schema([
-                        \Filament\Schemas\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
-                                \Filament\Forms\Components\TextInput::make('name')
+                                TextInput::make('name')
                                     ->label('نام برند')
                                     ->required()
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(fn ($state, $set) => $set('slug', Str::slug($state))),
+                                    ->live(onBlur: true),
 
-                                \Filament\Forms\Components\TextInput::make('slug')
-                                    ->label('شناسه یکتا')
+                                TextInput::make('slug')
+                                    ->label('آدرس محصول')
                                     ->required()
                                     ->unique(ignoreRecord: true)
                                     ->helperText('به صورت خودکار از نام تولید می‌شود'),
 
-                                \Filament\Forms\Components\TextInput::make('description')
+                                TextInput::make('description')
                                     ->label('توضیحات')
                                     ->placeholder('توضیحات برند (اختیاری)'),
 
-                                \Filament\Forms\Components\Toggle::make('is_active')
+                                Toggle::make('is_active')
                                     ->label('فعال')
                                     ->default(true),
                             ]),
@@ -77,25 +81,25 @@ class BrandResource extends Resource
     {
         return $table
             ->columns([
-                \Filament\Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->label('نام')
                     ->searchable()
                     ->sortable(),
 
-                \Filament\Tables\Columns\TextColumn::make('slug')
+                TextColumn::make('slug')
                     ->label('شناسه')
                     ->searchable(),
 
-                \Filament\Tables\Columns\TextColumn::make('products_count')
+                TextColumn::make('products_count')
                     ->label('تعداد محصولات')
                     ->counts('products')
                     ->sortable(),
 
-                \Filament\Tables\Columns\IconColumn::make('is_active')
+                IconColumn::make('is_active')
                     ->label('فعال')
                     ->boolean(),
 
-                \Filament\Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('تاریخ ایجاد')
                     ->date('Y/m/d')
                     ->sortable(),

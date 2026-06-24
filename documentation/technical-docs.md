@@ -56,7 +56,7 @@ app/Filament/Resources/Products/
 
 | فیلد | نوع | توضیحات |
 |------|-----|---------|
-| id | bigint, auto-increment | شناسه یکتا |
+| id | bigint, auto-increment | آدرس محصول |
 | name | varchar(255) | نام محصول |
 | slug | varchar(255), unique | Slug یکتا |
 | description | longtext, nullable | توضیحات کامل (rich text) |
@@ -71,7 +71,7 @@ app/Filament/Resources/Products/
 
 | فیلد | نوع | توضیحات |
 |------|-----|---------|
-| id | bigint, auto-increment | شناسه یکتا |
+| id | bigint, auto-increment | آدرس محصول |
 | product_id | bigint, FK → products.id | محصول مرتبط |
 | image_path | varchar(255) | مسیر فایل تصویر |
 | is_primary | boolean, default: false | تصویر اصلی |

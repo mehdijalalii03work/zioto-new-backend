@@ -25,8 +25,28 @@ class ProductsTable
                     ->sortable(),
 
                 TextColumn::make('sku')
-                    ->label('SKU')
+                    ->label('شناسه محصول')
                     ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('slug')
+                    ->label('آدرس محصول')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('metal_type')
+                    ->label('نوع')
+                    ->formatStateUsing(fn ($state) => $state?->label() ?? '-')
+                    ->sortable(),
+
+                TextColumn::make('form')
+                    ->label('نوع کالا')
+                    ->formatStateUsing(fn ($state) => $state?->label() ?? '-')
+                    ->sortable(),
+
+                TextColumn::make('ayar')
+                    ->label('عیار')
+                    ->formatStateUsing(fn ($state) => $state?->label() ?? '-')
                     ->sortable(),
 
                 TextColumn::make('price')

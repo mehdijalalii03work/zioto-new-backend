@@ -1,0 +1,334 @@
+<?php
+
+namespace App\Observers;
+
+use App\Models\HesabfaSyncLog;
+use App\Services\HesabfaService;
+use Illuminate\Support\Facades\Log;
+use Modules\Order\Models\Order;
+
+class HesabfaObserver
+{
+    public function __construct(
+        private HesabfaService $hesabfa,
+    ) {}
+
+    public function updated(Order $order): void
+    {
+        if (! config('hesabfa.auto_sync')) {
+            return;
+        }
+
+        if ($order->hesabfa_synced_at && ! $order->wasChanged('status')) {
+            return;
+        }
+
+        $syncStatuses = config('hesabfa.sync_statuses', ['confirmed', 'processing']);
+
+        if (! in_array($order->status, $syncStatuses)) {
+            return;
+        }
+
+        if ($order->hesabfa_synced_at) {
+            return;
+        }
+
+        $this->syncOrder($order);
+    }
+
+    public function syncOrder(Order $order, bool $force = false): array
+    {
+        if (! $this->hesabfa->isConfigured()) {
+            return ['success' => false, 'message' => 'تنظیمات حسابفا یافت نشد'];
+        }
+
+        if ($order->hesabfa_synced_at && ! $force) {
+            return ['success' => false, 'message' => 'سفارش قبلاً به حسابفا ارسال شده'];
+        }
+
+        $order->load(['items.product', 'shipping.shippingMethod', 'address.province', 'address.city', 'user']);
+
+        try {
+            $contactResult = $this->syncContact($order);
+            if (! $contactResult['success']) {
+                $this->log($order, 'contact', 'failed', null, $contactResult['message']);
+
+                return $contactResult;
+            }
+
+            $invoiceResult = $this->syncInvoice($order, $contactResult['contact_code']);
+            if (! $invoiceResult['success']) {
+                $this->log($order, 'invoice', 'failed', null, $invoiceResult['message']);
+
+                return $invoiceResult;
+            }
+
+            $order->update([
+                'hesabfa_contact_code' => $contactResult['contact_code'],
+                'hesabfa_invoice_number' => $invoiceResult['invoice_number'],
+                'hesabfa_invoice_reference' => $invoiceResult['reference'],
+                'hesabfa_synced_at' => now(),
+            ]);
+
+            $order->notes = trim(($order->notes ? $order->notes."\n" : '')."شماره فاکتور حسابفا: {$invoiceResult['invoice_number']}");
+            $order->saveQuietly();
+
+            return ['success' => true, 'message' => 'سفارش با موفقیت به حسابفا ارسال شد'];
+
+        } catch (\Exception $e) {
+            Log::error('Hesabfa sync error', [
+                'order_id' => $order->id,
+                'message' => $e->getMessage(),
+            ]);
+            $this->log($order, 'full_sync', 'failed', null, $e->getMessage());
+
+            return ['success' => false, 'message' => 'خطا در ارسال به حسابفا: '.$e->getMessage()];
+        }
+    }
+
+    private function syncContact(Order $order): array
+    {
+        $user = $order->user;
+        $nationalCode = $this->extractNationalCode($order);
+
+        if (! $nationalCode) {
+            return ['success' => false, 'message' => 'کد ملی مشتری یافت نشد'];
+        }
+
+        $existing = $this->hesabfa->findContactByNationalCode($nationalCode);
+
+        $contactData = [
+            'FirstName' => $user?->first_name ?? '',
+            'LastName' => $user?->last_name ?? '',
+            'Name' => trim(($user?->first_name ?? '').' '.($user?->last_name ?? '')),
+            'DisplayName' => $user?->name ?? $order->user_address_id ? 'مشتری شماره '.$order->id : '',
+            'Title' => trim(($user?->first_name ?? '').' '.($user?->last_name ?? '')),
+            'ContactType' => 1,
+            'NationalCode' => $nationalCode,
+            'Mobile' => $this->normalizeMobile($user?->phone ?? ''),
+            'Country' => 'ایران',
+            'IsCustomer' => true,
+            'NodeName' => config('hesabfa.customer_node', 'مشتریان'),
+            'NodeFamily' => config('hesabfa.customer_family', 'اشخاص : مشتریان'),
+        ];
+
+        if ($existing) {
+            $contactData['Code'] = $existing['Code'];
+        } else {
+            $contactData['TaxType'] = 8;
+        }
+
+        if ($order->address) {
+            $contactData['State'] = $order->address->province?->name ?? '';
+            $contactData['City'] = $order->address->city?->name ?? '';
+            $contactData['Address'] = $order->address->full_address;
+            $contactData['PostalCode'] = $order->address->postal_code ?? '';
+        }
+
+        $result = $this->hesabfa->saveContact($contactData);
+
+        if (! $result['success']) {
+            return ['success' => false, 'message' => 'خطا در ذخیره مشتری: '.$result['error']];
+        }
+
+        $contactCode = $result['data']['Result'] ?? $existing['Code'] ?? null;
+
+        if (! $contactCode) {
+            $recheck = $this->hesabfa->findContactByNationalCode($nationalCode);
+            $contactCode = $recheck['Code'] ?? null;
+        }
+
+        if (! $contactCode) {
+            return ['success' => false, 'message' => 'کد مشتری از حسابفا دریافت نشد'];
+        }
+
+        return ['success' => true, 'contact_code' => $contactCode];
+    }
+
+    private function syncInvoice(Order $order, string $contactCode): array
+    {
+        $orderId = $order->id;
+        $totalInRials = (int) $order->total_amount;
+        $tenMillions = (int) floor($totalInRials / 10_000_000);
+        $reference = "{$orderId}-{$tenMillions}";
+
+        if (config('hesabfa.use_current_date')) {
+            $date = now()->format('Y-m-d H:i:s');
+        } else {
+            $date = $order->created_at->format('Y-m-d H:i:s');
+        }
+
+        $items = [];
+        $rowNumber = 1;
+
+        foreach ($order->items as $orderItem) {
+            $product = $orderItem->product;
+            $sku = $product?->sku ?? '';
+            $itemCode = $this->findHesabfaItemCode($sku);
+
+            if (! $itemCode) {
+                return ['success' => false, 'message' => "کد محصول حسابفا برای SKU {$sku} یافت نشد"];
+            }
+
+            $unitPrice = (int) $orderItem->product_price;
+            $quantity = $orderItem->quantity;
+
+            $discount = 0;
+            if ($orderItem->subtotal > $orderItem->quantity * $orderItem->product_price) {
+                $discount = (int) ($orderItem->subtotal - ($orderItem->quantity * $orderItem->product_price));
+            }
+
+            $items[] = [
+                'rowNumber' => $rowNumber++,
+                'description' => $orderItem->product_name,
+                'itemCode' => $itemCode,
+                'unit' => config('hesabfa.default_unit', 'عدد'),
+                'quantity' => $quantity,
+                'unitPrice' => $unitPrice,
+                'discount' => $discount,
+                'tax' => 0,
+            ];
+        }
+
+        if ($order->shipping && $order->shipping->shipping_cost > 0) {
+            $shippingCode = config('hesabfa.shipping_item_code');
+            if ($shippingCode) {
+                $items[] = [
+                    'rowNumber' => $rowNumber++,
+                    'description' => 'هزینه حمل و نقل',
+                    'itemCode' => $shippingCode,
+                    'unit' => config('hesabfa.default_unit', 'عدد'),
+                    'quantity' => 1,
+                    'unitPrice' => (int) $order->shipping->shipping_cost,
+                    'discount' => 0,
+                    'tax' => 0,
+                ];
+            }
+        }
+
+        if ($order->payment_method === 'installment' && config('hesabfa.installment_fee_item_code')) {
+            $baseAmount = $order->items->sum('subtotal') + ($order->shipping?->shipping_cost ?? 0);
+            $commission = (int) round($baseAmount * 0.04);
+            $taxOnCommission = (int) round($commission * 0.10);
+
+            if ($commission > 0) {
+                $items[] = [
+                    'rowNumber' => $rowNumber++,
+                    'description' => 'کارمزد خرید اقساطی (۴٪)',
+                    'itemCode' => config('hesabfa.installment_fee_item_code'),
+                    'unit' => config('hesabfa.default_unit', 'عدد'),
+                    'quantity' => 1,
+                    'unitPrice' => $commission,
+                    'discount' => 0,
+                    'tax' => $taxOnCommission,
+                ];
+            }
+        }
+
+        $invoiceData = [
+            'reference' => $reference,
+            'date' => $date,
+            'dueDate' => $date,
+            'contactCode' => $contactCode,
+            'invoiceType' => 0,
+            'status' => config('hesabfa.draft_invoice', true) ? 0 : 1,
+            'project' => config('hesabfa.default_project', 'سایت ZIOTO'),
+            'currency' => 'IRR',
+            'currencyRate' => 1,
+            'contactTitle' => $order->user?->name ?? '',
+            'note' => "سفارش {$orderId}",
+            'invoiceItems' => $items,
+            'Freight' => 0,
+        ];
+
+        $result = $this->hesabfa->saveInvoice($invoiceData);
+
+        if (! $result['success']) {
+            return ['success' => false, 'message' => 'خطا در ذخیره فاکتور: '.$result['error']];
+        }
+
+        $invoiceNumber = $result['data']['Result'] ?? null;
+
+        if (! $invoiceNumber) {
+            $existing = $this->hesabfa->findInvoiceByReference($reference);
+            $invoiceNumber = $existing['InvoiceNumber'] ?? null;
+        }
+
+        if (config('hesabfa.enable_warehouse_receipt') && $invoiceNumber) {
+            $this->hesabfa->saveWarehouseReceipt($invoiceNumber);
+        }
+
+        return [
+            'success' => true,
+            'invoice_number' => $invoiceNumber,
+            'reference' => $reference,
+        ];
+    }
+
+    private function findHesabfaItemCode(string $sku): ?string
+    {
+        if (empty($sku)) {
+            return null;
+        }
+
+        $item = $this->hesabfa->findItemBySku($sku);
+
+        return $item['ItemCode'] ?? null;
+    }
+
+    private function extractNationalCode(Order $order): ?string
+    {
+        $code = $order->user?->national_code ?? $order->address?->receiver_national_code ?? null;
+
+        if (! $code) {
+            return null;
+        }
+
+        $code = $this->normalizeNationalCode($code);
+
+        return strlen($code) === 10 ? $code : null;
+    }
+
+    private function normalizeNationalCode(string $code): string
+    {
+        $persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        $arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+
+        $code = str_replace($persianDigits, range(0, 9), $code);
+        $code = str_replace($arabicDigits, range(0, 9), $code);
+
+        return preg_replace('/\D/', '', $code);
+    }
+
+    private function normalizeMobile(?string $phone): string
+    {
+        if (! $phone) {
+            return '';
+        }
+
+        $phone = $this->normalizeNationalCode($phone);
+
+        if (str_starts_with($phone, '0098')) {
+            $phone = '0'.substr($phone, 4);
+        } elseif (str_starts_with($phone, '98')) {
+            $phone = '0'.substr($phone, 2);
+        }
+
+        if (strlen($phone) === 10 && str_starts_with($phone, '0')) {
+            return $phone;
+        }
+
+        return $phone;
+    }
+
+    private function log(Order $order, string $type, string $status, ?array $data = null, ?string $error = null): void
+    {
+        HesabfaSyncLog::create([
+            'order_id' => $order->id,
+            'sync_type' => $type,
+            'status' => $status,
+            'response_data' => $data,
+            'error_message' => $error,
+        ]);
+    }
+}

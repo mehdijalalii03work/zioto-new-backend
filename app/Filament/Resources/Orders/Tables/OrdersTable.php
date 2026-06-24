@@ -80,6 +80,13 @@ class OrdersTable
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->formatStateUsing(fn ($state) => $state ?: '—'),
 
+                TextColumn::make('hesabfa_invoice_number')
+                    ->label('حسابفا')
+                    ->badge()
+                    ->color(fn ($state) => $state ? 'success' : 'gray')
+                    ->formatStateUsing(fn ($state) => $state ? "فاکتور #{$state}" : 'ارسال نشده')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('created_at')
                     ->label('تاریخ ثبت')
                     ->dateTime()

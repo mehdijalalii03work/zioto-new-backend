@@ -2,6 +2,7 @@
 
 namespace Modules\Order\Models;
 
+use App\Models\HesabfaSyncLog;
 use App\Models\OrderShipping;
 use App\Models\User;
 use App\Models\UserAddress;
@@ -26,12 +27,17 @@ class Order extends Model
         'user_address_id',
         'shipping_address_snapshot',
         'notes',
+        'hesabfa_contact_code',
+        'hesabfa_invoice_number',
+        'hesabfa_invoice_reference',
+        'hesabfa_synced_at',
     ];
 
     protected function casts(): array
     {
         return [
             'total_amount' => 'decimal:0',
+            'hesabfa_synced_at' => 'datetime',
         ];
     }
 
@@ -53,5 +59,10 @@ class Order extends Model
     public function shipping(): HasOne
     {
         return $this->hasOne(OrderShipping::class);
+    }
+
+    public function syncLogs(): HasMany
+    {
+        return $this->hasMany(HesabfaSyncLog::class);
     }
 }

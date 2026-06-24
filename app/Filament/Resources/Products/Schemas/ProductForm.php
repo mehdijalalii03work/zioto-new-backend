@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Products\Schemas;
 
+use App\Enums\Product\Ayar;
+use App\Enums\Product\MetalType;
+use App\Enums\Product\ProductShape;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
@@ -11,7 +14,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Str;
 
 class ProductForm
 {
@@ -20,7 +22,7 @@ class ProductForm
         return $schema
             ->components([
                 Section::make('اطلاعات عمومی')
-                    ->description('نام، شناسه یکتا و توضیحات محصول')
+                    ->description('نام، آدرس محصول و توضیحات محصول')
                     ->icon('heroicon-o-information-circle')
                     ->collapsible()
                     ->schema([
@@ -29,34 +31,58 @@ class ProductForm
                                 TextInput::make('name')
                                     ->label('نام محصول')
                                     ->required()
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(fn ($state, $set) => $set('slug', Str::slug($state))),
+                                    ->live(onBlur: true),
 
                                 TextInput::make('slug')
-                                    ->label('شناسه یکتا')
+                                    ->label('آدرس محصول')
                                     ->required()
-                                    ->unique(ignoreRecord: true)
-                                    ->helperText('به صورت خودکار از نام محصول تولید می‌شود'),
+                                    ->unique(ignoreRecord: true),
 
                                 TextInput::make('sku')
-                                    ->label('SKU')
-                                    ->unique(ignoreRecord: true)
-                                    ->helperText('کد اختصاصی محصول (اختیاری)'),
+                                    ->label('کد اختصاصی محصول')
+                                    ->unique(ignoreRecord: true),
                             ]),
 
-                        Select::make('category_id')
-                            ->label('دسته‌بندی')
-                            ->relationship('category', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->placeholder('انتخاب دسته‌بندی'),
+                        Grid::make(3)
+                            ->schema([
+                                Select::make('metal_type')
+                                    ->label('نوع')
+                                    ->options(collect(MetalType::cases())->mapWithKeys(fn ($case) => [$case->value => $case->label()]))
+                                    ->placeholder('انتخاب نوع')
+                                    ->required()
+                                    ->live(),
 
-                        Select::make('brand_id')
-                            ->label('برند')
-                            ->relationship('brand', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->placeholder('انتخاب برند'),
+                                Select::make('form')
+                                    ->label('نوع کالا')
+                                    ->options(collect(ProductShape::cases())->mapWithKeys(fn ($case) => [$case->value => $case->label()]))
+                                    ->placeholder('انتخاب نوع کالا')
+                                    ->required()
+                                    ->live(),
+
+                                Select::make('ayar')
+                                    ->label('عیار')
+                                    ->options(collect(Ayar::cases())->mapWithKeys(fn ($case) => [$case->value => $case->label()]))
+                                    ->placeholder('انتخاب عیار')
+                                    ->required()
+                                    ->live(),
+                            ]),
+
+                        Grid::make(3)
+                            ->schema([
+                                Select::make('category_id')
+                                    ->label('دسته‌بندی')
+                                    ->relationship('category', 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->placeholder('انتخاب دسته‌بندی'),
+
+                                Select::make('brand_id')
+                                    ->label('برند')
+                                    ->relationship('brand', 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->placeholder('انتخاب برند'),
+                            ]),
 
                         RichEditor::make('description')
                             ->label('توضیحات کامل')
@@ -112,10 +138,11 @@ class ProductForm
                     ])
                     ->columnSpanFull(),
 
-                Section::make('تنظیمات قیمت‌گذاری')
-                    ->description('محاسبه خودکار قیمت از روی تابلو قیمت')
+                Section::make('تنظیمات قیمت‌گذاری پویا')
+                    ->description('تنها برای قیمت‌گذاری پویا')
                     ->icon('heroicon-o-calculator')
                     ->collapsible()
+                    ->visible(fn ($get) => ($get('price_type') ?? 'fixed') === 'dynamic')
                     ->schema([
                         Grid::make(3)
                             ->schema([
@@ -144,6 +171,7 @@ class ProductForm
                                     ->minValue(0)
                                     ->maxValue(100)
                                     ->step(0.1)
+                                    ->nullable()
                                     ->placeholder('مثلاً 3'),
 
                                 TextInput::make('fee_business_hours')
@@ -153,6 +181,7 @@ class ProductForm
                                     ->minValue(0)
                                     ->maxValue(100)
                                     ->step(0.1)
+                                    ->nullable()
                                     ->placeholder('مثلاً 5'),
                             ]),
                     ])

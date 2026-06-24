@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\HesabfaWebhookController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\OrderSubmitController;
+use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\PriceBoardController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
@@ -55,4 +56,12 @@ Route::middleware('web')->group(function () {
 
     Route::get('/products', [ProductController::class, 'index']);
     Route::get('/products/{id}', [ProductController::class, 'show']);
+
+    Route::middleware('auth', 'throttle:60,1')->prefix('cart')->group(function () {
+        Route::get('/', [CartController::class, 'index']);
+        Route::post('/', [CartController::class, 'store']);
+        Route::put('/{productId}', [CartController::class, 'update']);
+        Route::delete('/{productId}', [CartController::class, 'destroy']);
+        Route::delete('/', [CartController::class, 'clear']);
+    });
 });

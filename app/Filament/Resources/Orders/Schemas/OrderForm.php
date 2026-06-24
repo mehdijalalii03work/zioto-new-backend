@@ -217,6 +217,34 @@ class OrderForm
                             ->collapsible(),
                     ])
                     ->columnSpanFull(),
+
+                Section::make('اطلاعات حسابفا')
+                    ->description('وضعیت همگام‌سازی با حسابفا')
+                    ->icon('heroicon-o-arrow-path')
+                    ->collapsible()
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('hesabfa_contact_code')
+                                    ->label('کد مشتری')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->visible(fn ($record) => $record?->hesabfa_contact_code),
+
+                                TextInput::make('hesabfa_invoice_number')
+                                    ->label('شماره فاکتور')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->visible(fn ($record) => $record?->hesabfa_invoice_number),
+
+                                TextInput::make('hesabfa_synced_at')
+                                    ->label('تاریخ همگام‌سازی')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->visible(fn ($record) => $record?->hesabfa_synced_at),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 }

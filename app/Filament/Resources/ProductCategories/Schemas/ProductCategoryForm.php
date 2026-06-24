@@ -9,7 +9,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Str;
 use Modules\Product\Models\ProductCategory;
 
 class ProductCategoryForm
@@ -29,11 +28,10 @@ class ProductCategoryForm
                                     ->label('نام دسته‌بندی')
                                     ->required()
                                     ->maxLength(255)
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(fn ($state, $set) => $set('slug', Str::slug($state))),
+                                    ->live(onBlur: true),
 
                                 TextInput::make('slug')
-                                    ->label('شناسه یکتا')
+                                    ->label('آدرس محصول')
                                     ->required()
                                     ->unique(ignoreRecord: true)
                                     ->helperText('به صورت خودکار از نام تولید می‌شود'),

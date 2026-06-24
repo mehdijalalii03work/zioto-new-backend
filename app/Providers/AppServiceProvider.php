@@ -2,10 +2,14 @@
 
 namespace App\Providers;
 
+use App\Observers\HesabfaObserver;
+use App\Observers\StockReservationObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\ServiceProvider;
+use Modules\Order\Models\Order;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -16,6 +20,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Order::observe(HesabfaObserver::class);
+        Order::observe(StockReservationObserver::class);
+
+        $interval = config('hesabfa.sync_interval', 60);
+        Schedule::command('hesabfa:sync-stock')->cron("*/{$interval} * * * *");
+
         RateLimiter::for('otp', function (Request $request) {
             if (app()->isLocal()) {
                 return Limit::none();
