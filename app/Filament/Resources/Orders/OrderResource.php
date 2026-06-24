@@ -26,7 +26,7 @@ class OrderResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'فروشگاه';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 5;
 
     public static function getModelLabel(): string
     {

@@ -25,7 +25,7 @@ class ManageSettings extends Page
 
     protected static string|\UnitEnum|null $navigationGroup = 'فروشگاه';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 7;
 
     protected string $view = 'filament.pages.manage-settings';
 

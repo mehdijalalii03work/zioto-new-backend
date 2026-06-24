@@ -26,7 +26,7 @@ class ShippingMethodResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'فروشگاه';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     public static function getModelLabel(): string
     {

@@ -15,12 +15,12 @@ class HesabfaDashboard extends Page
 
     public static function getNavigationIcon(): string|\BackedEnum|null
     {
-        return 'heroicon-o-home';
+        return 'heroicon-o-eye';
     }
 
     public static function getNavigationLabel(): string
     {
-        return 'داشبورد';
+        return 'نمای کلی';
     }
 
     public static function getNavigationGroup(): string|\UnitEnum|null
@@ -30,7 +30,7 @@ class HesabfaDashboard extends Page
 
     public static function getNavigationSort(): ?int
     {
-        return 0;
+        return 1;
     }
 
     public function getStats(): array
