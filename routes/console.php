@@ -7,6 +7,7 @@ Schedule::command('app:sync-prices')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/tokeniko-sync.log'));
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+Schedule::command('priceboard:sync')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/priceboard-sync.log'));

@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\HesabfaWebhookController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\OrderSubmitController;
+use App\Http\Controllers\Api\PriceBoardController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ShippingController;
 use App\Http\Controllers\Auth\OtpController;
@@ -42,4 +44,11 @@ Route::middleware('web')->group(function () {
     Route::get('/orders', [OrderSubmitController::class, 'index'])->middleware('auth');
 
     Route::post('/orders', [OrderSubmitController::class, 'store']);
+
+    Route::prefix('hesabfa')->group(function () {
+        Route::post('/webhook', [HesabfaWebhookController::class, 'handle'])->name('hesabfa.webhook');
+        Route::get('/webhook', [HesabfaWebhookController::class, 'test']);
+    });
+
+    Route::get('/price-board', [PriceBoardController::class, 'index']);
 });
