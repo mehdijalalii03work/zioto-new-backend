@@ -16,6 +16,7 @@ class ProductController extends Controller
         return [
             'id' => $p->id,
             'name' => $p->name,
+            'slug' => $p->slug,
             'sub' => $p->category?->name ?? '',
             'cat' => $p->category?->name ?? '',
             'cat_slug' => $p->category?->slug ?? '',
@@ -66,11 +67,13 @@ class ProductController extends Controller
         return response()->json(['data' => $products]);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(string $slugOrId): JsonResponse
     {
         $product = Product::query()
             ->with(['category:id,name,slug', 'brand:id,name,slug', 'images'])
-            ->find($id);
+            ->where('slug', $slugOrId)
+            ->orWhere('id', $slugOrId)
+            ->first();
 
         if (! $product) {
             return response()->json(['message' => 'محصول یافت نشد'], 404);
