@@ -9,29 +9,57 @@ use Modules\Product\Models\Product;
 
 class ProductController extends Controller
 {
+    private function formatProduct(Product $p): array
+    {
+        $price = (int) $p->price;
+
+        return [
+            'id' => $p->id,
+            'name' => $p->name,
+            'sub' => $p->category?->name ?? '',
+            'cat' => $p->category?->name ?? '',
+            'cat_slug' => $p->category?->slug ?? '',
+            'brand' => $p->brand?->name ?? '',
+            'brand_slug' => $p->brand?->slug ?? '',
+            'metal_type' => $p->metal_type?->value ?? null,
+            'metal_type_label' => $p->metal_type?->label() ?? null,
+            'form' => $p->form?->value ?? null,
+            'form_label' => $p->form?->label() ?? null,
+            'ayar' => $p->ayar?->value ?? null,
+            'ayar_label' => $p->ayar?->label() ?? null,
+            'weight' => $p->weight ? $p->weight.' گرم' : '',
+            'price' => $price,
+            'old' => null,
+            'badge' => null,
+            'stock' => $p->stock_quantity > 0,
+            'desc' => strip_tags($p->description ?? ''),
+        ];
+    }
+
     public function index(): JsonResponse
     {
-        $products = Cache::remember('api:products', 300, function () {
-            return Product::query()
-                ->with(['category:id,name,slug', 'brand:id,name,slug'])
+        $slugs = request()->input('slugs');
+        $skus = request()->input('skus');
+
+        $cacheKey = 'api:products:'.($slugs ? md5($slugs) : ($skus ? md5($skus) : 'all'));
+
+        $products = Cache::remember($cacheKey, 300, function () use ($slugs, $skus) {
+            $query = Product::query()
+                ->with(['category:id,name,slug', 'brand:id,name,slug']);
+
+            if ($slugs) {
+                $slugList = array_map('trim', explode(',', $slugs));
+                $query->whereIn('slug', $slugList);
+            } elseif ($skus) {
+                $skuList = array_map('trim', explode(',', $skus));
+                $query->whereIn('sku', $skuList);
+            }
+
+            return $query
                 ->orderBy('sort_order')
                 ->orderBy('id')
                 ->get()
-                ->map(fn (Product $p) => [
-                    'id' => $p->id,
-                    'name' => $p->name,
-                    'sub' => $p->category?->name ?? '',
-                    'cat' => $p->category?->name ?? '',
-                    'cat_slug' => $p->category?->slug ?? '',
-                    'brand' => $p->brand?->name ?? '',
-                    'brand_slug' => $p->brand?->slug ?? '',
-                    'weight' => $p->weight ? $p->weight . ' گرم' : '',
-                    'price' => (int) $p->price,
-                    'old' => null,
-                    'badge' => null,
-                    'stock' => $p->stock_quantity > 0,
-                    'desc' => strip_tags($p->description ?? ''),
-                ])
+                ->map(fn (Product $p) => $this->formatProduct($p))
                 ->toArray();
         });
 
@@ -48,29 +76,15 @@ class ProductController extends Controller
             return response()->json(['message' => 'محصول یافت نشد'], 404);
         }
 
-        return response()->json([
-            'data' => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'sub' => $product->category?->name ?? '',
-                'cat' => $product->category?->name ?? '',
-                'cat_slug' => $product->category?->slug ?? '',
-                'brand' => $product->brand?->name ?? '',
-                'brand_slug' => $product->brand?->slug ?? '',
-                'weight' => $product->weight ? $product->weight . ' گرم' : '',
-                'price' => (int) $product->price,
-                'old' => null,
-                'badge' => null,
-                'stock' => $product->stock_quantity > 0,
-                'desc' => strip_tags($product->description ?? ''),
-                'full_desc' => $product->description ?? '',
-                'sku' => $product->sku,
-                'images' => $product->images->map(fn ($img) => [
-                    'id' => $img->id,
-                    'path' => $img->image_path,
-                    'is_primary' => $img->is_primary,
-                ]),
-            ],
+        $data = $this->formatProduct($product);
+        $data['full_desc'] = $product->description ?? '';
+        $data['sku'] = $product->sku;
+        $data['images'] = $product->images->map(fn ($img) => [
+            'id' => $img->id,
+            'path' => $img->image_path,
+            'is_primary' => $img->is_primary,
         ]);
+
+        return response()->json(['data' => $data]);
     }
 }
