@@ -7,6 +7,7 @@ use App\Services\PriceBoardService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Product\Models\Product;
 
@@ -42,18 +43,28 @@ class SyncPriceBoard extends Command
     private function recalculateProductPrices(): int
     {
         $products = Product::whereNotNull('price_board_item')->get();
-        $updated = 0;
+
+        $updates = [];
 
         foreach ($products as $product) {
             $newPrice = $product->calculatePrice();
 
             if ($newPrice !== null && (float) $product->price !== $newPrice) {
-                $product->update(['price' => $newPrice]);
-                $updated++;
-                $this->line("  Updated {$product->name}: {$product->price} -> {$newPrice}");
+                $updates[$product->id] = ['price' => $newPrice];
+                $this->line("  Will update {$product->name}: {$product->price} -> {$newPrice}");
             }
         }
 
-        return $updated;
+        if (empty($updates)) {
+            return 0;
+        }
+
+        DB::transaction(function () use ($updates) {
+            foreach ($updates as $id => $data) {
+                Product::where('id', $id)->update($data);
+            }
+        });
+
+        return count($updates);
     }
 }
