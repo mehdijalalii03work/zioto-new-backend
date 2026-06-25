@@ -10,6 +10,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 use Filament\Support\Icons\Heroicon;
 
 class ShippingMethodForm
@@ -101,19 +102,30 @@ class ShippingMethodForm
                                         TextInput::make('base_rate')
                                             ->label('هزینه پایه (ریال)')
                                             ->required()
+                                            ->mask(RawJs::make('$money($input)'))
+                                            ->stripCharacters(',')
                                             ->numeric()
-                                            ->formatStateUsing(fn ($state) => filled($state) ? number_format((int) $state) : '')
-                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) str_replace(',', '', $state) : null)
+                                            ->dehydrateStateUsing(fn ($state) => (int) preg_replace('/[^\d]/', '', (string) ($state ?? 0)))
                                             ->live(onBlur: true),
+
                                     ]),
 
                                 Grid::make(2)
                                     ->schema([
                                         TextInput::make('per_kg_rate')
                                             ->label('هزینه اضافه هر کیلوگرم (ریال)')
+                                            ->mask(RawJs::make('$money($input)'))
+                                            ->stripCharacters(',')
                                             ->numeric()
-                                            ->formatStateUsing(fn ($state) => filled($state) ? number_format((int) $state) : '')
-                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) str_replace(',', '', $state) : null)
+                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) preg_replace('/[^\d]/', '', (string) $state) : null)
+                                            ->nullable(),
+
+                                        TextInput::make('free_shipping_min')
+                                            ->label('آستانه ارسال رایگان (ریال)')
+                                            ->mask(RawJs::make('$money($input)'))
+                                            ->stripCharacters(',')
+                                            ->numeric()
+                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) preg_replace('/[^\d]/', '', (string) $state) : null)
                                             ->nullable(),
 
                                         TextInput::make('free_shipping_min')
@@ -167,16 +179,18 @@ class ShippingMethodForm
                                     ->schema([
                                         TextInput::make('min_cart_total')
                                             ->label('حداقل مبلغ سبد (ریال)')
+                                            ->mask(RawJs::make('$money($input)'))
+                                            ->stripCharacters(',')
                                             ->numeric()
-                                            ->formatStateUsing(fn ($state) => filled($state) ? number_format((int) $state) : '')
-                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) str_replace(',', '', $state) : null)
+                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) preg_replace('/[^\d]/', '', (string) $state) : null)
                                             ->nullable(),
 
                                         TextInput::make('max_cart_total')
                                             ->label('حداکثر مبلغ سبد (ریال)')
+                                            ->mask(RawJs::make('$money($input)'))
+                                            ->stripCharacters(',')
                                             ->numeric()
-                                            ->formatStateUsing(fn ($state) => filled($state) ? number_format((int) $state) : '')
-                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) str_replace(',', '', $state) : null)
+                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) preg_replace('/[^\d]/', '', (string) $state) : null)
                                             ->nullable(),
                                     ]),
 
