@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\HesabfaWebhookController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\OrderSubmitController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PriceBoardController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
@@ -70,5 +71,11 @@ Route::middleware('web')->group(function () {
         Route::put('/{productId}', [CartController::class, 'update']);
         Route::delete('/{productId}', [CartController::class, 'destroy']);
         Route::delete('/', [CartController::class, 'clear']);
+    });
+
+    Route::middleware('throttle:10,1')->prefix('payment')->group(function () {
+        Route::post('/init', [PaymentController::class, 'init']);
+        Route::get('/callback/{orderId}/{gateway}', [PaymentController::class, 'callback'])->name('payment.callback');
+        Route::get('/status/{orderId}', [PaymentController::class, 'status'])->middleware('auth');
     });
 });
