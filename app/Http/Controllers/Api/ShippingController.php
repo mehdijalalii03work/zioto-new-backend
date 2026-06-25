@@ -13,13 +13,33 @@ class ShippingController extends Controller
     public function methods(Request $request): JsonResponse
     {
         $cityId = $request->input('city_id');
+        $provinceId = $request->input('province_id');
 
         $methods = ShippingMethod::active()->with('rates')->get();
 
-        if ($cityId) {
-            $methods = $methods->filter(function (ShippingMethod $method) use ($cityId) {
+        if ($cityId || $provinceId) {
+            $methods = $methods->filter(function (ShippingMethod $method) use ($cityId, $provinceId) {
                 $exclude = $method->exclude_cities ?? [];
-                return ! in_array((int) $cityId, array_map('intval', $exclude));
+                if ($cityId && in_array((int) $cityId, array_map('intval', $exclude))) {
+                    return false;
+                }
+
+                $rates = $method->rates;
+                if ($rates->isEmpty()) {
+                    return true;
+                }
+
+                $rateType = $rates->first()->rate_type;
+
+                if ($rateType === 'province' && $provinceId) {
+                    return $rates->contains('province_id', (int) $provinceId);
+                }
+
+                if ($rateType === 'city' && $cityId) {
+                    return $rates->contains('city_id', (int) $cityId);
+                }
+
+                return true;
             });
         }
 
