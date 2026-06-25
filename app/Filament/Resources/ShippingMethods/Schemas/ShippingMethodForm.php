@@ -9,6 +9,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use App\Models\City;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Filament\Support\Icons\Heroicon;
@@ -73,6 +74,16 @@ class ShippingMethodForm
                                     ->label('حضوری')
                                     ->default(false),
                             ]),
+
+                        Select::make('exclude_cities')
+                            ->label('عدم نمایش در شهرهای')
+                            ->placeholder('انتخاب کنید...')
+                            ->helperText('شهرهایی که انتخاب می‌کنید، این روش ارسال در آنها نمایش داده نمی‌شود')
+                            ->multiple()
+                            ->options(fn () => City::orderBy('name')->pluck('name', 'id')->toArray())
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
                     ])
                     ->columnSpanFull(),
 

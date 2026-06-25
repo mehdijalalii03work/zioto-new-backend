@@ -10,12 +10,21 @@ use Illuminate\Http\Request;
 
 class ShippingController extends Controller
 {
-    public function methods(): JsonResponse
+    public function methods(Request $request): JsonResponse
     {
+        $cityId = $request->input('city_id');
+
         $methods = ShippingMethod::active()->with('rates')->get();
 
+        if ($cityId) {
+            $methods = $methods->filter(function (ShippingMethod $method) use ($cityId) {
+                $exclude = $method->exclude_cities ?? [];
+                return ! in_array((int) $cityId, array_map('intval', $exclude));
+            });
+        }
+
         return response()->json([
-            'methods' => $methods,
+            'methods' => $methods->values(),
         ]);
     }
 

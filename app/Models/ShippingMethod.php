@@ -14,7 +14,7 @@ class ShippingMethod extends Model
 
     protected $fillable = [
         'id', 'code', 'name', 'description', 'icon',
-        'is_active', 'is_pickup', 'sort_order',
+        'is_active', 'is_pickup', 'sort_order', 'exclude_cities',
     ];
 
     protected function casts(): array
@@ -23,6 +23,7 @@ class ShippingMethod extends Model
             'is_active' => 'boolean',
             'is_pickup' => 'boolean',
             'sort_order' => 'integer',
+            'exclude_cities' => 'array',
         ];
     }
 
