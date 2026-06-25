@@ -102,6 +102,8 @@ class ShippingMethodForm
                                             ->label('هزینه پایه (ریال)')
                                             ->required()
                                             ->numeric()
+                                            ->formatStateUsing(fn ($state) => filled($state) ? number_format((int) $state) : '')
+                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) str_replace(',', '', $state) : null)
                                             ->live(onBlur: true),
                                     ]),
 
@@ -110,11 +112,15 @@ class ShippingMethodForm
                                         TextInput::make('per_kg_rate')
                                             ->label('هزینه اضافه هر کیلوگرم (ریال)')
                                             ->numeric()
+                                            ->formatStateUsing(fn ($state) => filled($state) ? number_format((int) $state) : '')
+                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) str_replace(',', '', $state) : null)
                                             ->nullable(),
 
                                         TextInput::make('free_shipping_min')
                                             ->label('آستانه ارسال رایگان (ریال)')
                                             ->numeric()
+                                            ->formatStateUsing(fn ($state) => filled($state) ? number_format((int) $state) : '')
+                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) str_replace(',', '', $state) : null)
                                             ->nullable(),
 
                                         TextInput::make('tax_rate')
@@ -162,11 +168,15 @@ class ShippingMethodForm
                                         TextInput::make('min_cart_total')
                                             ->label('حداقل مبلغ سبد (ریال)')
                                             ->numeric()
+                                            ->formatStateUsing(fn ($state) => filled($state) ? number_format((int) $state) : '')
+                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) str_replace(',', '', $state) : null)
                                             ->nullable(),
 
                                         TextInput::make('max_cart_total')
                                             ->label('حداکثر مبلغ سبد (ریال)')
                                             ->numeric()
+                                            ->formatStateUsing(fn ($state) => filled($state) ? number_format((int) $state) : '')
+                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) str_replace(',', '', $state) : null)
                                             ->nullable(),
                                     ]),
 
