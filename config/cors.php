@@ -1,17 +1,37 @@
 <?php
 
 return [
-    'paths' => ['api/*'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout', 'register', '*'],
+
     'allowed_methods' => ['*'],
+
     'allowed_origins' => [
         env('FRONTEND_URL', 'http://localhost:3000'),
         'https://sawiss.com',
         'https://new.sawiss.com',
         'https://pay.sawiss.com',
+        'http://localhost:3000',
+        'http://localhost:8000',
     ],
+
     'allowed_origins_patterns' => [],
-    'allowed_headers' => ['*'],
+
+    'allowed_headers' => [
+        'Content-Type',
+        'X-Requested-With',
+        'X-CSRF-TOKEN',
+        'Authorization',
+        'Accept',
+        'Origin',
+        'Access-Control-Allow-Origin',
+        'X-XSRF-TOKEN',
+        'Cache-Control',
+        'Pragma',
+    ],
+
     'exposed_headers' => [],
-    'max_age' => 0,
+
+    'max_age' => 86400,
+
     'supports_credentials' => true,
 ];
