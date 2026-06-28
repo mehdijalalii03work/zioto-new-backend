@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Modules\Product\Models\Product;
@@ -14,6 +15,11 @@ class ProductController extends Controller
         $price = (int) $p->price;
 
         $primaryImage = $p->images->firstWhere('is_primary', true) ?? $p->images->first();
+
+        $taxKey = str_starts_with($p->price_board_item ?? '', 'Gold') ? 'tax_gold' : 'tax_silver';
+        $taxRate = (float) Setting::getValue($taxKey, 0);
+        $priceBeforeTax = $taxRate > 0 ? round($price / (1 + $taxRate / 100)) : $price;
+        $taxAmount = $price - $priceBeforeTax;
 
         return [
             'id' => $p->id,
@@ -32,6 +38,9 @@ class ProductController extends Controller
             'ayar_label' => $p->ayar?->label() ?? null,
             'weight' => $p->weight ? $p->weight.' گرم' : '',
             'price' => $price,
+            'price_before_tax' => $priceBeforeTax,
+            'tax_amount' => $taxAmount,
+            'tax_rate' => $taxRate,
             'old' => null,
             'badge' => null,
             'stock' => $p->stock_quantity > 0,
@@ -87,7 +96,7 @@ class ProductController extends Controller
         $data['sku'] = $product->sku;
         $data['images'] = $product->images->sortBy('sort_order')->map(fn ($img) => [
             'id' => $img->id,
-            'path' => asset('storage/' . $img->image_path),
+            'path' => asset('storage/'.$img->image_path),
             'alt' => $img->alt ?? '',
             'is_primary' => $img->is_primary,
         ]);

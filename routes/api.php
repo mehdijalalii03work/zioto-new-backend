@@ -73,6 +73,12 @@ Route::middleware('web')->group(function () {
     Route::get('/products', [ProductController::class, 'index']);
     Route::get('/products/{id}', [ProductController::class, 'show']);
 
+    Route::get('/settings/tax', function () {
+        return response()->json([
+            'tax_rate' => \App\Models\Setting::getValue('tax_rate', 9),
+        ]);
+    });
+
     Route::prefix('blog')->group(function () {
         Route::get('/posts', [BlogController::class, 'posts']);
         Route::get('/posts/{slugOrId}', [BlogController::class, 'post']);
