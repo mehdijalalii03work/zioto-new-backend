@@ -3,13 +3,24 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\ShahkarService;
+use App\Services\SmsIrService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
+    private const OTP_TTL = 180;
+
+    private const SHAHKAR_TOKEN_TTL = 600;
+
+    public function __construct(
+        private readonly SmsIrService $sms,
+        private readonly ShahkarService $shahkar
+    ) {}
     public function show(): JsonResponse
     {
         $user = Auth::user();
@@ -83,5 +94,130 @@ class ProfileController extends Controller
                 'birth_date' => $user->birth_date,
             ],
         ]);
+    }
+
+    public function changePhoneSendOtp(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'phone' => ['required', 'string', 'regex:/^09\d{9}$/'],
+        ]);
+
+        $newPhone = $validated['phone'];
+        $user = Auth::user();
+
+        if ($newPhone === $user->phone) {
+            return response()->json([
+                'message' => 'شماره جدید با شماره فعلی یکسان است',
+            ], 422);
+        }
+
+        $existingUser = \App\Models\User::where('phone', $newPhone)->where('id', '!=', $user->id)->first();
+        if ($existingUser) {
+            return response()->json([
+                'message' => 'این شماره تلفن قبلاً ثبت شده است',
+            ], 422);
+        }
+
+        $key = "change_phone_otp:{$newPhone}";
+        if (Cache::has($key)) {
+            return response()->json([
+                'message' => 'کد تایید قبلی هنوز معتبر است، لطفاً پس از ۲ دقیقه دوباره تلاش کنید',
+            ], 429);
+        }
+
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        Cache::put($key, $code, self::OTP_TTL);
+
+        $sent = $this->sms->sendVerificationCode($newPhone, $code);
+
+        if (! $sent) {
+            Cache::forget($key);
+
+            return response()->json([
+                'message' => 'ارسال پیامک با مشکل مواجه شد، لطفا دقایقی دیگر تلاش کنید',
+            ], 500);
+        }
+
+        $token = \Illuminate\Support\Str::random(64);
+        Cache::put("change_phone_token:{$token}", $newPhone, self::SHAHKAR_TOKEN_TTL);
+
+        return response()->json([
+            'message' => 'کد تایید با موفقیت ارسال شد',
+            'token' => $token,
+        ]);
+    }
+
+    public function changePhoneVerify(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+
+        $token = $validated['token'];
+        $code = $validated['code'];
+
+        $newPhone = Cache::pull("change_phone_token:{$token}");
+        if (! $newPhone) {
+            return response()->json([
+                'message' => 'توکن نامعتبر یا منقضی شده است، لطفاً مجدداً تلاش کنید',
+            ], 422);
+        }
+
+        $otpKey = "change_phone_otp:{$newPhone}";
+        $storedCode = Cache::get($otpKey);
+
+        if (! $storedCode || $storedCode !== $code) {
+            return response()->json([
+                'message' => 'کد تایید نامعتبر یا منقضی شده است',
+            ], 422);
+        }
+
+        Cache::forget($otpKey);
+
+        $user = Auth::user();
+
+        $normalizedMobile = $this->normalizeMobile($newPhone);
+        $result = $this->shahkar->verify($user->national_code, $normalizedMobile);
+
+        if (! $result['success']) {
+            return response()->json([
+                'message' => $result['message'] ?? 'خطا در احراز هویت',
+            ], 422);
+        }
+
+        if (! ($result['matched'] ?? false)) {
+            return response()->json([
+                'message' => 'شماره موبایل جدید با کد ملی شما مطابقت ندارد',
+            ], 422);
+        }
+
+        $user->update([
+            'phone' => $newPhone,
+            'phone_verified_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'شماره تلفن با موفقیت تغییر کرد',
+            'user' => [
+                'id' => $user->id,
+                'phone' => $user->phone,
+            ],
+        ]);
+    }
+
+    private function normalizeMobile(string $phone): string
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+
+        if (strlen($phone) === 13 && str_starts_with($phone, '98')) {
+            $phone = '0'.substr($phone, 2);
+        }
+
+        if (strlen($phone) === 12 && str_starts_with($phone, '+98')) {
+            $phone = '0'.substr($phone, 3);
+        }
+
+        return $phone;
     }
 }
