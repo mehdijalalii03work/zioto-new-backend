@@ -3,6 +3,7 @@
 namespace Modules\Order\Models;
 
 use App\Models\HesabfaSyncLog;
+use App\Models\OrderNote;
 use App\Models\OrderShipping;
 use App\Models\User;
 use App\Models\UserAddress;
@@ -27,6 +28,7 @@ class Order extends Model
         'user_address_id',
         'shipping_address_snapshot',
         'notes',
+        'cancel_reason',
         'hesabfa_contact_code',
         'hesabfa_invoice_number',
         'hesabfa_invoice_reference',
@@ -64,5 +66,19 @@ class Order extends Model
     public function syncLogs(): HasMany
     {
         return $this->hasMany(HesabfaSyncLog::class);
+    }
+
+    public function notes(): HasMany
+    {
+        return $this->hasMany(OrderNote::class)->latest();
+    }
+
+    public function addNote(string $note, string $type = 'general', bool $isCustomerNote = false): OrderNote
+    {
+        return $this->notes()->create([
+            'note' => $note,
+            'type' => $type,
+            'is_customer_note' => $isCustomerNote,
+        ]);
     }
 }

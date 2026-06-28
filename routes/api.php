@@ -23,12 +23,12 @@ Route::middleware('web')->group(function () {
         Route::post('/logout', [OtpController::class, 'logout']);
     });
 
-    Route::get('/profile', [ProfileController::class, 'show'])->middleware('auth');
-    Route::put('/profile', [ProfileController::class, 'update'])->middleware('auth');
-    Route::post('/profile/change-phone/send-otp', [ProfileController::class, 'changePhoneSendOtp'])->middleware('auth', 'throttle:otp');
-    Route::post('/profile/change-phone/verify', [ProfileController::class, 'changePhoneVerify'])->middleware('auth', 'throttle:shahkar');
+    Route::get('/profile', [ProfileController::class, 'show'])->middleware('auth.token');
+    Route::put('/profile', [ProfileController::class, 'update'])->middleware('auth.token');
+    Route::post('/profile/change-phone/send-otp', [ProfileController::class, 'changePhoneSendOtp'])->middleware('auth.token', 'throttle:otp');
+    Route::post('/profile/change-phone/verify', [ProfileController::class, 'changePhoneVerify'])->middleware('auth.token', 'throttle:shahkar');
 
-    Route::middleware('auth', 'throttle:30,1')->prefix('addresses')->group(function () {
+    Route::middleware('auth.token', 'throttle:30,1')->prefix('addresses')->group(function () {
         Route::get('/', [AddressController::class, 'index']);
         Route::post('/', [AddressController::class, 'store']);
         Route::get('/{address}', [AddressController::class, 'show']);
@@ -48,11 +48,13 @@ Route::middleware('web')->group(function () {
         Route::post('/calculate', [ShippingController::class, 'calculate']);
     });
 
-    Route::get('/orders', [OrderSubmitController::class, 'index'])->middleware('auth');
+    Route::get('/orders', [OrderSubmitController::class, 'index'])->middleware('auth.token');
+
+    Route::get('/orders/{orderId}/notes', [OrderSubmitController::class, 'notes'])->middleware('auth.token');
 
     Route::post('/orders', [OrderSubmitController::class, 'store']);
 
-    Route::middleware('auth')->prefix('wishlist')->group(function () {
+    Route::middleware('auth.token')->prefix('wishlist')->group(function () {
         Route::get('/', [WishlistController::class, 'index']);
         Route::post('/', [WishlistController::class, 'store']);
         Route::delete('/{productId}', [WishlistController::class, 'destroy']);
@@ -75,7 +77,7 @@ Route::middleware('web')->group(function () {
         Route::get('/categories', [BlogController::class, 'categories']);
     });
 
-    Route::middleware('auth', 'throttle:60,1')->prefix('cart')->group(function () {
+    Route::middleware('auth.token', 'throttle:60,1')->prefix('cart')->group(function () {
         Route::get('/', [CartController::class, 'index']);
         Route::post('/', [CartController::class, 'store']);
         Route::put('/{productId}', [CartController::class, 'update']);
@@ -86,6 +88,6 @@ Route::middleware('web')->group(function () {
     Route::middleware('throttle:10,1')->prefix('payment')->group(function () {
         Route::post('/init', [PaymentController::class, 'init']);
         Route::get('/callback/{orderId}/{gateway}', [PaymentController::class, 'callback'])->name('payment.callback');
-        Route::get('/status/{orderId}', [PaymentController::class, 'status'])->middleware('auth');
+        Route::get('/status/{orderId}', [PaymentController::class, 'status'])->middleware('auth.token');
     });
 });

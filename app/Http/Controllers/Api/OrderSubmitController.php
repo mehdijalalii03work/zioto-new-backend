@@ -24,6 +24,21 @@ class OrderSubmitController extends Controller
         ]);
     }
 
+    public function notes(Request $request, int $orderId): JsonResponse
+    {
+        $order = Order::where('id', $orderId)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $notes = $order->notes()
+            ->where('is_customer_note', true)
+            ->get();
+
+        return response()->json([
+            'notes' => $notes,
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([

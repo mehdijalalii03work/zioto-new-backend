@@ -70,8 +70,11 @@ class HesabfaObserver
                 'hesabfa_synced_at' => now(),
             ]);
 
-            $order->notes = trim(($order->notes ? $order->notes."\n" : '')."شماره فاکتور حسابفا: {$invoiceResult['invoice_number']}");
-            $order->saveQuietly();
+            $order->addNote(
+                "فاکتور با موفقیت به حسابفا ارسال شد.\nشماره فاکتور: {$invoiceResult['invoice_number']}\nکد مرجع: {$invoiceResult['reference']}",
+                'hesabfa',
+                true
+            );
 
             return ['success' => true, 'message' => 'سفارش با موفقیت به حسابفا ارسال شد'];
 
@@ -81,6 +84,11 @@ class HesabfaObserver
                 'message' => $e->getMessage(),
             ]);
             $this->log($order, 'full_sync', 'failed', null, $e->getMessage());
+
+            $order->addNote(
+                "خطا در ارسال به حسابفا: {$e->getMessage()}",
+                'hesabfa'
+            );
 
             return ['success' => false, 'message' => 'خطا در ارسال به حسابفا: '.$e->getMessage()];
         }

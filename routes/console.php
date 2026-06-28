@@ -7,3 +7,7 @@ Schedule::command('priceboard:sync')
     ->withoutOverlapping(5)
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/priceboard-sync.log'));
+
+Schedule::command('orders:cancel-unpaid')
+    ->everyMinute()
+    ->withoutOverlapping(1);

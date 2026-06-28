@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
 use Shetabit\Multipay\Exceptions\InvalidPaymentException;
@@ -120,6 +120,12 @@ class PaymentController extends Controller
                 'status' => 'confirmed',
             ]);
 
+            $order->addNote(
+                "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: " . number_format($order->total_amount) . " تومان",
+                'payment',
+                true
+            );
+
             return redirect($frontendUrl.'/confirm');
 
         } catch (InvalidPaymentException $e) {
@@ -129,6 +135,11 @@ class PaymentController extends Controller
             ]);
 
             $order->update(['payment_status' => 'failed']);
+
+            $order->addNote(
+                "پرداخت ناموفق بود. خطا: {$e->getMessage()} | درگاه: {$gateway}",
+                'payment'
+            );
 
             return redirect($frontendUrl.'/checkout');
 

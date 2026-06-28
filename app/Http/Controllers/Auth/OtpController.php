@@ -75,11 +75,16 @@ class OtpController extends Controller
         $user = User::where('phone', $phone)->first();
 
         if ($user) {
-            $user->update(['phone_verified_at' => now()]);
+            $apiToken = Str::random(64);
+            $user->update([
+                'phone_verified_at' => now(),
+                'api_token' => $apiToken,
+            ]);
             Auth::login($user);
 
             return response()->json([
                 'message' => 'با موفقیت وارد شدید',
+                'token' => $apiToken,
                 'user' => [
                     'id' => $user->id,
                     'first_name' => $user->first_name,
@@ -138,6 +143,8 @@ class OtpController extends Controller
             ], 422);
         }
 
+        $apiToken = Str::random(64);
+
         $user = User::create([
             'name' => $firstName.' '.$lastName,
             'first_name' => $firstName,
@@ -149,12 +156,14 @@ class OtpController extends Controller
             'national_code' => $nationalCode,
             'shahkar_verified' => true,
             'birth_date' => $birthDate,
+            'api_token' => $apiToken,
         ]);
 
         Auth::login($user);
 
         return response()->json([
             'message' => 'احراز هویت با موفقیت انجام شد',
+            'token' => $apiToken,
             'user' => [
                 'id' => $user->id,
                 'first_name' => $user->first_name,
