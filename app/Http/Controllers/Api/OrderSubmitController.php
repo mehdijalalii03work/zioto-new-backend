@@ -14,13 +14,25 @@ class OrderSubmitController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $orders = Order::with('shipping')
+        $orders = Order::with(['shipping', 'items', 'address.province', 'address.city'])
             ->where('user_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json([
             'orders' => $orders,
+        ]);
+    }
+
+    public function show(Request $request, int $orderId): JsonResponse
+    {
+        $order = Order::with(['shipping', 'items', 'address.province', 'address.city', 'notes'])
+            ->where('id', $orderId)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        return response()->json([
+            'order' => $order,
         ]);
     }
 

@@ -50,6 +50,8 @@ Route::middleware('web')->group(function () {
 
     Route::get('/orders', [OrderSubmitController::class, 'index'])->middleware('auth.token');
 
+    Route::get('/orders/{orderId}', [OrderSubmitController::class, 'show'])->middleware('auth.token');
+
     Route::get('/orders/{orderId}/notes', [OrderSubmitController::class, 'notes'])->middleware('auth.token');
 
     Route::post('/orders', [OrderSubmitController::class, 'store']);
