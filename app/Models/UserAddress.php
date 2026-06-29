@@ -18,7 +18,7 @@ class UserAddress extends Model
         'city_id',
         'district',
         'postal_code',
-        'address_line',
+        'address_line', 'plate', 'unit',
         'receiver_name',
         'receiver_phone',
         'receiver_national_code',
@@ -71,6 +71,11 @@ class UserAddress extends Model
             $this->district,
             $this->address_line,
         ];
+
+        if ($this->plate) {
+            $unitPart = $this->unit ? ' واحد ' . $this->unit : '';
+            $parts[] = 'پلاک ' . $this->plate . $unitPart;
+        }
 
         $address = implode('، ', array_filter($parts));
 

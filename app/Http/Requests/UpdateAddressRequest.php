@@ -20,6 +20,8 @@ class UpdateAddressRequest extends FormRequest
             'district' => ['nullable', 'string', 'max:100'],
             'postal_code' => ['nullable', 'regex:/^\d{10}$/'],
             'address_line' => ['required', 'string', 'min:10', 'max:1000'],
+            'plate' => ['required', 'string', 'max:20'],
+            'unit' => ['nullable', 'string', 'max:20'],
             'receiver_name' => ['nullable', 'string', 'max:100'],
             'receiver_phone' => ['nullable', 'regex:/^09\d{9}$/'],
             'receiver_national_code' => ['nullable', 'string', 'max:10'],
@@ -40,6 +42,7 @@ class UpdateAddressRequest extends FormRequest
             'city_id.exists' => 'شهر انتخاب شده معتبر نیست',
             'postal_code.regex' => 'کد پستی باید ۱۰ رقم باشد',
             'address_line.required' => 'آدرس کامل الزامی است',
+            'plate.required' => 'پلاک الزامی است',
             'address_line.min' => 'آدرس باید حداقل ۱۰ کاراکتر باشد',
             'receiver_phone.regex' => 'شماره تلفن معتبر نیست',
         ];
