@@ -49,6 +49,8 @@ class ShippingController extends Controller
                 $method->setRelation('rates', $this->filterMatchingRates($method->rates, $rateType, $cityId, $provinceId));
             }
             return $method;
+        })->filter(function (ShippingMethod $method) {
+            return $method->rates->isNotEmpty();
         });
 
         return response()->json([
