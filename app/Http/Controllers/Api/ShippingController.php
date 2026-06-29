@@ -43,6 +43,14 @@ class ShippingController extends Controller
             });
         }
 
+        $methods = $methods->map(function (ShippingMethod $method) use ($cityId, $provinceId) {
+            if (($cityId || $provinceId) && $method->rates->isNotEmpty()) {
+                $rateType = $method->rates->first()->rate_type;
+                $method->setRelation('rates', $this->filterMatchingRates($method->rates, $rateType, $cityId, $provinceId));
+            }
+            return $method;
+        });
+
         return response()->json([
             'methods' => $methods->values(),
         ]);
@@ -153,6 +161,17 @@ class ShippingController extends Controller
             'free_shipping' => $freeShipping,
             'breakdown' => $breakdown,
         ]);
+    }
+
+    private function filterMatchingRates($rates, string $rateType, ?int $cityId, ?int $provinceId)
+    {
+        return $rates->filter(function (ShippingRate $rate) use ($rateType, $cityId, $provinceId) {
+            return match ($rateType) {
+                'province' => $provinceId && (int) $rate->province_id === (int) $provinceId,
+                'city' => $cityId && (int) $rate->city_id === (int) $cityId,
+                default => true,
+            };
+        })->values();
     }
 
     private function findMatchingRate(ShippingMethod $method, float $totalWeight, int $cartTotal, ?int $provinceId, ?int $cityId): ?ShippingRate
