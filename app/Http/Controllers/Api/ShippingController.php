@@ -35,14 +35,29 @@ class ShippingController extends Controller
                 $rateType = $rates->first()->rate_type;
 
                 if ($rateType === 'province' && $provinceId) {
-                    return $rates->contains('province_id', (int) $provinceId);
+                    return $rates->contains(function (ShippingRate $r) use ($provinceId) {
+                        return is_null($r->province_id) || (int) $r->province_id === (int) $provinceId;
+                    });
                 }
 
                 if ($rateType === 'city' && $cityId) {
-                    return $rates->contains('city_id', (int) $cityId);
+                    return $rates->contains(function (ShippingRate $r) use ($cityId) {
+                        return is_null($r->city_id) || (int) $r->city_id === (int) $cityId;
+                    });
                 }
 
-                return true;
+                if ($rates->contains(function (ShippingRate $r) use ($cityId, $provinceId) {
+                    return ($r->province_id && $provinceId && (int) $r->province_id === (int) $provinceId)
+                        || ($r->city_id && $cityId && (int) $r->city_id === (int) $cityId);
+                })) {
+                    return true;
+                }
+
+                if ($rates->every(fn (ShippingRate $r) => is_null($r->province_id) && is_null($r->city_id))) {
+                    return true;
+                }
+
+                return false;
             });
         }
 
@@ -172,10 +187,10 @@ class ShippingController extends Controller
     {
         return $rates->filter(function (ShippingRate $rate) use ($rateType, $cityId, $provinceId) {
             if ($rateType === 'province' && $provinceId) {
-                return (int) $rate->province_id === (int) $provinceId;
+                return is_null($rate->province_id) || (int) $rate->province_id === (int) $provinceId;
             }
             if ($rateType === 'city' && $cityId) {
-                return (int) $rate->city_id === (int) $cityId;
+                return is_null($rate->city_id) || (int) $rate->city_id === (int) $cityId;
             }
             if ($rate->province_id && $provinceId) {
                 return (int) $rate->province_id === (int) $provinceId;
