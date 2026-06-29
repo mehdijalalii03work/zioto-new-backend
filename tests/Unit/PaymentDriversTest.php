@@ -108,7 +108,7 @@ class PaymentDriversTest extends TestCase
 
     public function test_kamanlend_can_be_instantiated(): void
     {
-        $invoice = new Invoice();
+        $invoice = new Invoice;
         $settings = $this->config['drivers']['kamanlend'];
 
         $driver = new Kamanlend($invoice, $settings);
@@ -119,7 +119,7 @@ class PaymentDriversTest extends TestCase
 
     public function test_smartis_can_be_instantiated(): void
     {
-        $invoice = new Invoice();
+        $invoice = new Invoice;
         $settings = $this->config['drivers']['smartis'];
 
         $driver = new Smartis($invoice, $settings);
@@ -130,7 +130,7 @@ class PaymentDriversTest extends TestCase
 
     public function test_kamanlend_default_sale_items_builder(): void
     {
-        $invoice = new Invoice();
+        $invoice = new Invoice;
         $invoice->amount(100000);
 
         $settings = $this->config['drivers']['kamanlend'];

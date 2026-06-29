@@ -44,17 +44,8 @@ class PriceBoardService
                 return $this->fallbackToCache($cached);
             }
 
-            if (isset($data['products']) && is_array($data['products'])) {
-                foreach ($data['products'] as &$product) {
-                    if (isset($product['sellPrice'])) {
-                        $product['sellPrice'] = (int) round($product['sellPrice'] / 10);
-                    }
-                    if (isset($product['buyPrice'])) {
-                        $product['buyPrice'] = (int) round($product['buyPrice'] / 10);
-                    }
-                }
-                unset($product);
-            }
+
+            // prices are stored in Rials (as received from API)
 
             Cache::put(self::CACHE_KEY, $data, self::CACHE_TTL);
             Cache::put(self::LAST_SYNC_KEY, now(), self::CACHE_TTL);
@@ -81,7 +72,11 @@ class PriceBoardService
     {
         $value = Cache::get(self::LAST_SYNC_KEY);
 
-        return $value ? Carbon::parse($value) : null;
+        if (! $value || $value instanceof \__PHP_Incomplete_Class || ! is_string($value)) {
+            return null;
+        }
+
+        return Carbon::parse($value);
     }
 
     private function fallbackToCache(mixed $cached): array

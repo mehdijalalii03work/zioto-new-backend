@@ -2,6 +2,10 @@
 
 namespace App\Filament\Resources\Products\RelationManagers;
 
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -58,17 +62,17 @@ class ProductImagesRelationManager extends RelationManager
                     ->limit(30),
             ])
             ->headerActions([
-                \Filament\Actions\CreateAction::make()
+                CreateAction::make()
                     ->label('افزودن تصویر'),
             ])
             ->actions([
-                \Filament\Actions\EditAction::make()
+                EditAction::make()
                     ->label('ویرایش'),
-                \Filament\Actions\DeleteAction::make()
+                DeleteAction::make()
                     ->label('حذف'),
             ])
             ->bulkActions([
-                \Filament\Actions\DeleteBulkAction::make()
+                DeleteBulkAction::make()
                     ->label('حذف انتخاب شده‌ها'),
             ])
             ->reorderable('sort_order')
