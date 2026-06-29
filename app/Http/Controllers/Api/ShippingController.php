@@ -166,11 +166,19 @@ class ShippingController extends Controller
     private function filterMatchingRates($rates, string $rateType, ?int $cityId, ?int $provinceId)
     {
         return $rates->filter(function (ShippingRate $rate) use ($rateType, $cityId, $provinceId) {
-            return match ($rateType) {
-                'province' => $provinceId && (int) $rate->province_id === (int) $provinceId,
-                'city' => $cityId && (int) $rate->city_id === (int) $cityId,
-                default => true,
-            };
+            if ($rateType === 'province' && $provinceId) {
+                return (int) $rate->province_id === (int) $provinceId;
+            }
+            if ($rateType === 'city' && $cityId) {
+                return (int) $rate->city_id === (int) $cityId;
+            }
+            if ($rate->province_id && $provinceId) {
+                return (int) $rate->province_id === (int) $provinceId;
+            }
+            if ($rate->city_id && $cityId) {
+                return (int) $rate->city_id === (int) $cityId;
+            }
+            return true;
         })->values();
     }
 
