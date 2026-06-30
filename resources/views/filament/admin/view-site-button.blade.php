@@ -1,6 +1,6 @@
 <x-filament::button
     tag="a"
-    :href="route('landing.home')"
+    :href="route('filament.admin.pages.dashboard')"
     icon="heroicon-o-globe-alt"
     color="gray"
     size="sm"
