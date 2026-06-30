@@ -95,7 +95,7 @@ Route::middleware('web')->group(function () {
 
     Route::middleware('throttle:10,1')->prefix('payment')->group(function () {
         Route::post('/init', [PaymentController::class, 'init']);
-        Route::get('/callback/{orderId}/{gateway}', [PaymentController::class, 'callback'])->name('payment.callback');
+        Route::match(['get', 'post'], '/callback/{orderId}/{gateway}', [PaymentController::class, 'callback'])->name('payment.callback');
         Route::get('/status/{orderId}', [PaymentController::class, 'status'])->middleware('auth.token');
     });
 });
