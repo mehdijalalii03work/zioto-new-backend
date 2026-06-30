@@ -66,7 +66,7 @@ class ManageSettings extends Page
                             ->label('مالیات')
                             ->icon('heroicon-o-banknotes')
                             ->schema([
-                                Section::make('درصد مالیات فلزات')
+                                Section::make('درصد مالیات')
                                     ->description('برای هر نوع فلز می‌توانید درصد مالیات جداگانه تعیین کنید')
                                     ->icon('heroicon-o-calculator')
                                     ->schema([
