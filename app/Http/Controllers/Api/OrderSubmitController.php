@@ -84,6 +84,9 @@ class OrderSubmitController extends Controller
             ];
         }
 
+        $shippingCost = $validated['shipping_cost'] ?? 0;
+        $totalAmount += $shippingCost;
+
         $orderNumber = 'ZT-'.now()->format('YmdHis');
 
         $order = Order::create([

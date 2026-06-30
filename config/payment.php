@@ -16,7 +16,7 @@ $customConfig = [
             'merchantId' => env('PARSIAN_MERCHANT_ID', ''),
             'callbackUrl' => '',
             'description' => 'پرداخت از طریق درگاه پارسیان',
-            'currency' => 'T',
+            'currency' => 'R',
         ],
         'digipay' => [
             'apiPaymentUrl' => env('DIGIPAY_API_URL', 'https://api.mydigipay.com'),
