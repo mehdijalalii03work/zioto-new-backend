@@ -37,7 +37,7 @@ class OtpController extends Controller
             ], 429);
         }
 
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $code = str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
 
         Cache::put($key, $code, self::OTP_TTL);
 

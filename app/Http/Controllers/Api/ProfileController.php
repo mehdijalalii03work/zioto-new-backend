@@ -125,7 +125,7 @@ class ProfileController extends Controller
             ], 429);
         }
 
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $code = str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
         Cache::put($key, $code, self::OTP_TTL);
 
         $sent = $this->sms->sendVerificationCode($newPhone, $code);
@@ -151,7 +151,7 @@ class ProfileController extends Controller
     {
         $validated = $request->validate([
             'token' => ['required', 'string'],
-            'code' => ['required', 'string', 'size:6'],
+            'code' => ['required', 'string', 'size:5'],
         ]);
 
         $token = $validated['token'];

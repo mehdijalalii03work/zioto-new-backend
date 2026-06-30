@@ -15,7 +15,7 @@ class VerifyOtpRequest extends FormRequest
     {
         return [
             'phone' => ['required', 'string', 'regex:/^09\d{9}$/'],
-            'code' => ['required', 'string', 'size:6'],
+            'code' => ['required', 'string', 'size:5'],
         ];
     }
 
@@ -25,7 +25,7 @@ class VerifyOtpRequest extends FormRequest
             'phone.required' => 'شماره موبایل الزامی است',
             'phone.regex' => 'شماره موبایل معتبر نیست',
             'code.required' => 'کد تایید الزامی است',
-            'code.size' => 'کد تایید باید ۶ رقم باشد',
+            'code.size' => 'کد تایید باید ۵ رقم باشد',
         ];
     }
 }
