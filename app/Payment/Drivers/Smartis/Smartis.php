@@ -30,7 +30,7 @@ class Smartis extends Driver
         $this->authenticate();
 
         $phone = $this->invoice->getDetails()['phone'] ?? '';
-        $referenceId = $this->invoice->getDetails()['referenceId'] ?? (string) $this->invoice->getUuid();
+        $referenceId = $this->invoice->getDetails()['referenceId'] ?? str_replace('-', '', (string) $this->invoice->getUuid());
         $useIpg = ($this->settings->useIpg ?? true) ? 'true' : 'false';
         $callbackUrl = $this->settings->callbackUrl;
         $terminalId = $this->settings->terminalId;
