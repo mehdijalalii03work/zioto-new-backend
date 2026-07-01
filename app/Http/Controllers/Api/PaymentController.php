@@ -62,7 +62,7 @@ class PaymentController extends Controller
 
             $paymentUrl = match ($validated['gateway']) {
                 'parsian' => config('payment.drivers.parsian.apiPaymentUrl').'?Token='.$transactionId,
-                'digipay' => 'https://mydigipay.com/digiipay-payment?token='.$transactionId,
+                'digipay' => 'https://web.mydigipay.com/web-pay/tgs/'.$transactionId . '?page=PAYMENT_METHOD&method=PAYMENT_BPG',
                 'kamanlend' => config('payment.drivers.kamanlend.gatewayUrl').'?token='.$transactionId,
                 'smartis' => config('payment.drivers.smartis.paymentPageUrl').'?uuid='.$transactionId,
             };
