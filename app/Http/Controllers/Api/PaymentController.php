@@ -11,6 +11,7 @@ use Modules\Payment\Models\Payment;
 use Shetabit\Multipay\Exceptions\InvalidPaymentException;
 use Shetabit\Multipay\Exceptions\PurchaseFailedException;
 use Shetabit\Multipay\Invoice;
+use Shetabit\Multipay\Payment as ShetabitPayment;
 
 class PaymentController extends Controller
 {
@@ -42,34 +43,32 @@ class PaymentController extends Controller
         ]);
 
         try {
-            $driver = config("payment.map.{$validated['gateway']}");
-            $settings = config("payment.drivers.{$validated['gateway']}");
-            $settings['callbackUrl'] = $callbackUrl;
-            $gateway = new $driver($invoice, $settings);
+            $paymentConfig = config('payment');
+            $payment = new ShetabitPayment($paymentConfig);
+            $payment->via($validated['gateway']);
 
-            $transactionId = $gateway->purchase();
+            $capturedTransactionId = null;
 
-            Payment::create([
-                'user_id' => $request->user()?->id,
-                'order_id' => $order->id,
-                'transaction_id' => $transactionId,
-                'amount' => $order->total_amount,
-                'payment_method' => $order->payment_method,
-                'gateway' => $validated['gateway'],
-                'status' => 'pending',
-                'description' => 'در انتظار پرداخت',
-            ]);
+            $form = $payment->callbackUrl($callbackUrl)
+                ->purchase($invoice, function ($driver, $transactionId) use (&$capturedTransactionId, $request, $order, $validated) {
+                    $capturedTransactionId = $transactionId;
 
-            $paymentUrl = match ($validated['gateway']) {
-                'parsian' => config('payment.drivers.parsian.apiPaymentUrl').'?Token='.$transactionId,
-                'digipay' => 'https://web.mydigipay.com/web-pay/tgs/'.$transactionId . '?page=PAYMENT_METHOD&method=PAYMENT_BPG',
-                'kamanlend' => config('payment.drivers.kamanlend.gatewayUrl').'?token='.$transactionId,
-                'smartis' => config('payment.drivers.smartis.paymentPageUrl').'?uuid='.$transactionId,
-            };
+                    Payment::create([
+                        'user_id' => $request->user()?->id,
+                        'order_id' => $order->id,
+                        'transaction_id' => $transactionId,
+                        'amount' => $order->total_amount,
+                        'payment_method' => $order->payment_method,
+                        'gateway' => $validated['gateway'],
+                        'status' => 'pending',
+                        'description' => 'در انتظار پرداخت',
+                    ]);
+                })
+                ->pay();
 
             return response()->json([
-                'payment_url' => $paymentUrl,
-                'transaction_id' => $transactionId,
+                'payment_url' => $form->getAction(),
+                'transaction_id' => $capturedTransactionId,
             ]);
 
         } catch (PurchaseFailedException $e) {
@@ -84,9 +83,6 @@ class PaymentController extends Controller
         $order = Order::findOrFail($orderId);
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
 
-        $notes = json_decode($order->notes, true) ?? [];
-        $nationalCode = $notes['national_code'] ?? '';
-
         $payment = Payment::where('order_id', $order->id)
             ->where('gateway', $gateway)
             ->where('status', 'pending')
@@ -94,24 +90,30 @@ class PaymentController extends Controller
             ->first();
 
         if (! $payment) {
-            return redirect($frontendUrl.'/checkout');
+            $existingPaid = Payment::where('order_id', $order->id)
+                ->where('gateway', $gateway)
+                ->where('status', 'paid')
+                ->exists();
+
+            return redirect($existingPaid ? $frontendUrl.'/confirm' : $frontendUrl.'/checkout');
         }
 
         try {
-            $invoice = (new Invoice)->amount($order->total_amount)->detail([
-                'nationalCode' => $nationalCode,
-            ]);
-            $invoice->transactionId($payment->transaction_id);
+            $paymentConfig = config('payment');
+            $shetabitPayment = new ShetabitPayment($paymentConfig);
+            $shetabitPayment->via($gateway);
 
-            $driver = config("payment.map.{$gateway}");
-            $settings = config("payment.drivers.{$gateway}");
-            $driverInstance = new $driver($invoice, $settings);
-
-            $receipt = $driverInstance->verify();
+            $receipt = $shetabitPayment
+                ->amount($order->total_amount)
+                ->transactionId($payment->transaction_id)
+                ->verify();
 
             $payment->update([
                 'status' => 'paid',
-                'gateway_response' => $receipt->getReferenceId(),
+                'gateway_response' => [
+                    'reference_id' => $receipt->getReferenceId(),
+                    'details' => $receipt->getDetails(),
+                ],
                 'paid_at' => now(),
             ]);
 
@@ -121,7 +123,7 @@ class PaymentController extends Controller
             ]);
 
             $order->addNote(
-                "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: " . number_format($order->total_amount) . " تومان",
+                "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: ".number_format($order->total_amount).' تومان',
                 'payment',
                 true
             );
@@ -131,7 +133,7 @@ class PaymentController extends Controller
         } catch (InvalidPaymentException $e) {
             $payment->update([
                 'status' => 'failed',
-                'gateway_response' => $e->getMessage(),
+                'gateway_response' => ['error' => $e->getMessage()],
             ]);
 
             $order->update(['payment_status' => 'failed']);

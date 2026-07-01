@@ -8,6 +8,8 @@ use Shetabit\Multipay\Drivers\Parsian\Parsian;
 $packageConfig = require dirname(__DIR__).'/vendor/shetabit/multipay/config/payment.php';
 
 $customConfig = [
+    'default' => env('PAYMENT_DEFAULT_GATEWAY', 'parsian'),
+
     'drivers' => [
         'parsian' => [
             'apiPurchaseUrl' => env('PARSIAN_API_PURCHASE_URL', 'https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl'),
