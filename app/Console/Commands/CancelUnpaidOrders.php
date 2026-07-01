@@ -14,7 +14,10 @@ class CancelUnpaidOrders extends Command
     public function handle(): int
     {
         $cancelled = Order::where('status', 'pending')
-            ->where('payment_status', 'pending')
+            ->where(function ($query) {
+                $query->where('payment_status', 'pending')
+                    ->orWhere('payment_status', 'failed');
+            })
             ->where('created_at', '<', now()->subMinutes(20))
             ->update([
                 'status' => 'cancelled',

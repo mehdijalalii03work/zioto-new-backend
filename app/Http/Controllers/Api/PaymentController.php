@@ -95,7 +95,7 @@ class PaymentController extends Controller
                 ->where('status', 'paid')
                 ->exists();
 
-            return redirect($existingPaid ? $frontendUrl.'/confirm' : $frontendUrl.'/checkout');
+            return redirect($existingPaid ? $frontendUrl.'/confirm?order_id='.$order->id : $frontendUrl.'/checkout');
         }
 
         try {
@@ -128,7 +128,7 @@ class PaymentController extends Controller
                 true
             );
 
-            return redirect($frontendUrl.'/confirm');
+            return redirect($frontendUrl.'/confirm?order_id='.$order->id);
 
         } catch (InvalidPaymentException $e) {
             $payment->update([
@@ -143,10 +143,10 @@ class PaymentController extends Controller
                 'payment'
             );
 
-            return redirect($frontendUrl.'/checkout');
+            return redirect($frontendUrl.'/checkout?payment=failed');
 
         } catch (\Exception $e) {
-            return redirect($frontendUrl.'/checkout');
+            return redirect($frontendUrl.'/checkout?payment=error');
         }
     }
 
