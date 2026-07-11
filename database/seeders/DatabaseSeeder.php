@@ -18,11 +18,12 @@ class DatabaseSeeder extends Seeder
         $this->call([
             ProvinceSeeder::class,
             CitySeeder::class,
+            RolePermissionSeeder::class,
         ]);
 
         User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+            'name' => 'Admin',
+            'email' => 'admin@zioto.ir',
+        ])->assignRole('admin');
     }
 }
