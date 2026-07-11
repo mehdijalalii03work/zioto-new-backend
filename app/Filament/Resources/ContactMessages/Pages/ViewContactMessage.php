@@ -6,8 +6,8 @@ use App\Filament\Resources\ContactMessages\ContactMessageResource;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Infolist;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Schema;
 
 class ViewContactMessage extends ViewRecord
 {
@@ -15,9 +15,9 @@ class ViewContactMessage extends ViewRecord
 
     protected static ?string $title = 'مشاهده پیام';
 
-    public function infolist(Infolist $infolist): Infolist
+    public function infolist(Schema $schema): Schema
     {
-        return $infolist->schema([
+        return $schema->schema([
             Section::make('اطلاعات فرستنده')
                 ->icon('heroicon-o-user')
                 ->schema([
