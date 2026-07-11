@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\Api\ContactMessageController;
 use App\Http\Controllers\Api\HesabfaWebhookController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\OrderSubmitController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ShippingController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Auth\OtpController;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('web')->group(function () {
@@ -75,7 +77,7 @@ Route::middleware('web')->group(function () {
 
     Route::get('/settings/tax', function () {
         return response()->json([
-            'tax_rate' => \App\Models\Setting::getValue('tax_rate', 9),
+            'tax_rate' => Setting::getValue('tax_rate', 9),
         ]);
     });
 
@@ -84,6 +86,8 @@ Route::middleware('web')->group(function () {
         Route::get('/posts/{slugOrId}', [BlogController::class, 'post']);
         Route::get('/categories', [BlogController::class, 'categories']);
     });
+
+    Route::middleware('throttle:5,1')->post('/contact', [ContactMessageController::class, 'store']);
 
     Route::middleware('auth.token', 'throttle:60,1')->prefix('cart')->group(function () {
         Route::get('/', [CartController::class, 'index']);
