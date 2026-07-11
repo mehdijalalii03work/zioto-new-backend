@@ -15,10 +15,6 @@ class ViewContactMessage extends ViewRecord
 
     protected static ?string $title = 'مشاهده پیام';
 
-    protected static ?string $navigationLabel = '';
-
-    protected static ?string $navigationIcon = null;
-
     public function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([
