@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ContactMessages\Tables;
 
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -21,7 +22,8 @@ class ContactMessagesTable
                 TextColumn::make('name')
                     ->label('نام')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->url(fn ($record): string => route('filament.admin.resources.contact-messages.view', $record)),
 
                 TextColumn::make('phone')
                     ->label('شماره تماس')
@@ -52,7 +54,10 @@ class ContactMessagesTable
             ->filters([
                 //
             ])
-            ->recordActions([])
+            ->recordActions([
+                ViewAction::make()
+                    ->label('مشاهده'),
+            ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
