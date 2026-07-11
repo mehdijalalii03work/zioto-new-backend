@@ -13,17 +13,18 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['name', 'first_name', 'last_name', 'email', 'password', 'phone', 'phone_verified_at', 'national_code', 'shahkar_verified', 'birth_date', 'api_token'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, SoftDeletes;
+    use HasFactory, HasRoles, Notifiable, SoftDeletes;
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        return $this->hasRole(['admin', 'manager', 'operator']);
     }
 
     protected function casts(): array

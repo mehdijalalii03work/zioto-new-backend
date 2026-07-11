@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -107,6 +108,21 @@ class UserForm
                         ->dehydrated(fn ($state) => filled($state))
                         ->maxLength(255)
                         ->helperText('در صورت خالی گذاشتن، رمز عبور به صورت خودکار تولید می‌شود.'),
+                ])
+                ->columnSpanFull(),
+
+            Section::make('نقش و دسترسی')
+                ->description('انتخاب نقش کاربر')
+                ->icon('heroicon-o-shield-check')
+                ->collapsible()
+                ->schema([
+                    Select::make('roles')
+                        ->relationship('roles', 'name')
+                        ->label('نقش')
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
+                        ->required(),
                 ])
                 ->columnSpanFull(),
         ];

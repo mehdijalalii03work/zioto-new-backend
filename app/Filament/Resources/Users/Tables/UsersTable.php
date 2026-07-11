@@ -63,6 +63,11 @@ class UsersTable
                     ->sortable()
                     ->toggleable(),
 
+                TextColumn::make('roles.name')
+                    ->label('نقش')
+                    ->sortable()
+                    ->toggleable(),
+
                 TextColumn::make('created_at')
                     ->label('تاریخ ثبت‌نام')
                     ->jalaliDateTime('H:i Y/m/d')
