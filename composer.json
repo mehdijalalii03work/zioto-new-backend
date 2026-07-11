@@ -32,7 +32,11 @@
         "psr-4": {
             "App\\": "app\/",
             "Database\\Factories\\": "database\/factories\/",
-            "Database\\Seeders\\": "database\/seeders\/"
+            "Database\\Seeders\\": "database\/seeders\/",
+            "Modules\\Blog\\": "Modules\/Blog\/app\/",
+            "Modules\\Product\\": "Modules\/Product\/app\/",
+            "Modules\\Order\\": "Modules\/Order\/app\/",
+            "Modules\\Payment\\": "Modules\/Payment\/app\/"
         },
         "files": [
             "app/helpers.php"
