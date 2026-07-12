@@ -65,8 +65,15 @@ class Kamanlend extends Driver
             throw new PurchaseFailedException($message);
         }
 
-        $this->invoice->transactionId($body['result']['token']);
-        $this->invoice->detail(['gatewayUrl' => $body['result']['gatewayurl'] ?? null]);
+        Log::channel('payment')->info('Kamanlend purchase success', [
+            'result' => $body['result'],
+        ]);
+
+        $token = $body['result']['token'] ?? $body['result']['Token'] ?? null;
+        $this->invoice->transactionId($token);
+        $this->invoice->detail([
+            'gatewayUrl' => $body['result']['gatewayurl'] ?? $body['result']['GatewayUrl'] ?? null,
+        ]);
 
         return $this->invoice->getTransactionId();
     }
@@ -76,7 +83,7 @@ class Kamanlend extends Driver
         $token = $this->invoice->getTransactionId();
 
         $gatewayUrl = $this->invoice->getDetails()['gatewayUrl'] ?? null;
-        $payUrl = $gatewayUrl ?: $this->settings->gatewayUrl.'?token='.$token;
+        $payUrl = $gatewayUrl ?: $this->settings->gatewayUrl.'/Payment?token='.$token;
 
         return $this->redirectWithForm($payUrl, [], 'GET');
     }
