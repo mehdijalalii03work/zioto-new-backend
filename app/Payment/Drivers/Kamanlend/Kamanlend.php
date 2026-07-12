@@ -72,7 +72,7 @@ class Kamanlend extends Driver
         $token = $body['result']['token'] ?? $body['result']['Token'] ?? null;
         $this->invoice->transactionId($token);
         $this->invoice->detail([
-            'gatewayUrl' => $body['result']['gatewayurl'] ?? $body['result']['GatewayUrl'] ?? null,
+            'gatewayUrl' => $body['result']['gatewayurl'] ?? $body['result']['gatewayUrl'] ?? $body['result']['GatewayUrl'] ?? null,
         ]);
 
         return $this->invoice->getTransactionId();
