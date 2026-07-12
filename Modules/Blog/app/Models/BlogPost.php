@@ -68,7 +68,8 @@ class BlogPost extends Model implements HasMedia
     {
         $this->addMediaCollection('featured-image')
             ->useDisk('public')
-            ->singleFile();
+            ->singleFile()
+            ->withResponsiveImages();
 
         $this->addMediaCollection('content-images')
             ->useDisk('public');
