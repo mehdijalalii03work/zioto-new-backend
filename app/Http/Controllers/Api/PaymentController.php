@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
 use Shetabit\Multipay\Exceptions\InvalidPaymentException;
@@ -42,6 +43,15 @@ class PaymentController extends Controller
             'redirectionUrl' => $callbackUrl,
         ]);
 
+        Log::channel('payment')->info('Payment init started', [
+            'order_id' => $order->id,
+            'gateway' => $validated['gateway'],
+            'total_amount' => $order->total_amount,
+            'phone' => $phone,
+            'nationalCode' => $nationalCode,
+            'callbackUrl' => $callbackUrl,
+        ]);
+
         try {
             $paymentConfig = config('payment');
             $payment = new ShetabitPayment($paymentConfig);
@@ -66,14 +76,36 @@ class PaymentController extends Controller
                 })
                 ->pay();
 
+            Log::channel('payment')->info('Payment init success', [
+                'order_id' => $order->id,
+                'gateway' => $validated['gateway'],
+                'transaction_id' => $capturedTransactionId,
+            ]);
+
             return response()->json([
                 'payment_url' => $form->getAction(),
                 'transaction_id' => $capturedTransactionId,
             ]);
 
         } catch (PurchaseFailedException $e) {
+            Log::channel('payment')->error('Payment init PurchaseFailedException', [
+                'order_id' => $order->id,
+                'gateway' => $validated['gateway'],
+                'total_amount' => $order->total_amount,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json(['message' => 'خطا در ایجاد درخواست پرداخت: '.$e->getMessage()], 500);
         } catch (\Exception $e) {
+            Log::channel('payment')->error('Payment init Exception', [
+                'order_id' => $order->id,
+                'gateway' => $validated['gateway'],
+                'total_amount' => $order->total_amount,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json(['message' => 'خطای غیرمنتظره: '.$e->getMessage()], 500);
         }
     }

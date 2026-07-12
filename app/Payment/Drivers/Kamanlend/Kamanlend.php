@@ -3,6 +3,7 @@
 namespace App\Payment\Drivers\Kamanlend;
 
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Log;
 use Shetabit\Multipay\Abstracts\Driver;
 use Shetabit\Multipay\Contracts\ReceiptInterface;
 use Shetabit\Multipay\Exceptions\InvalidPaymentException;
@@ -40,13 +41,24 @@ class Kamanlend extends Driver
             'saleItems' => $saleItems,
         ];
 
+        Log::channel('payment')->info('Kamanlend purchase request', [
+            'url' => $this->settings->apiRegisterPaymentUrl,
+            'payload' => $payload,
+        ]);
+
         $response = $this->client->request('POST', $this->settings->apiRegisterPaymentUrl, [
             'json' => $payload,
             'http_errors' => false,
             'verify' => false,
         ]);
 
-        $body = json_decode($response->getBody()->getContents(), true);
+        $responseBody = $response->getBody()->getContents();
+        $body = json_decode($responseBody, true);
+
+        Log::channel('payment')->info('Kamanlend purchase response', [
+            'status_code' => $response->getStatusCode(),
+            'body' => $body,
+        ]);
 
         if (empty($body['success'])) {
             $message = $body['messages'][0]['message'] ?? 'خطا در ثبت درخواست پرداخت';
@@ -54,6 +66,7 @@ class Kamanlend extends Driver
         }
 
         $this->invoice->transactionId($body['result']['token']);
+        $this->invoice->detail(['gatewayUrl' => $body['result']['gatewayUrl'] ?? null]);
 
         return $this->invoice->getTransactionId();
     }
@@ -62,7 +75,8 @@ class Kamanlend extends Driver
     {
         $token = $this->invoice->getTransactionId();
 
-        $payUrl = $this->settings->gatewayUrl.'?token='.$token;
+        $gatewayUrl = $this->invoice->getDetails()['gatewayUrl'] ?? null;
+        $payUrl = $gatewayUrl ?: $this->settings->gatewayUrl.'?token='.$token;
 
         return $this->redirectWithForm($payUrl, [], 'GET');
     }

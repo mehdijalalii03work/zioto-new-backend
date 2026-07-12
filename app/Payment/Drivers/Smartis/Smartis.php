@@ -3,6 +3,7 @@
 namespace App\Payment\Drivers\Smartis;
 
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Log;
 use Shetabit\Multipay\Abstracts\Driver;
 use Shetabit\Multipay\Contracts\ReceiptInterface;
 use Shetabit\Multipay\Exceptions\InvalidPaymentException;
@@ -60,6 +61,11 @@ class Smartis extends Driver
         ]);
 
         $body = json_decode($response->getBody()->getContents(), true);
+
+        Log::channel('payment')->info('Smartis purchase response', [
+            'status_code' => $response->getStatusCode(),
+            'body' => $body,
+        ]);
 
         if (($body['status'] ?? '') !== 'SUCCESS') {
             $message = $body['message'] ?? 'خطا در ایجاد درخواست پرداخت';
