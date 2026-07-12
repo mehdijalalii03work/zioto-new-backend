@@ -53,7 +53,7 @@ class Kamanlend extends Driver
         ]);
 
         $responseBody = $response->getBody()->getContents();
-        $body = json_decode($responseBody, true);
+        $body = array_change_key_case(json_decode($responseBody, true), CASE_LOWER);
 
         Log::channel('payment')->info('Kamanlend purchase response', [
             'status_code' => $response->getStatusCode(),
@@ -66,7 +66,7 @@ class Kamanlend extends Driver
         }
 
         $this->invoice->transactionId($body['result']['token']);
-        $this->invoice->detail(['gatewayUrl' => $body['result']['gatewayUrl'] ?? null]);
+        $this->invoice->detail(['gatewayUrl' => $body['result']['gatewayurl'] ?? null]);
 
         return $this->invoice->getTransactionId();
     }
@@ -99,22 +99,22 @@ class Kamanlend extends Driver
             'verify' => false,
         ]);
 
-        $body = json_decode($response->getBody()->getContents(), true);
+        $body = array_change_key_case(json_decode($response->getBody()->getContents(), true), CASE_LOWER);
 
         if (empty($body['success'])) {
             $message = $body['messages'][0]['message'] ?? 'پرداخت تایید نشد';
             throw new InvalidPaymentException($message);
         }
 
-        $state = $body['result']['saleRequestState'] ?? '';
+        $state = $body['result']['salerequeststate'] ?? '';
 
         if ($state !== 'PaymentCompleted') {
-            throw new InvalidPaymentException('وضعیت پرداخت: '.($body['result']['saleRequestStateTitle'] ?? $state));
+            throw new InvalidPaymentException('وضعیت پرداخت: '.($body['result']['salerequeststatetitle'] ?? $state));
         }
 
         return $this->createReceipt($token, [
             'state' => $state,
-            'stateTitle' => $body['result']['saleRequestStateTitle'] ?? '',
+            'stateTitle' => $body['result']['salerequeststatetitle'] ?? '',
         ]);
     }
 
