@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
+use Modules\Product\Models\Product;
 use Shetabit\Multipay\Exceptions\InvalidPaymentException;
 use Shetabit\Multipay\Exceptions\PurchaseFailedException;
 use Shetabit\Multipay\Invoice;
@@ -16,6 +17,40 @@ use Shetabit\Multipay\Payment as ShetabitPayment;
 
 class PaymentController extends Controller
 {
+    const INSTALLMENT_GATEWAYS = ['digipay', 'smartis', 'kamanlend'];
+    const INSTALLMENT_FEE_PERCENT = 4;
+
+    public function calculateFee(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|integer|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'shipping_cost' => 'required|numeric|min:0',
+            'gateway' => 'required|in:parsian,digipay,kamanlend,smartis',
+        ]);
+
+        $baseTotal = 0;
+        foreach ($validated['items'] as $item) {
+            $product = Product::findOrFail($item['product_id']);
+            $baseTotal += $product->price * $item['quantity'];
+        }
+        $baseTotal += $validated['shipping_cost'];
+
+        $isInstallment = in_array($validated['gateway'], self::INSTALLMENT_GATEWAYS);
+        $feeAmount = 0;
+
+        if ($isInstallment && $baseTotal > 0) {
+            $feeAmount = (int) round($baseTotal * self::INSTALLMENT_FEE_PERCENT / 100);
+        }
+
+        return response()->json([
+            'base_total' => (int) $baseTotal,
+            'fee_amount' => $feeAmount,
+            'total_with_fee' => (int) $baseTotal + $feeAmount,
+        ]);
+    }
+
     public function init(Request $request): JsonResponse
     {
         $validated = $request->validate([

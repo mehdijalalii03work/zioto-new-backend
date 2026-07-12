@@ -12,6 +12,9 @@ use Modules\Product\Models\Product;
 
 class OrderSubmitController extends Controller
 {
+    const INSTALLMENT_GATEWAYS = ['digipay', 'smartis', 'kamanlend'];
+    const INSTALLMENT_FEE_PERCENT = 4;
+
     public function index(Request $request): JsonResponse
     {
         $orders = Order::with(['shipping', 'items', 'address.province', 'address.city'])
@@ -58,7 +61,7 @@ class OrderSubmitController extends Controller
             'phone' => 'required|string|max:20',
             'national_id' => 'required|string|size:10',
             'employee_id' => 'required|string|max:50',
-            'payment_method' => 'required|in:online,installment',
+            'gateway' => 'nullable|in:parsian,digipay,kamanlend,smartis',
             'user_address_id' => 'nullable|integer|exists:user_addresses,id',
             'shipping_address_snapshot' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -87,23 +90,38 @@ class OrderSubmitController extends Controller
         $shippingCost = $validated['shipping_cost'] ?? 0;
         $totalAmount += $shippingCost;
 
+        $gateway = $validated['gateway'] ?? 'parsian';
+        $paymentMethod = in_array($gateway, self::INSTALLMENT_GATEWAYS) ? 'installment' : 'online';
+        $installmentFee = 0;
+
+        if (in_array($gateway, self::INSTALLMENT_GATEWAYS) && $totalAmount > 0) {
+            $installmentFee = (int) round($totalAmount * self::INSTALLMENT_FEE_PERCENT / 100);
+            $totalAmount += $installmentFee;
+        }
+
         $orderNumber = 'ZT-'.now()->format('YmdHis');
+
+        $notesData = [
+            'name' => $validated['name'],
+            'phone' => $validated['phone'],
+            'national_id' => $validated['national_id'],
+            'employee_id' => $validated['employee_id'],
+        ];
+
+        if ($installmentFee > 0) {
+            $notesData['installment_fee'] = $installmentFee;
+        }
 
         $order = Order::create([
             'user_id' => $request->user()?->id,
             'order_number' => $orderNumber,
             'status' => 'pending',
             'total_amount' => $totalAmount,
-            'payment_method' => $validated['payment_method'],
+            'payment_method' => $paymentMethod,
             'payment_status' => 'pending',
             'user_address_id' => $validated['user_address_id'] ?? null,
             'shipping_address_snapshot' => $validated['shipping_address_snapshot'] ?? null,
-            'notes' => json_encode([
-                'name' => $validated['name'],
-                'phone' => $validated['phone'],
-                'national_id' => $validated['national_id'],
-                'employee_id' => $validated['employee_id'],
-            ]),
+            'notes' => json_encode($notesData),
         ]);
 
         foreach ($orderItems as $orderItem) {
@@ -129,6 +147,7 @@ class OrderSubmitController extends Controller
                 'payment_status' => $order->payment_status,
                 'shipping_method_name' => $method?->name ?? '',
                 'shipping_cost' => $validated['shipping_cost'],
+                'installment_fee' => $installmentFee,
             ],
         ], 201);
     }
