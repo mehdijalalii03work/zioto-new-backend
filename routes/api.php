@@ -20,9 +20,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('web')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('/send-otp', [OtpController::class, 'send'])->middleware('throttle:otp');
-        Route::post('/verify-otp', [OtpController::class, 'verify']);
+        Route::post('/verify-otp', [OtpController::class, 'verify'])->middleware('throttle:10,1');
         Route::post('/shahkar-verify', [OtpController::class, 'shahkarVerify'])->middleware('throttle:shahkar');
-        Route::post('/logout', [OtpController::class, 'logout']);
+        Route::post('/logout', [OtpController::class, 'logout'])->middleware('auth.token');
     });
 
     Route::get('/profile', [ProfileController::class, 'show'])->middleware('auth.token');
@@ -56,7 +56,7 @@ Route::middleware('web')->group(function () {
 
     Route::get('/orders/{orderId}/notes', [OrderSubmitController::class, 'notes'])->middleware('auth.token');
 
-    Route::post('/orders', [OrderSubmitController::class, 'store']);
+    Route::middleware('auth.token', 'throttle:10,1')->post('/orders', [OrderSubmitController::class, 'store']);
 
     Route::middleware('auth.token')->prefix('wishlist')->group(function () {
         Route::get('/', [WishlistController::class, 'index']);
