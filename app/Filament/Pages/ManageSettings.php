@@ -290,19 +290,32 @@ class ManageSettings extends Page
     {
         $lines = explode("\n", $envContent);
         $found = false;
+        $escapedValue = $this->escapeEnvValue($value);
 
         foreach ($lines as &$line) {
             if (str_starts_with(trim($line), $key.'=')) {
-                $line = $key.'='.$value;
+                $line = $key.'='.$escapedValue;
                 $found = true;
                 break;
             }
         }
 
         if (! $found) {
-            $lines[] = $key.'='.$value;
+            $lines[] = $key.'='.$escapedValue;
         }
 
         return implode("\n", $lines);
+    }
+
+    private function escapeEnvValue(string $value): string
+    {
+        if ($value === '' || str_contains($value, ' ') || str_contains($value, '#') || str_contains($value, "\n") || str_starts_with($value, '"') || str_contains($value, '"')) {
+            $value = str_replace(['\\', '"'], ['\\\\', '\\"'], $value);
+            $value = str_replace("\n", '\\n', $value);
+
+            return '"'.$value.'"';
+        }
+
+        return $value;
     }
 }

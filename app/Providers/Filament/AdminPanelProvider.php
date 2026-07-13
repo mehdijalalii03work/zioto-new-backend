@@ -43,6 +43,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login(CustomLogin::class)
             ->darkMode(false)
+            ->spa()
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('19rem')
             ->favicon(asset('favicon.ico'))

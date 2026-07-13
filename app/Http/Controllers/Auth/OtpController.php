@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\SendOtpRequest;
 use App\Http\Requests\Auth\ShahkarVerifyRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\ShahkarService;
 use App\Services\SmsIrService;
@@ -79,19 +80,15 @@ class OtpController extends Controller
             $user->update([
                 'phone_verified_at' => now(),
                 'api_token' => $apiToken,
+                'api_token_hash' => hash('sha256', $apiToken),
+                'token_created_at' => now(),
             ]);
             Auth::login($user);
 
             return response()->json([
                 'message' => 'با موفقیت وارد شدید',
                 'token' => $apiToken,
-                'user' => [
-                    'id' => $user->id,
-                    'first_name' => $user->first_name,
-                    'last_name' => $user->last_name,
-                    'name' => $user->name,
-                    'phone' => $user->phone,
-                ],
+                'user' => new UserResource($user),
             ]);
         }
 
@@ -157,6 +154,8 @@ class OtpController extends Controller
             'shahkar_verified' => true,
             'birth_date' => $birthDate,
             'api_token' => $apiToken,
+            'api_token_hash' => hash('sha256', $apiToken),
+            'token_created_at' => now(),
         ]);
 
         Auth::login($user);
@@ -164,17 +163,22 @@ class OtpController extends Controller
         return response()->json([
             'message' => 'احراز هویت با موفقیت انجام شد',
             'token' => $apiToken,
-            'user' => [
-                'id' => $user->id,
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'phone' => $user->phone,
-            ],
+            'user' => new UserResource($user),
         ]);
     }
 
     public function logout(): JsonResponse
     {
+        $user = Auth::user();
+
+        if ($user) {
+            $user->update([
+                'api_token' => null,
+                'api_token_hash' => null,
+                'token_created_at' => null,
+            ]);
+        }
+
         Auth::logout();
 
         request()->session()->invalidate();

@@ -29,10 +29,6 @@ class Order extends Model
         'shipping_address_snapshot',
         'notes',
         'cancel_reason',
-        'hesabfa_contact_code',
-        'hesabfa_invoice_number',
-        'hesabfa_invoice_reference',
-        'hesabfa_synced_at',
     ];
 
     protected function casts(): array

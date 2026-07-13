@@ -55,9 +55,18 @@ class StockReservationObserver
         }
 
         foreach ($reservations as $productId => $quantity) {
-            DB::table('products')
+            $updated = DB::table('products')
                 ->where('id', $productId)
+                ->whereRaw('hesabfa_physical_stock - hesabfa_reserved_stock - hesabfa_manual_reserved >= ?', [$quantity])
                 ->increment('hesabfa_reserved_stock', $quantity);
+
+            if (! $updated) {
+                Log::warning('Stock reservation failed: insufficient stock', [
+                    'order_id' => $order->id,
+                    'product_id' => $productId,
+                    'requested' => $quantity,
+                ]);
+            }
         }
 
         Log::info('Stock reserved for order', [

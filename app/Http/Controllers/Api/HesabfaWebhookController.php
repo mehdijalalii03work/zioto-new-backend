@@ -22,16 +22,20 @@ class HesabfaWebhookController extends Controller
         $this->logWebhook($request);
 
         $secret = config('hesabfa.webhook_secret');
-        if ($secret) {
-            $providedSecret = $request->header('X-Webhook-Secret')
-                ?? $request->input('secret')
-                ?? $request->query('secret');
+        if (empty($secret)) {
+            Log::warning('Hesabfa webhook: webhook_secret not configured, rejecting request');
 
-            if ($providedSecret !== $secret) {
-                Log::warning('Hesabfa webhook: invalid secret');
+            return response()->json(['error' => 'Webhook not configured'], 503);
+        }
 
-                return response()->json(['error' => 'Unauthorized'], 401);
-            }
+        $providedSecret = $request->header('X-Webhook-Secret')
+            ?? $request->input('secret')
+            ?? $request->query('secret');
+
+        if ($providedSecret !== $secret) {
+            Log::warning('Hesabfa webhook: invalid secret');
+
+            return response()->json(['error' => 'Unauthorized'], 401);
         }
 
         $data = $request->all();
