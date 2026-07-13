@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Product\Models\Product;
 
@@ -28,38 +30,67 @@ class StockSyncService
             return ['success' => false, 'message' => 'موجودی از حسابفا دریافت نشد'];
         }
 
+        $stockUpdates = $this->prepareStockUpdates($quantities);
+
+        if ($stockUpdates->isEmpty()) {
+            return ['success' => true, 'message' => 'هیچ محصولی برای بروزرسانی یافت نشد', 'updated' => 0, 'errors' => []];
+        }
+
+        return $this->batchUpdateStock($stockUpdates);
+    }
+
+    private function prepareStockUpdates(array $quantities): Collection
+    {
         $excludedSkus = config('hesabfa.excluded_skus', []);
-        $updated = 0;
+
+        return collect($quantities)
+            ->filter(fn ($item) => isset($item['ItemCode']) || isset($item['ProductCode']))
+            ->map(fn ($item) => [
+                'sku' => $item['ItemCode'] ?? $item['ProductCode'],
+                'quantity' => max(0, (int) ($item['Quantity'] ?? $item['Physical'] ?? 0)),
+            ])
+            ->reject(fn ($item) => in_array($item['sku'], $excludedSkus))
+            ->unique('sku');
+    }
+
+    private function batchUpdateStock(Collection $stockUpdates): array
+    {
+        $skus = $stockUpdates->pluck('sku')->toArray();
+        $quantityMap = $stockUpdates->pluck('quantity', 'sku')->toArray();
+
+        $products = Product::whereIn('sku', $skus)->get()->keyBy('sku');
+
+        $updatedAt = now();
+        $updates = [];
         $errors = [];
+        $updated = 0;
 
-        foreach ($quantities as $item) {
-            $itemCode = $item['ItemCode'] ?? $item['ProductCode'] ?? null;
-            $quantity = $item['Quantity'] ?? $item['Physical'] ?? 0;
-
-            if (! $itemCode) {
-                continue;
-            }
-
-            $product = Product::where('sku', $itemCode)->first();
+        foreach ($stockUpdates as $item) {
+            $product = $products->get($item['sku']);
 
             if (! $product) {
                 continue;
             }
 
-            if (in_array($itemCode, $excludedSkus)) {
-                continue;
-            }
-
             try {
-                $product->update([
-                    'stock_quantity' => max(0, (int) $quantity),
-                    'hesabfa_physical_stock' => max(0, (int) $quantity),
-                    'hesabfa_stock_synced_at' => now(),
-                ]);
+                $updates[] = [
+                    'id' => $product->id,
+                    'stock_quantity' => $item['quantity'],
+                    'hesabfa_physical_stock' => $item['quantity'],
+                    'hesabfa_stock_synced_at' => $updatedAt,
+                ];
                 $updated++;
             } catch (\Exception $e) {
-                $errors[] = "SKU {$itemCode}: ".$e->getMessage();
+                $errors[] = "SKU {$item['sku']}: ".$e->getMessage();
             }
+        }
+
+        if (! empty($updates)) {
+            DB::table('products')->upsert(
+                $updates,
+                ['id'],
+                ['stock_quantity', 'hesabfa_physical_stock', 'hesabfa_stock_synced_at']
+            );
         }
 
         return [
