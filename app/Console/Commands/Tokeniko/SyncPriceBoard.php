@@ -3,10 +3,13 @@
 namespace App\Console\Commands\Tokeniko;
 
 use App\Events\PriceBoardUpdated;
+use App\Events\ProductsUpdated;
+use App\Models\Setting;
 use App\Services\PriceBoardService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Product\Models\Product;
@@ -39,6 +42,11 @@ class SyncPriceBoard extends Command
         $updated = $this->recalculateProductPrices();
 
         $this->info("Recalculated prices for {$updated} products.");
+
+        if ($updated > 0) {
+            $this->broadcastProducts();
+            Cache::tags(['api:products'])->flush();
+        }
 
         Log::info('[PriceBoard] Sync completed', [
             'products_updated' => $updated,
@@ -74,5 +82,37 @@ class SyncPriceBoard extends Command
         });
 
         return count($updates);
+    }
+
+    private function broadcastProducts(): void
+    {
+        $products = Product::query()
+            ->with(['category:id,name,slug', 'brand:id,name,slug', 'images'])
+            ->whereNotNull('price_board_item')
+            ->get()
+            ->map(fn (Product $p) => $this->formatProduct($p))
+            ->toArray();
+
+        broadcast(new ProductsUpdated($products));
+    }
+
+    private function formatProduct(Product $p): array
+    {
+        $price = (int) $p->price;
+        $primaryImage = $p->images->firstWhere('is_primary', true) ?? $p->images->first();
+
+        $taxKey = str_starts_with($p->price_board_item ?? '', 'Gold') ? 'tax_gold' : 'tax_silver';
+        $taxRate = (float) Setting::getValue($taxKey, 0);
+        $priceBeforeTax = $taxRate > 0 ? round($price / (1 + $taxRate / 100)) : $price;
+        $taxAmount = $price - $priceBeforeTax;
+
+        return [
+            'id' => $p->id,
+            'price' => $price,
+            'price_before_tax' => $priceBeforeTax,
+            'tax_amount' => $taxAmount,
+            'tax_rate' => $taxRate,
+            'old' => null,
+        ];
     }
 }
