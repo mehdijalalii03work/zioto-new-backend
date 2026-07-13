@@ -122,7 +122,7 @@ class ProductController extends Controller
         if ($token) {
             $user = User::where("api_token", $token)->first();
             if ($user) {
-                $wishlistIds = $user->wishlists()->pluck("product_id")->toArray();
+                $wishlistIds = $user->wishlists()->pluck("products.id")->toArray();
             }
         }
 
@@ -166,7 +166,7 @@ class ProductController extends Controller
             $user = User::where("api_token", $token)->first();
             if ($user) {
                 $data["is_wishlist"] = $user->wishlists()
-                    ->where("product_id", $product->id)
+                    ->where("products.id", $product->id)
                     ->exists();
             }
         }
