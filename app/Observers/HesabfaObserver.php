@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\HesabfaSyncLog;
 use App\Services\HesabfaService;
+use App\Services\InstallmentService;
 use Illuminate\Support\Facades\Log;
 use Modules\Order\Models\Order;
 
@@ -63,12 +64,12 @@ class HesabfaObserver
                 return $invoiceResult;
             }
 
-            $order->update([
+            $order->forceFill([
                 'hesabfa_contact_code' => $contactResult['contact_code'],
                 'hesabfa_invoice_number' => $invoiceResult['invoice_number'],
                 'hesabfa_invoice_reference' => $invoiceResult['reference'],
                 'hesabfa_synced_at' => now(),
-            ]);
+            ])->save();
 
             $order->addNote(
                 "فاکتور با موفقیت به حسابفا ارسال شد.\nشماره فاکتور: {$invoiceResult['invoice_number']}\nکد مرجع: {$invoiceResult['reference']}",
@@ -105,6 +106,32 @@ class HesabfaObserver
 
         $existing = $this->hesabfa->findContactByNationalCode($nationalCode);
 
+        $contactData = $this->buildContactData($order, $nationalCode, $existing);
+
+        $result = $this->hesabfa->saveContact($contactData);
+
+        if (! $result['success']) {
+            return ['success' => false, 'message' => 'خطا در ذخیره مشتری: '.$result['error']];
+        }
+
+        $contactCode = $result['data']['Result'] ?? $existing['Code'] ?? null;
+
+        if (! $contactCode) {
+            $recheck = $this->hesabfa->findContactByNationalCode($nationalCode);
+            $contactCode = $recheck['Code'] ?? null;
+        }
+
+        if (! $contactCode) {
+            return ['success' => false, 'message' => 'کد مشتری از حسابفا دریافت نشد'];
+        }
+
+        return ['success' => true, 'contact_code' => $contactCode];
+    }
+
+    private function buildContactData(Order $order, string $nationalCode, ?array $existing): array
+    {
+        $user = $order->user;
+
         $contactData = [
             'FirstName' => $user?->first_name ?? '',
             'LastName' => $user?->last_name ?? '',
@@ -133,41 +160,70 @@ class HesabfaObserver
             $contactData['PostalCode'] = $order->address->postal_code ?? '';
         }
 
-        $result = $this->hesabfa->saveContact($contactData);
-
-        if (! $result['success']) {
-            return ['success' => false, 'message' => 'خطا در ذخیره مشتری: '.$result['error']];
-        }
-
-        $contactCode = $result['data']['Result'] ?? $existing['Code'] ?? null;
-
-        if (! $contactCode) {
-            $recheck = $this->hesabfa->findContactByNationalCode($nationalCode);
-            $contactCode = $recheck['Code'] ?? null;
-        }
-
-        if (! $contactCode) {
-            return ['success' => false, 'message' => 'کد مشتری از حسابفا دریافت نشد'];
-        }
-
-        return ['success' => true, 'contact_code' => $contactCode];
+        return $contactData;
     }
 
     private function syncInvoice(Order $order, string $contactCode): array
     {
-        $orderId = $order->id;
-        $totalInRials = (int) $order->total_amount;
-        $tenMillions = (int) floor($totalInRials / 10_000_000);
-        $reference = "{$orderId}-{$tenMillions}";
+        $reference = $this->buildInvoiceReference($order);
+        $date = $this->buildInvoiceDate($order);
 
-        if (config('hesabfa.use_current_date')) {
-            $date = now()->format('Y-m-d H:i:s');
-        } else {
-            $date = $order->created_at->format('Y-m-d H:i:s');
+        $items = $this->buildInvoiceItems($order);
+
+        if ($items === false) {
+            return ['success' => false, 'message' => 'کد محصول حسابفا یافت نشد'];
         }
 
+        $invoiceData = $this->buildInvoicePayload($order, $reference, $date, $contactCode, $items);
+
+        return $this->saveAndConfirmInvoice($order, $invoiceData, $reference);
+    }
+
+    private function buildInvoiceReference(Order $order): string
+    {
+        $totalInRials = (int) $order->total_amount;
+        $tenMillions = (int) floor($totalInRials / 10_000_000);
+
+        return "{$order->id}-{$tenMillions}";
+    }
+
+    private function buildInvoiceDate(Order $order): string
+    {
+        return config('hesabfa.use_current_date')
+            ? now()->format('Y-m-d H:i:s')
+            : $order->created_at->format('Y-m-d H:i:s');
+    }
+
+    private function buildInvoiceItems(Order $order): array|false
+    {
         $items = [];
         $rowNumber = 1;
+
+        $productItems = $this->buildProductItems($order, $rowNumber);
+        if ($productItems === false) {
+            return false;
+        }
+        $items = array_merge($items, $productItems);
+        $rowNumber += count($productItems);
+
+        $shippingItem = $this->buildShippingItem($order, $rowNumber);
+        if ($shippingItem) {
+            $items[] = $shippingItem;
+            $rowNumber++;
+        }
+
+        $installmentItem = $this->buildInstallmentFeeItem($order, $rowNumber);
+        if ($installmentItem) {
+            $items[] = $installmentItem;
+        }
+
+        return $items;
+    }
+
+    private function buildProductItems(Order $order, int $startRowNumber): array|false
+    {
+        $items = [];
+        $rowNumber = $startRowNumber;
 
         foreach ($order->items as $orderItem) {
             $product = $orderItem->product;
@@ -175,15 +231,7 @@ class HesabfaObserver
             $itemCode = $this->findHesabfaItemCode($sku);
 
             if (! $itemCode) {
-                return ['success' => false, 'message' => "کد محصول حسابفا برای SKU {$sku} یافت نشد"];
-            }
-
-            $unitPrice = (int) $orderItem->product_price;
-            $quantity = $orderItem->quantity;
-
-            $discount = 0;
-            if ($orderItem->subtotal > $orderItem->quantity * $orderItem->product_price) {
-                $discount = (int) ($orderItem->subtotal - ($orderItem->quantity * $orderItem->product_price));
+                return false;
             }
 
             $items[] = [
@@ -191,49 +239,82 @@ class HesabfaObserver
                 'description' => $orderItem->product_name,
                 'itemCode' => $itemCode,
                 'unit' => config('hesabfa.default_unit', 'عدد'),
-                'quantity' => $quantity,
-                'unitPrice' => $unitPrice,
-                'discount' => $discount,
+                'quantity' => $orderItem->quantity,
+                'unitPrice' => (int) $orderItem->product_price,
+                'discount' => $this->calculateItemDiscount($orderItem),
                 'tax' => 0,
             ];
         }
 
-        if ($order->shipping && $order->shipping->shipping_cost > 0) {
-            $shippingCode = config('hesabfa.shipping_item_code');
-            if ($shippingCode) {
-                $items[] = [
-                    'rowNumber' => $rowNumber++,
-                    'description' => 'هزینه حمل و نقل',
-                    'itemCode' => $shippingCode,
-                    'unit' => config('hesabfa.default_unit', 'عدد'),
-                    'quantity' => 1,
-                    'unitPrice' => (int) $order->shipping->shipping_cost,
-                    'discount' => 0,
-                    'tax' => 0,
-                ];
-            }
+        return $items;
+    }
+
+    private function calculateItemDiscount(object $orderItem): int
+    {
+        if ($orderItem->subtotal > $orderItem->quantity * $orderItem->product_price) {
+            return (int) ($orderItem->subtotal - ($orderItem->quantity * $orderItem->product_price));
         }
 
-        if ($order->payment_method === 'installment' && config('hesabfa.installment_fee_item_code')) {
-            $baseAmount = $order->items->sum('subtotal') + ($order->shipping?->shipping_cost ?? 0);
-            $commission = (int) round($baseAmount * 0.04);
-            $taxOnCommission = (int) round($commission * 0.10);
+        return 0;
+    }
 
-            if ($commission > 0) {
-                $items[] = [
-                    'rowNumber' => $rowNumber++,
-                    'description' => 'کارمزد خرید اقساطی (۴٪)',
-                    'itemCode' => config('hesabfa.installment_fee_item_code'),
-                    'unit' => config('hesabfa.default_unit', 'عدد'),
-                    'quantity' => 1,
-                    'unitPrice' => $commission,
-                    'discount' => 0,
-                    'tax' => $taxOnCommission,
-                ];
-            }
+    private function buildShippingItem(Order $order, int $rowNumber): ?array
+    {
+        if (! $order->shipping || $order->shipping->shipping_cost <= 0) {
+            return null;
         }
 
-        $invoiceData = [
+        $shippingCode = config('hesabfa.shipping_item_code');
+        if (! $shippingCode) {
+            return null;
+        }
+
+        return [
+            'rowNumber' => $rowNumber,
+            'description' => 'هزینه حمل و نقل',
+            'itemCode' => $shippingCode,
+            'unit' => config('hesabfa.default_unit', 'عدد'),
+            'quantity' => 1,
+            'unitPrice' => (int) $order->shipping->shipping_cost,
+            'discount' => 0,
+            'tax' => 0,
+        ];
+    }
+
+    private function buildInstallmentFeeItem(Order $order, int $rowNumber): ?array
+    {
+        if ($order->payment_method !== 'installment') {
+            return null;
+        }
+
+        $installmentFeeCode = config('hesabfa.installment_fee_item_code');
+        if (! $installmentFeeCode) {
+            return null;
+        }
+
+        $baseAmount = $order->items->sum('subtotal') + ($order->shipping?->shipping_cost ?? 0);
+        $commission = InstallmentService::calculateFee((int) $baseAmount);
+        $taxOnCommission = (int) round($commission * 0.10);
+
+        if ($commission <= 0) {
+            return null;
+        }
+
+        return [
+            'rowNumber' => $rowNumber,
+            'description' => 'کارمزد خرید اقساطی ('.InstallmentService::FEE_PERCENT.'٪)',
+            'itemCode' => $installmentFeeCode,
+            'unit' => config('hesabfa.default_unit', 'عدد'),
+            'quantity' => 1,
+            'unitPrice' => $commission,
+            'discount' => 0,
+            'tax' => $taxOnCommission,
+        ];
+    }
+
+    private function buildInvoicePayload(Order $order, string $reference, string $date, string $contactCode, array $items): array
+    {
+        return [
             'reference' => $reference,
             'date' => $date,
             'dueDate' => $date,
@@ -244,11 +325,14 @@ class HesabfaObserver
             'currency' => 'IRR',
             'currencyRate' => 1,
             'contactTitle' => $order->user?->name ?? '',
-            'note' => "سفارش {$orderId}",
+            'note' => "سفارش {$order->id}",
             'invoiceItems' => $items,
             'Freight' => 0,
         ];
+    }
 
+    private function saveAndConfirmInvoice(Order $order, array $invoiceData, string $reference): array
+    {
         $result = $this->hesabfa->saveInvoice($invoiceData);
 
         if (! $result['success']) {

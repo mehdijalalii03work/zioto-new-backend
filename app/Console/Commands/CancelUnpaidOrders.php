@@ -13,16 +13,23 @@ class CancelUnpaidOrders extends Command
 
     public function handle(): int
     {
-        $cancelled = Order::where('status', 'pending')
+        $orders = Order::where('status', 'pending')
             ->where(function ($query) {
                 $query->where('payment_status', 'pending')
                     ->orWhere('payment_status', 'failed');
             })
             ->where('created_at', '<', now()->subMinutes(20))
-            ->update([
+            ->get();
+
+        $cancelled = 0;
+
+        foreach ($orders as $order) {
+            $order->update([
                 'status' => 'cancelled',
                 'cancel_reason' => 'عدم پرداخت ظرف ۲۰ دقیقه',
             ]);
+            $cancelled++;
+        }
 
         if ($cancelled > 0) {
             $this->info("{$cancelled} سفارش پرداخت نشده لغو شد.");

@@ -3,9 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CalculateFeeRequest;
+use App\Http\Requests\InitPaymentRequest;
+use App\Http\Resources\PaymentResource;
+use App\Services\InstallmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
@@ -17,18 +22,9 @@ use Shetabit\Multipay\Payment as ShetabitPayment;
 
 class PaymentController extends Controller
 {
-    const INSTALLMENT_GATEWAYS = ['digipay', 'smartis', 'kamanlend'];
-    const INSTALLMENT_FEE_PERCENT = 4;
-
-    public function calculateFee(Request $request): JsonResponse
+    public function calculateFee(CalculateFeeRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|integer|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'shipping_cost' => 'required|numeric|min:0',
-            'gateway' => 'required|in:parsian,digipay,kamanlend,smartis',
-        ]);
+        $validated = $request->validated();
 
         $baseTotal = 0;
         foreach ($validated['items'] as $item) {
@@ -37,11 +33,11 @@ class PaymentController extends Controller
         }
         $baseTotal += $validated['shipping_cost'];
 
-        $isInstallment = in_array($validated['gateway'], self::INSTALLMENT_GATEWAYS);
+        $isInstallment = InstallmentService::isInstallmentGateway($validated['gateway']);
         $feeAmount = 0;
 
-        if ($isInstallment && $baseTotal > 0) {
-            $feeAmount = (int) round($baseTotal * self::INSTALLMENT_FEE_PERCENT / 100);
+        if ($isInstallment) {
+            $feeAmount = InstallmentService::calculateFee((int) $baseTotal);
         }
 
         return response()->json([
@@ -51,12 +47,9 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function init(Request $request): JsonResponse
+    public function init(InitPaymentRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'order_id' => 'required|integer|exists:orders,id',
-            'gateway' => 'required|in:parsian,digipay,kamanlend,smartis',
-        ]);
+        $validated = $request->validated();
 
         $order = Order::findOrFail($validated['order_id']);
 
@@ -148,13 +141,22 @@ class PaymentController extends Controller
     public function callback(Request $request, string $orderId, string $gateway): RedirectResponse
     {
         $order = Order::findOrFail($orderId);
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+        $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
 
-        $payment = Payment::where('order_id', $order->id)
-            ->where('gateway', $gateway)
-            ->where('status', 'pending')
-            ->latest()
-            ->first();
+        $payment = DB::transaction(function () use ($order, $gateway) {
+            $payment = Payment::where('order_id', $order->id)
+                ->where('gateway', $gateway)
+                ->where('status', 'pending')
+                ->latest()
+                ->lockForUpdate()
+                ->first();
+
+            if ($payment) {
+                $payment->update(['status' => 'processing']);
+            }
+
+            return $payment;
+        });
 
         if (! $payment) {
             $existingPaid = Payment::where('order_id', $order->id)
@@ -175,25 +177,27 @@ class PaymentController extends Controller
                 ->transactionId($payment->transaction_id)
                 ->verify();
 
-            $payment->update([
-                'status' => 'paid',
-                'gateway_response' => [
-                    'reference_id' => $receipt->getReferenceId(),
-                    'details' => $receipt->getDetails(),
-                ],
-                'paid_at' => now(),
-            ]);
+            DB::transaction(function () use ($payment, $order, $receipt, $gateway) {
+                $payment->update([
+                    'status' => 'paid',
+                    'gateway_response' => [
+                        'reference_id' => $receipt->getReferenceId(),
+                        'details' => $receipt->getDetails(),
+                    ],
+                    'paid_at' => now(),
+                ]);
 
-            $order->update([
-                'payment_status' => 'paid',
-                'status' => 'confirmed',
-            ]);
+                $order->update([
+                    'payment_status' => 'paid',
+                    'status' => 'confirmed',
+                ]);
 
-            $order->addNote(
-                "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: ".number_format($order->total_amount).' تومان',
-                'payment',
-                true
-            );
+                $order->addNote(
+                    "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: ".number_format($order->total_amount).' تومان',
+                    'payment',
+                    true
+                );
+            });
 
             return redirect($frontendUrl.'/confirm?order_id='.$order->id);
 
@@ -213,6 +217,8 @@ class PaymentController extends Controller
             return redirect($frontendUrl.'/checkout?payment=failed');
 
         } catch (\Exception $e) {
+            $payment->update(['status' => 'pending']);
+
             return redirect($frontendUrl.'/checkout?payment=error');
         }
     }
@@ -230,12 +236,7 @@ class PaymentController extends Controller
         return response()->json([
             'order_status' => $order->status,
             'payment_status' => $order->payment_status,
-            'payment' => $payment ? [
-                'gateway' => $payment->gateway,
-                'status' => $payment->status,
-                'amount' => $payment->amount,
-                'paid_at' => $payment->paid_at,
-            ] : null,
+            'payment' => $payment ? new PaymentResource($payment) : null,
         ]);
     }
 }
