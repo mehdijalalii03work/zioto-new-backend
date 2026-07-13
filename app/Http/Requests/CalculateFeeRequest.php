@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class CalculateFeeRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'shipping_cost' => ['required', 'numeric', 'min:0'],
+            'gateway' => ['required', 'in:parsian,digipay,kamanlend,smartis'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'items.required' => 'حداقل یک محصول انتخاب کنید',
+            'gateway.required' => 'درگاه پرداخت الزامی است',
+            'gateway.in' => 'درگاه پرداخت معتبر نیست',
+        ];
+    }
+}

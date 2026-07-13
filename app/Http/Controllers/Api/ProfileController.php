@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\UserResource;
+use App\Models\User;
 use App\Services\ShahkarService;
 use App\Services\SmsIrService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
@@ -21,24 +24,13 @@ class ProfileController extends Controller
         private readonly SmsIrService $sms,
         private readonly ShahkarService $shahkar
     ) {}
+
     public function show(): JsonResponse
     {
         $user = Auth::user();
 
         return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'name' => $user->name,
-                'phone' => $user->phone,
-                'email' => $user->email,
-                'national_id' => $user->national_code,
-                'birth_date' => $user->birth_date,
-                'shahkar_verified' => $user->shahkar_verified,
-                'phone_verified_at' => $user->phone_verified_at,
-                'created_at' => $user->created_at,
-            ],
+            'user' => new UserResource($user),
         ]);
     }
 
@@ -83,16 +75,7 @@ class ProfileController extends Controller
 
         return response()->json([
             'message' => 'اطلاعات با موفقیت بروزرسانی شد',
-            'user' => [
-                'id' => $user->id,
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'name' => $user->name,
-                'phone' => $user->phone,
-                'email' => $user->email,
-                'national_id' => $user->national_code,
-                'birth_date' => $user->birth_date,
-            ],
+            'user' => new UserResource($user->fresh()),
         ]);
     }
 
@@ -111,7 +94,7 @@ class ProfileController extends Controller
             ], 422);
         }
 
-        $existingUser = \App\Models\User::where('phone', $newPhone)->where('id', '!=', $user->id)->first();
+        $existingUser = User::where('phone', $newPhone)->where('id', '!=', $user->id)->first();
         if ($existingUser) {
             return response()->json([
                 'message' => 'این شماره تلفن قبلاً ثبت شده است',
@@ -138,7 +121,7 @@ class ProfileController extends Controller
             ], 500);
         }
 
-        $token = \Illuminate\Support\Str::random(64);
+        $token = Str::random(64);
         Cache::put("change_phone_token:{$token}", $newPhone, self::SHAHKAR_TOKEN_TTL);
 
         return response()->json([

@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreWishlistRequest;
+use App\Http\Resources\ProductResource;
 use App\Models\Wishlist;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Modules\Product\Models\Product;
 
 class WishlistController extends Controller
 {
@@ -18,20 +19,17 @@ class WishlistController extends Controller
         $wishlistItems = Wishlist::where('user_id', $user->id)
             ->with(['product.category:id,name,slug', 'product.brand:id,name,slug', 'product.images'])
             ->get()
-            ->map(fn (Wishlist $item) => $item->product ? $this->formatProduct($item->product) : null)
+            ->map(fn (Wishlist $item) => $item->product ? ProductResource::withoutImages(new ProductResource($item->product)) : null)
             ->filter()
             ->values();
 
         return response()->json(['data' => $wishlistItems]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreWishlistRequest $request): JsonResponse
     {
         $user = Auth::user();
-
-        $validated = $request->validate([
-            'product_id' => ['required', 'integer', 'exists:products,id'],
-        ]);
+        $validated = $request->validated();
 
         $existing = Wishlist::where('user_id', $user->id)
             ->where('product_id', $validated['product_id'])
@@ -72,13 +70,10 @@ class WishlistController extends Controller
         ]);
     }
 
-    public function toggle(Request $request): JsonResponse
+    public function toggle(StoreWishlistRequest $request): JsonResponse
     {
         $user = Auth::user();
-
-        $validated = $request->validate([
-            'product_id' => ['required', 'integer', 'exists:products,id'],
-        ]);
+        $validated = $request->validated();
 
         $existing = Wishlist::where('user_id', $user->id)
             ->where('product_id', $validated['product_id'])
@@ -102,28 +97,5 @@ class WishlistController extends Controller
             'message' => 'محصول به علاقه‌مندی‌ها اضافه شد',
             'added' => true,
         ]);
-    }
-
-    private function formatProduct(Product $p): array
-    {
-        $price = (int) $p->price;
-
-        $primaryImage = $p->images->firstWhere('is_primary', true) ?? $p->images->first();
-
-        return [
-            'id' => $p->id,
-            'name' => $p->name,
-            'slug' => $p->slug,
-            'sub' => $p->category?->name ?? '',
-            'cat' => $p->category?->name ?? '',
-            'cat_slug' => $p->category?->slug ?? '',
-            'brand' => $p->brand?->name ?? '',
-            'brand_slug' => $p->brand?->slug ?? '',
-            'weight' => $p->weight ? $p->weight.' گرم' : '',
-            'price' => $price,
-            'stock' => $p->stock_quantity > 0,
-            'desc' => strip_tags($p->description ?? ''),
-            'image' => $primaryImage ? asset('storage/'.$primaryImage->image_path) : null,
-        ];
     }
 }

@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreCartRequest;
+use App\Http\Requests\UpdateCartRequest;
+use App\Http\Resources\CartResource;
 use App\Models\Cart;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Modules\Product\Models\Product;
 
 class CartController extends Controller
 {
@@ -17,33 +19,19 @@ class CartController extends Controller
 
         $items = Cart::where('user_id', $userId)
             ->with('product:id,name,price,weight,stock_quantity')
-            ->get()
-            ->map(fn (Cart $item) => [
-                'id' => $item->product_id,
-                'qty' => $item->quantity,
-                'name' => $item->product->name ?? '',
-                'price' => (int) ($item->product->price ?? 0),
-                'weight' => $item->product->weight ?? '',
-                'stock' => ($item->product->stock_quantity ?? 0) > 0,
-            ]);
+            ->get();
 
-        return response()->json(['data' => $items]);
+        return response()->json([
+            'data' => CartResource::collection($items),
+        ]);
     }
 
-    public function store(): JsonResponse
+    public function store(StoreCartRequest $request): JsonResponse
     {
         $userId = Auth::id();
-        $productId = request()->input('product_id');
-        $quantity = request()->input('quantity', 1);
-
-        if (! $productId) {
-            return response()->json(['message' => 'شناسه محصول الزامی است'], 422);
-        }
-
-        $product = Product::find($productId);
-        if (! $product) {
-            return response()->json(['message' => 'محصول یافت نشد'], 404);
-        }
+        $validated = $request->validated();
+        $productId = $validated['product_id'];
+        $quantity = (int) ($validated['quantity'] ?? 1);
 
         Cart::updateOrCreate(
             ['user_id' => $userId, 'product_id' => $productId],
@@ -53,10 +41,10 @@ class CartController extends Controller
         return response()->json(['message' => 'به سبد اضافه شد']);
     }
 
-    public function update(int $productId): JsonResponse
+    public function update(UpdateCartRequest $request, int $productId): JsonResponse
     {
         $userId = Auth::id();
-        $quantity = request()->input('quantity', 1);
+        $quantity = (int) $request->validated('quantity');
 
         $cart = Cart::where('user_id', $userId)->where('product_id', $productId)->first();
 

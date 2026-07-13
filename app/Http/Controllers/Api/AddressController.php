@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAddressRequest;
 use App\Http\Requests\UpdateAddressRequest;
+use App\Http\Resources\AddressResource;
 use App\Models\UserAddress;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class AddressController extends Controller
             ->get();
 
         return response()->json([
-            'addresses' => $addresses,
+            'addresses' => AddressResource::collection($addresses),
         ]);
     }
 
@@ -37,7 +38,7 @@ class AddressController extends Controller
 
         return response()->json([
             'message' => 'آدرس با موفقیت ایجاد شد',
-            'address' => $address,
+            'address' => new AddressResource($address),
         ], 201);
     }
 
@@ -52,7 +53,7 @@ class AddressController extends Controller
         $address->load(['province', 'city']);
 
         return response()->json([
-            'address' => $address,
+            'address' => new AddressResource($address),
         ]);
     }
 
@@ -76,7 +77,7 @@ class AddressController extends Controller
 
         return response()->json([
             'message' => 'آدرس با موفقیت بروزرسانی شد',
-            'address' => $address,
+            'address' => new AddressResource($address),
         ]);
     }
 
@@ -111,7 +112,7 @@ class AddressController extends Controller
 
         return response()->json([
             'message' => 'آدرس پیش‌فرض با موفقیت تنظیم شد',
-            'address' => $address,
+            'address' => new AddressResource($address),
         ]);
     }
 }
