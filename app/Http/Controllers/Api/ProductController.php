@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -115,6 +116,22 @@ class ProductController extends Controller
                 ->toArray();
         });
 
+        $token = request()->bearerToken();
+        $wishlistIds = [];
+
+        if ($token) {
+            $user = User::where("api_token", $token)->first();
+            if ($user) {
+                $wishlistIds = $user->wishlists()->pluck("product_id")->toArray();
+            }
+        }
+
+        $wishlistSet = array_flip($wishlistIds);
+
+        $products = array_map(fn (array $p) => array_merge($p, [
+            "is_wishlist" => isset($wishlistSet[$p["id"]]),
+        ]), $products);
+
         return response()->json(["data" => $products]);
     }
 
@@ -141,6 +158,18 @@ class ProductController extends Controller
             "responsive" => $this->getResponsiveImages($img->image_path),
             "srcset" => $this->getSrcset($this->getResponsiveImages($img->image_path)),
         ]);
+
+        $token = request()->bearerToken();
+        $data["is_wishlist"] = false;
+
+        if ($token) {
+            $user = User::where("api_token", $token)->first();
+            if ($user) {
+                $data["is_wishlist"] = $user->wishlists()
+                    ->where("product_id", $product->id)
+                    ->exists();
+            }
+        }
 
         return response()->json(["data" => $data]);
     }

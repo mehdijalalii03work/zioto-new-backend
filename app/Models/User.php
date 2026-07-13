@@ -44,4 +44,9 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->hasOne(UserAddress::class)->where('is_default', true);
     }
+
+    public function wishlists(): HasMany
+    {
+        return $this->hasMany(Wishlist::class);
+    }
 }
