@@ -49,7 +49,6 @@ class Kamanlend extends Driver
         $response = $this->client->request('POST', $this->settings->apiRegisterPaymentUrl, [
             'json' => $payload,
             'http_errors' => false,
-            'verify' => false,
         ]);
 
         $responseBody = $response->getBody()->getContents();
@@ -103,7 +102,6 @@ class Kamanlend extends Driver
         $response = $this->client->request('POST', $this->settings->apiGetPaymentStateUrl, [
             'json' => $payload,
             'http_errors' => false,
-            'verify' => false,
         ]);
 
         $body = array_change_key_case(json_decode($response->getBody()->getContents(), true), CASE_LOWER);

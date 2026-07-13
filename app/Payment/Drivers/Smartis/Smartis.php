@@ -57,7 +57,6 @@ class Smartis extends Driver
                 'accept' => 'application/json',
             ],
             'http_errors' => false,
-            'verify' => false,
         ]);
 
         $body = json_decode($response->getBody()->getContents(), true);
@@ -99,7 +98,6 @@ class Smartis extends Driver
                 'Content-Type' => 'application/json',
             ],
             'http_errors' => false,
-            'verify' => false,
         ]);
 
         $body = json_decode($response->getBody()->getContents(), true);
@@ -147,7 +145,6 @@ class Smartis extends Driver
                 'Content-Type' => 'application/json',
             ],
             'http_errors' => false,
-            'verify' => false,
         ]);
 
         $body = json_decode($response->getBody()->getContents(), true);
@@ -166,7 +163,6 @@ class Smartis extends Driver
                 'Authorization' => 'Bearer '.$this->accessToken,
             ],
             'http_errors' => false,
-            'verify' => false,
         ]);
     }
 

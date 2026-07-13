@@ -44,7 +44,6 @@ class PriceBoardService
                 return $this->fallbackToCache($cached);
             }
 
-
             // prices are stored in Rials (as received from API)
 
             Cache::put(self::CACHE_KEY, $data, self::CACHE_TTL);
