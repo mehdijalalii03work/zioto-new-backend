@@ -45,7 +45,13 @@ class SyncPriceBoard extends Command
 
         if ($updated > 0) {
             $this->broadcastProducts();
-            Cache::flush();
+            $redis = Cache::getStore()->getRedis();
+            $keys = $redis->keys('api:products:*');
+            if ($keys) {
+                $redis->del($keys);
+            }
+            Cache::forget('priceboard:prices');
+            Cache::forget('priceboard:last_sync_at');
         }
 
         Log::info('[PriceBoard] Sync completed', [
