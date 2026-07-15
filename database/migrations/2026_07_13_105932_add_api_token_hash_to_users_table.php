@@ -15,6 +15,7 @@ return new class extends Migration
 
         DB::table('users')
             ->whereNotNull('api_token')
+            ->orderBy('id')
             ->each(function ($user) {
                 DB::table('users')
                     ->where('id', $user->id)
