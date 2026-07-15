@@ -45,7 +45,7 @@ class SyncPriceBoard extends Command
 
         if ($updated > 0) {
             $this->broadcastProducts();
-            Cache::tags(['api:products'])->flush();
+            Cache::flush();
         }
 
         Log::info('[PriceBoard] Sync completed', [

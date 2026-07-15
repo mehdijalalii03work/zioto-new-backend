@@ -103,6 +103,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->renderable(function (\Exception $e, Request $request) {
             if ($request->is('api/*') && ! $e instanceof ValidationException && ! $e instanceof ModelNotFoundException && ! $e instanceof NotFoundHttpException && ! $e instanceof MethodNotAllowedHttpException && ! $e instanceof ThrottleRequestsException && ! $e instanceof BadRequestHttpException) {
+                \Illuminate\Support\Facades\Log::error('Unhandled API exception: '.$e->getMessage(), [
+                    'exception' => $e,
+                    'url' => $request->fullUrl(),
+                ]);
+
                 return response()->json([
                     'message' => 'خطای داخلی سرور',
                     'error_code' => 'SERVER_ERROR',
