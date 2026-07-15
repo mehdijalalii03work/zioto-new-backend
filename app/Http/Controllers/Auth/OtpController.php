@@ -20,7 +20,7 @@ class OtpController extends Controller
 {
     private const OTP_TTL = 180;
 
-    private const SHAHKAR_TOKEN_TTL = 600;
+    private const SHAHKAR_TOKEN_TTL = 1800;
 
     public function __construct(
         private readonly SmsIrService $sms,
