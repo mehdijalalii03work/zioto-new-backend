@@ -1,0 +1,1234 @@
+{
+  "info": {
+    "name": "Zioto API",
+    "description": "Zioto E-Commerce API Collection\n\nAll endpoints use `/api` prefix.\n\nAuthentication: Bearer token via `Authorization: Bearer {{token}}` header.\n\nWorkflow:\n1. Send OTP → Verify OTP → (New users) Shahkar Verify\n2. Browse products, locations, shipping methods, blog\n3. Manage cart, wishlist, addresses\n4. Create order → Init payment → Handle callback",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "addressId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "provinceId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "shippingMethodId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"09123456789\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/send-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "send-otp"]
+            },
+            "description": "Send a one-time password to the given phone number.\n\nRate limited by `throttle:otp`.\n\n**Request body:**\n- `phone` (required): 11-digit Iranian mobile number (09XXXXXXXXX)\n\n**Response 200:** `{ \"message\": \"...\" }`\n**Response 429:** OTP already active, retry after 2 minutes."
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"09123456789\",\n  \"code\": \"12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "verify-otp"]
+            },
+            "description": "Verify the OTP code. If user exists, returns an API token. If user is new, returns a `token` for Shahkar registration.\n\nRate limited: 10 requests per minute.\n\n**Request body:**\n- `phone` (required): 11-digit mobile number\n- `code` (required): 5-digit OTP code\n\n**Response 200 (existing user):** `{ \"token\": \"...\", \"user\": {...} }`\n**Response 200 (new user):** `{ \"requires_registration\": true, \"token\": \"...\" }`"
+          }
+        },
+        {
+          "name": "Shahkar Verify (Register)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"from-verify-otp\",\n  \"first_name\": \"Ali\",\n  \"last_name\": \"Rezaei\",\n  \"national_code\": \"1234567890\",\n  \"birth_date\": \"1990-01-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/shahkar-verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "shahkar-verify"]
+            },
+            "description": "Complete registration for new users via Shahkar identity verification.\n\nRate limited: `throttle:shahkar`.\n\n**Request body:**\n- `token` (required): Token from verify-otp response\n- `first_name` (required): 2-50 chars\n- `last_name` (required): 2-50 chars\n- `national_code` (required): 10-digit national code\n- `birth_date` (optional): Date before today\n\n**Response 200:** `{ \"token\": \"api-token\", \"user\": {...} }`"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Logout and invalidate the current API token.\n\nRequires authentication.\n\n**Response 200:** `{ \"message\": \"...\" }`"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Get authenticated user profile.\n\nRequires authentication."
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Ali\",\n  \"last_name\": \"Rezaei\",\n  \"email\": \"ali@example.com\",\n  \"birth_date\": \"1990-01-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Update authenticated user profile.\n\nRequires authentication.\n\n**Request body (all optional):**\n- `first_name`: 2-50 chars\n- `last_name`: 2-50 chars\n- `email`: valid email, unique\n- `birth_date`: date before today"
+          }
+        },
+        {
+          "name": "Change Phone - Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"09987654321\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profile/change-phone/send-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile", "change-phone", "send-otp"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Send OTP to change phone number.\n\nRequires authentication. Rate limited by `throttle:otp`.\n\n**Request body:**\n- `phone` (required): 11-digit mobile number\n\n**Response 200:** `{ \"message\": \"...\", \"token\": \"change-phone-token\" }`"
+          }
+        },
+        {
+          "name": "Change Phone - Verify",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"from-send-otp\",\n  \"code\": \"12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profile/change-phone/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["profile", "change-phone", "verify"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Verify OTP and change phone number (includes Shahkar verification).\n\nRequires authentication. Rate limited: `throttle:shahkar`.\n\n**Request body:**\n- `token` (required): Token from send-otp response\n- `code` (required): 5-digit OTP code"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Addresses",
+      "item": [
+        {
+          "name": "List Addresses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/addresses",
+              "host": ["{{baseUrl}}"],
+              "path": ["addresses"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "List all addresses for the authenticated user.\n\nRequires authentication."
+          }
+        },
+        {
+          "name": "Create Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Home\",\n  \"province_id\": 1,\n  \"city_id\": 1,\n  \"district\": \"District 1\",\n  \"postal_code\": \"1234567890\",\n  \"address_line\": \"123 Main Street, Building 5\",\n  \"plate\": \"12\",\n  \"unit\": \"3\",\n  \"receiver_name\": \"Ali Rezaei\",\n  \"receiver_phone\": \"09123456789\",\n  \"latitude\": 35.6892,\n  \"longitude\": 51.3890,\n  \"is_default\": true,\n  \"is_billing\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/addresses",
+              "host": ["{{baseUrl}}"],
+              "path": ["addresses"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Create a new address. Max 10 addresses per user.\n\nRequires authentication.\n\n**Request body:**\n- `province_id` (required): integer\n- `city_id` (required): integer\n- `address_line` (required): 10-1000 chars\n- `plate` (required): max 20 chars\n- `label`: max 50 chars\n- `district`: max 100 chars\n- `postal_code`: 10 digits\n- `unit`: max 20 chars\n- `receiver_name`: max 100 chars\n- `receiver_phone`: 09XXXXXXXXX\n- `receiver_national_code`: max 10 chars\n- `latitude`, `longitude`: numeric\n- `is_default`, `is_billing`: boolean\n\n**Response 201:** `{ \"message\": \"...\", \"address\": {...} }`"
+          }
+        },
+        {
+          "name": "Get Address",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/addresses/{{addressId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["addresses", "{{addressId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Get a specific address by ID.\n\nRequires authentication. 403 if not owner."
+          }
+        },
+        {
+          "name": "Update Address",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"province_id\": 1,\n  \"city_id\": 1,\n  \"address_line\": \"456 New Street\",\n  \"plate\": \"45\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/addresses/{{addressId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["addresses", "{{addressId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Update an existing address.\n\nRequires authentication. 403 if not owner.\n\n**Request body:** Same fields as Create Address."
+          }
+        },
+        {
+          "name": "Delete Address",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/addresses/{{addressId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["addresses", "{{addressId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Delete an address.\n\nRequires authentication. 403 if not owner."
+          }
+        },
+        {
+          "name": "Set Default Address",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/addresses/{{addressId}}/default",
+              "host": ["{{baseUrl}}"],
+              "path": ["addresses", "{{addressId}}", "default"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Set an address as default.\n\nRequires authentication. 403 if not owner."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Locations",
+      "item": [
+        {
+          "name": "List Provinces",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/locations/provinces",
+              "host": ["{{baseUrl}}"],
+              "path": ["locations", "provinces"]
+            },
+            "description": "Get all provinces.\n\nPublic endpoint."
+          }
+        },
+        {
+          "name": "List Cities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/locations/provinces/{{provinceId}}/cities",
+              "host": ["{{baseUrl}}"],
+              "path": ["locations", "provinces", "{{provinceId}}", "cities"]
+            },
+            "description": "Get cities for a specific province.\n\nPublic endpoint."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
+            },
+            "description": "List all products with optional filters.\n\nPublic endpoint. Results are cached for 5 minutes.\n\n**Query parameters (optional):**\n- `slugs`: comma-separated product slugs\n- `skus`: comma-separated SKUs"
+          }
+        },
+        {
+          "name": "Get Product",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{productId}}"]
+            },
+            "description": "Get a product by ID or slug.\n\nPublic endpoint."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Price Board",
+      "item": [
+        {
+          "name": "Get Price Board",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/price-board",
+              "host": ["{{baseUrl}}"],
+              "path": ["price-board"]
+            },
+            "description": "Get the price board (all product prices).\n\nPublic endpoint."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cart",
+      "item": [
+        {
+          "name": "Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Get all cart items for the authenticated user.\n\nRequires authentication."
+          }
+        },
+        {
+          "name": "Add to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": 1,\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Add a product to cart. If already exists, quantity is increased.\n\nRequires authentication.\n\n**Request body:**\n- `product_id` (required): integer\n- `quantity` (optional): integer, min 1, default 1"
+          }
+        },
+        {
+          "name": "Update Cart Item",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart", "{{productId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Update quantity for a cart item. Set quantity to 0 to remove.\n\nRequires authentication.\n\n**Request body:**\n- `quantity` (required): integer, min 1"
+          }
+        },
+        {
+          "name": "Remove from Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cart/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart", "{{productId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Remove a specific product from cart.\n\nRequires authentication."
+          }
+        },
+        {
+          "name": "Clear Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Clear all items from cart.\n\nRequires authentication."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wishlist",
+      "item": [
+        {
+          "name": "List Wishlist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wishlist",
+              "host": ["{{baseUrl}}"],
+              "path": ["wishlist"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Get all wishlist items.\n\nRequires authentication."
+          }
+        },
+        {
+          "name": "Add to Wishlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wishlist",
+              "host": ["{{baseUrl}}"],
+              "path": ["wishlist"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Add a product to wishlist.\n\nRequires authentication.\n\n**Request body:**\n- `product_id` (required): integer"
+          }
+        },
+        {
+          "name": "Toggle Wishlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wishlist/toggle",
+              "host": ["{{baseUrl}}"],
+              "path": ["wishlist", "toggle"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Toggle wishlist status for a product. Adds if not present, removes if present.\n\nRequires authentication.\n\n**Request body:**\n- `product_id` (required): integer"
+          }
+        },
+        {
+          "name": "Remove from Wishlist",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wishlist/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["wishlist", "{{productId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Remove a product from wishlist.\n\nRequires authentication."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shipping",
+      "item": [
+        {
+          "name": "List Shipping Methods",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shipping/methods?city_id=1&province_id=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["shipping", "methods"],
+              "query": [
+                {
+                  "key": "city_id",
+                  "value": "1",
+                  "description": "Optional city ID to filter methods"
+                },
+                {
+                  "key": "province_id",
+                  "value": "1",
+                  "description": "Optional province ID to filter methods"
+                }
+              ]
+            },
+            "description": "Get available shipping methods, optionally filtered by city/province.\n\nPublic endpoint."
+          }
+        },
+        {
+          "name": "Get Shipping Method",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shipping/methods/{{shippingMethodId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["shipping", "methods", "{{shippingMethodId}}"]
+            },
+            "description": "Get a specific shipping method with its rates.\n\nPublic endpoint."
+          }
+        },
+        {
+          "name": "Calculate Shipping",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipping_method_id\": 1,\n  \"province_id\": 1,\n  \"city_id\": 1,\n  \"cart_items\": [\n    {\n      \"product_id\": 1,\n      \"quantity\": 2,\n      \"weight\": 500\n    }\n  ],\n  \"cart_total\": 500000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shipping/calculate",
+              "host": ["{{baseUrl}}"],
+              "path": ["shipping", "calculate"]
+            },
+            "description": "Calculate shipping cost for an order.\n\nPublic endpoint.\n\n**Request body:**\n- `shipping_method_id` (required): integer\n- `province_id` (optional): integer\n- `city_id` (optional): integer\n- `cart_items` (optional): array of `{ product_id, quantity, weight }`\n- `cart_total` (optional): numeric"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "List Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "List all orders for the authenticated user.\n\nRequires authentication."
+          }
+        },
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ali Rezaei\",\n  \"phone\": \"09123456789\",\n  \"national_id\": \"1234567890\",\n  \"employee_id\": \"EMP001\",\n  \"gateway\": \"parsian\",\n  \"user_address_id\": 1,\n  \"items\": [\n    {\n      \"product_id\": 1,\n      \"quantity\": 2\n    }\n  ],\n  \"shipping_method_id\": 1,\n  \"shipping_cost\": 50000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Create a new order.\n\nRequires authentication. Rate limited: 10 requests per minute.\n\n**Request body:**\n- `name` (required): string\n- `phone` (required): string\n- `national_id` (required): 10-char string\n- `employee_id` (required): string\n- `gateway` (optional): parsian | digipay | kamanlend | smartis\n- `user_address_id` (optional): integer\n- `shipping_address_snapshot` (optional): string\n- `items` (required): array of `{ product_id, quantity }`\n- `shipping_method_id` (required): integer\n- `shipping_cost` (required): numeric\n\n**Response 201:** `{ \"order\": {...} }`"
+          }
+        },
+        {
+          "name": "Get Order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Get a specific order with items, shipping, and address.\n\nRequires authentication."
+          }
+        },
+        {
+          "name": "Get Order Notes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}", "notes"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Get customer-facing notes for an order.\n\nRequires authentication."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment",
+      "item": [
+        {
+          "name": "Calculate Fee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"product_id\": 1,\n      \"quantity\": 2\n    }\n  ],\n  \"shipping_cost\": 50000,\n  \"gateway\": \"kamanlend\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment/calculate-fee",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "calculate-fee"]
+            },
+            "description": "Calculate installment fee for an order.\n\nPublic endpoint.\n\n**Request body:**\n- `items` (required): array of `{ product_id, quantity }`\n- `shipping_cost` (required): numeric\n- `gateway` (required): parsian | digipay | kamanlend | smartis\n\n**Response 200:** `{ \"base_total\": 500000, \"fee_amount\": 25000, \"total_with_fee\": 525000 }`"
+          }
+        },
+        {
+          "name": "Init Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": 1,\n  \"gateway\": \"parsian\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment/init",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "init"]
+            },
+            "description": "Initialize a payment for an order.\n\nRate limited: 10 requests per minute.\n\n**Request body:**\n- `order_id` (required): integer\n- `gateway` (required): parsian | digipay | kamanlend | smartis\n\n**Response 200:** `{ \"payment_url\": \"...\", \"transaction_id\": \"...\" }`"
+          }
+        },
+        {
+          "name": "Payment Callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payment/callback/{{orderId}}/parsian",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "callback", "{{orderId}}", "parsian"]
+            },
+            "description": "Payment callback URL (called by payment gateway after payment).\n\nRedirects to frontend. Supports both GET and POST.\n\n**URL params:**\n- `orderId`: Order ID\n- `gateway`: Payment gateway name"
+          }
+        },
+        {
+          "name": "Get Payment Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payment/status/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "status", "{{orderId}}"]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Get payment status for an order.\n\nRequires authentication."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Blog",
+      "item": [
+        {
+          "name": "List Posts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/blog/posts?category=tech&tag=laravel",
+              "host": ["{{baseUrl}}"],
+              "path": ["blog", "posts"],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "",
+                  "description": "Optional category slug filter"
+                },
+                {
+                  "key": "tag",
+                  "value": "",
+                  "description": "Optional tag slug filter"
+                }
+              ]
+            },
+            "description": "List published blog posts with pagination.\n\nPublic endpoint. Paginated (9 per page).\n\n**Query parameters (optional):**\n- `category`: category slug\n- `tag`: tag slug"
+          }
+        },
+        {
+          "name": "Get Post",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/blog/posts/my-post-slug",
+              "host": ["{{baseUrl}}"],
+              "path": ["blog", "posts", "my-post-slug"]
+            },
+            "description": "Get a blog post by slug or ID.\n\nPublic endpoint."
+          }
+        },
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/blog/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["blog", "categories"]
+            },
+            "description": "List all active blog categories with post counts.\n\nPublic endpoint."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contact",
+      "item": [
+        {
+          "name": "Send Contact Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ali Rezaei\",\n  \"phone\": \"09123456789\",\n  \"subject\": \"Order inquiry\",\n  \"message\": \"I have a question about my order\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contact",
+              "host": ["{{baseUrl}}"],
+              "path": ["contact"]
+            },
+            "description": "Send a contact message.\n\nRate limited: 5 requests per minute.\n\n**Request body:**\n- `name` (required): max 255 chars\n- `phone` (required): max 20 chars\n- `subject` (optional): max 255 chars\n- `message` (required): max 2000 chars"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Settings",
+      "item": [
+        {
+          "name": "Get Tax Rate",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/settings/tax",
+              "host": ["{{baseUrl}}"],
+              "path": ["settings", "tax"]
+            },
+            "description": "Get the current tax rate setting.\n\nPublic endpoint.\n\n**Response 200:** `{ \"tax_rate\": 9 }`"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hesabfa Webhook",
+      "item": [
+        {
+          "name": "Hesabfa Webhook Test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hesabfa/webhook",
+              "host": ["{{baseUrl}}"],
+              "path": ["hesabfa", "webhook"]
+            },
+            "description": "Test Hesabfa webhook connectivity.\n\nPublic endpoint.\n\n**Response 200:** `{ \"status\": \"ok\", \"configured\": true }`"
+          }
+        },
+        {
+          "name": "Hesabfa Webhook (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Webhook-Secret",
+                "value": "your-webhook-secret"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"EventType\": \"ItemQuantityChanged\",\n  \"ItemCode\": \"PRD001\",\n  \"Quantity\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/hesabfa/webhook",
+              "host": ["{{baseUrl}}"],
+              "path": ["hesabfa", "webhook"]
+            },
+            "description": "Receive Hesabfa webhook events.\n\nSupports `ItemQuantityChanged` and `ItemPriceChanged` events.\n\n**Headers:**\n- `X-Webhook-Secret`: webhook secret\n\n**Body (ItemQuantityChanged):**\n- `EventType`: `ItemQuantityChanged`\n- `ItemCode`: product code\n- `Quantity`: new quantity\n\n**Body (ItemPriceChanged):**\n- `EventType`: `ItemPriceChanged`\n- `ItemCode`: product code\n- `Price`: new price"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -49,7 +49,7 @@ class CartController extends Controller
         $cart = Cart::where('user_id', $userId)->where('product_id', $productId)->first();
 
         if (! $cart) {
-            return response()->json(['message' => 'آیتم در سبد یافت نشد'], 404);
+            return response()->json(['message' => 'آیتم در سبد یافت نشد', 'error_code' => 'CART_ITEM_NOT_FOUND'], 404);
         }
 
         if ($quantity <= 0) {

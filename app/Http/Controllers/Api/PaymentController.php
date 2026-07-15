@@ -54,7 +54,7 @@ class PaymentController extends Controller
         $order = Order::findOrFail($validated['order_id']);
 
         if ($order->payment_status === 'paid') {
-            return response()->json(['message' => 'سفارش قبلاً پرداخت شده'], 422);
+            return response()->json(['message' => 'سفارش قبلاً پرداخت شده', 'error_code' => 'ORDER_ALREADY_PAID'], 422);
         }
 
         $notes = json_decode($order->notes, true) ?? [];
@@ -124,7 +124,7 @@ class PaymentController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json(['message' => 'خطا در ایجاد درخواست پرداخت: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'خطا در ایجاد درخواست پرداخت: '.$e->getMessage(), 'error_code' => 'PAYMENT_FAILED'], 500);
         } catch (\Exception $e) {
             Log::channel('payment')->error('Payment init Exception', [
                 'order_id' => $order->id,
@@ -134,7 +134,7 @@ class PaymentController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json(['message' => 'خطای غیرمنتظره: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'خطای غیرمنتظره: '.$e->getMessage(), 'error_code' => 'PAYMENT_ERROR'], 500);
         }
     }
 

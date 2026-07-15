@@ -91,6 +91,7 @@ class ProfileController extends Controller
         if ($newPhone === $user->phone) {
             return response()->json([
                 'message' => 'شماره جدید با شماره فعلی یکسان است',
+                'error_code' => 'PHONE_SAME',
             ], 422);
         }
 
@@ -98,6 +99,7 @@ class ProfileController extends Controller
         if ($existingUser) {
             return response()->json([
                 'message' => 'این شماره تلفن قبلاً ثبت شده است',
+                'error_code' => 'PHONE_DUPLICATE',
             ], 422);
         }
 
@@ -105,6 +107,7 @@ class ProfileController extends Controller
         if (Cache::has($key)) {
             return response()->json([
                 'message' => 'کد تایید قبلی هنوز معتبر است، لطفاً پس از ۲ دقیقه دوباره تلاش کنید',
+                'error_code' => 'OTP_STILL_VALID',
             ], 429);
         }
 
@@ -118,6 +121,7 @@ class ProfileController extends Controller
 
             return response()->json([
                 'message' => 'ارسال پیامک با مشکل مواجه شد، لطفا دقایقی دیگر تلاش کنید',
+                'error_code' => 'SMS_FAILED',
             ], 500);
         }
 
@@ -144,6 +148,7 @@ class ProfileController extends Controller
         if (! $newPhone) {
             return response()->json([
                 'message' => 'توکن نامعتبر یا منقضی شده است، لطفاً مجدداً تلاش کنید',
+                'error_code' => 'TOKEN_EXPIRED',
             ], 422);
         }
 
@@ -153,6 +158,7 @@ class ProfileController extends Controller
         if (! $storedCode || $storedCode !== $code) {
             return response()->json([
                 'message' => 'کد تایید نامعتبر یا منقضی شده است',
+                'error_code' => 'OTP_INVALID',
             ], 422);
         }
 
@@ -166,12 +172,14 @@ class ProfileController extends Controller
         if (! $result['success']) {
             return response()->json([
                 'message' => $result['message'] ?? 'خطا در احراز هویت',
+                'error_code' => 'SHAHKAR_FAILED',
             ], 422);
         }
 
         if (! ($result['matched'] ?? false)) {
             return response()->json([
                 'message' => 'شماره موبایل جدید با کد ملی شما مطابقت ندارد',
+                'error_code' => 'PHONE_MISMATCH',
             ], 422);
         }
 

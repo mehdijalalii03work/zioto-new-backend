@@ -1,10 +1,16 @@
 <?php
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
+use Illuminate\Http\ThrottleRequestsException;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -39,4 +45,68 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        $exceptions->renderable(function (ValidationException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'errors' => $e->errors(),
+                    'error_code' => 'VALIDATION_FAILED',
+                ], 422);
+            }
+        });
+
+        $exceptions->renderable(function (ModelNotFoundException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'message' => 'رکورد مورد نظر یافت نشد',
+                    'error_code' => 'MODEL_NOT_FOUND',
+                ], 404);
+            }
+        });
+
+        $exceptions->renderable(function (NotFoundHttpException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'message' => 'آدرس یافت نشد',
+                    'error_code' => 'NOT_FOUND',
+                ], 404);
+            }
+        });
+
+        $exceptions->renderable(function (MethodNotAllowedHttpException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'message' => 'روش درخواست مجاز نیست',
+                    'error_code' => 'METHOD_NOT_ALLOWED',
+                ], 405);
+            }
+        });
+
+        $exceptions->renderable(function (ThrottleRequestsException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'message' => 'تعداد درخواست‌ها بیش از حد مجاز است',
+                    'error_code' => 'RATE_LIMITED',
+                ], 429);
+            }
+        });
+
+        $exceptions->renderable(function (BadRequestHttpException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'message' => $e->getMessage() ?: 'درخواست نامعتبر است',
+                    'error_code' => 'BAD_REQUEST',
+                ], 400);
+            }
+        });
+
+        $exceptions->renderable(function (\Exception $e, Request $request) {
+            if ($request->is('api/*') && ! $e instanceof ValidationException && ! $e instanceof ModelNotFoundException && ! $e instanceof NotFoundHttpException && ! $e instanceof MethodNotAllowedHttpException && ! $e instanceof ThrottleRequestsException && ! $e instanceof BadRequestHttpException) {
+                return response()->json([
+                    'message' => 'خطای داخلی سرور',
+                    'error_code' => 'SERVER_ERROR',
+                ], 500);
+            }
+        });
     })->create();

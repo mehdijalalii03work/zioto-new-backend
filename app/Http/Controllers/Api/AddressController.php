@@ -47,6 +47,7 @@ class AddressController extends Controller
         if ($request->user()->id !== $address->user_id) {
             return response()->json([
                 'message' => 'شما به این آدرس دسترسی ندارید',
+                'error_code' => 'ADDRESS_FORBIDDEN',
             ], 403);
         }
 
@@ -62,6 +63,7 @@ class AddressController extends Controller
         if ($request->user()->id !== $address->user_id) {
             return response()->json([
                 'message' => 'شما به این آدرس دسترسی ندارید',
+                'error_code' => 'ADDRESS_FORBIDDEN',
             ], 403);
         }
 
@@ -86,6 +88,7 @@ class AddressController extends Controller
         if ($request->user()->id !== $address->user_id) {
             return response()->json([
                 'message' => 'شما به این آدرس دسترسی ندارید',
+                'error_code' => 'ADDRESS_FORBIDDEN',
             ], 403);
         }
 
@@ -101,6 +104,7 @@ class AddressController extends Controller
         if ($request->user()->id !== $address->user_id) {
             return response()->json([
                 'message' => 'شما به این آدرس دسترسی ندارید',
+                'error_code' => 'ADDRESS_FORBIDDEN',
             ], 403);
         }
 

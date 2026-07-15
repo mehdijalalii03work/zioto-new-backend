@@ -67,7 +67,7 @@ class ProductController extends Controller
             ->first();
 
         if (! $product) {
-            return response()->json(['message' => 'محصول یافت نشد'], 404);
+            return response()->json(['message' => 'محصول یافت نشد', 'error_code' => 'PRODUCT_NOT_FOUND'], 404);
         }
 
         $data = (new ProductResource($product))->toArray(request());

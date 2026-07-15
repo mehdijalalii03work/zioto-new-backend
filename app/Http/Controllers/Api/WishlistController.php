@@ -38,6 +38,7 @@ class WishlistController extends Controller
         if ($existing) {
             return response()->json([
                 'message' => 'این محصول قبلاً به علاقه‌مندی‌ها اضافه شده است',
+                'error_code' => 'WISHLIST_DUPLICATE',
             ], 422);
         }
 
@@ -62,6 +63,7 @@ class WishlistController extends Controller
         if (! $deleted) {
             return response()->json([
                 'message' => 'محصول در علاقه‌مندی‌ها یافت نشد',
+                'error_code' => 'WISHLIST_NOT_FOUND',
             ], 404);
         }
 

@@ -35,6 +35,7 @@ class OtpController extends Controller
         if (Cache::has($key)) {
             return response()->json([
                 'message' => 'کد تایید قبلی هنوز معتبر است، لطفاً پس از ۲ دقیقه دوباره تلاش کنید',
+                'error_code' => 'OTP_STILL_VALID',
             ], 429);
         }
 
@@ -49,6 +50,7 @@ class OtpController extends Controller
 
             return response()->json([
                 'message' => 'ارسال پیامک با مشکل مواجه شد، لطفا دقایقی دیگر تلاش کنید',
+                'error_code' => 'SMS_FAILED',
             ], 500);
         }
 
@@ -68,6 +70,7 @@ class OtpController extends Controller
         if (! $stored || $stored !== $code) {
             return response()->json([
                 'message' => 'کد تایید نامعتبر یا منقضی شده است',
+                'error_code' => 'OTP_INVALID',
             ], 422);
         }
 

@@ -31,6 +31,7 @@ class ContactMessageController extends Controller
             return response()->json([
                 'message' => $validator->errors()->first(),
                 'errors' => $validator->errors(),
+                'error_code' => 'VALIDATION_FAILED',
             ], 422);
         }
 

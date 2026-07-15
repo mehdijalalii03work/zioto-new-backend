@@ -116,6 +116,7 @@ class ShippingController extends Controller
         if (! $rate) {
             return response()->json([
                 'message' => 'تعرفه مناسبی برای این روش ارسال یافت نشد',
+                'error_code' => 'SHIPPING_RATE_NOT_FOUND',
             ], 404);
         }
 

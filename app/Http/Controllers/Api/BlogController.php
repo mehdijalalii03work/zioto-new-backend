@@ -107,7 +107,7 @@ class BlogController extends Controller
             : $query->where("slug", $slugOrId)->first();
 
         if (! $post) {
-            return response()->json(["message" => "مقاله یافت نشد"], 404);
+            return response()->json(["message" => "مقاله یافت نشد", "error_code" => "POST_NOT_FOUND"], 404);
         }
 
         return response()->json([
