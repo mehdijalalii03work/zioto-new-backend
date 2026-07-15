@@ -115,6 +115,7 @@ class OtpController extends Controller
         if (! $phone) {
             return response()->json([
                 'message' => 'توکن نامعتبر یا منقضی شده است، لطفاً مجدداً وارد شوید',
+                'error_code' => 'TOKEN_EXPIRED',
             ], 422);
         }
 
@@ -122,6 +123,7 @@ class OtpController extends Controller
         if ($existingUser) {
             return response()->json([
                 'message' => 'این کد ملی قبلاً ثبت شده است',
+                'error_code' => 'NATIONAL_CODE_DUPLICATE',
             ], 422);
         }
 
@@ -131,12 +133,14 @@ class OtpController extends Controller
         if (! $result['success']) {
             return response()->json([
                 'message' => $result['message'] ?? 'خطا در احراز هویت',
+                'error_code' => 'SHAHKAR_FAILED',
             ], 422);
         }
 
         if (! ($result['matched'] ?? false)) {
             return response()->json([
                 'message' => 'کد ملی و شماره موبایل مطابقت ندارند',
+                'error_code' => 'NATIONAL_CODE_MISMATCH',
             ], 422);
         }
 
