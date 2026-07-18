@@ -102,6 +102,7 @@ class OrderSubmitController extends Controller
 
             $order = Order::create([
                 'user_id' => $request->user()?->id,
+                'order_number' => '0',
                 'status' => 'pending',
                 'total_amount' => $totalAmount,
                 'payment_method' => $paymentMethod,
