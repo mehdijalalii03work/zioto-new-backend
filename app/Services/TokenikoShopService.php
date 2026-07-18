@@ -45,7 +45,7 @@ class TokenikoShopService
                 }
 
                 $key = mb_strtolower(trim($item['Name']));
-                $prices[$key] = (string) round(((float) $item['SellPrice']) / 10);
+                $prices[$key] = (string) round((float) $item['SellPrice']);
             }
 
             Cache::put(self::CACHE_KEY, $prices, self::CACHE_TTL);
