@@ -21,11 +21,8 @@ class Order extends Model
     protected static function booted(): void
     {
         static::creating(function (Order $order) {
-            do {
-                $orderNumber = random_int(10000, 99999);
-            } while (DB::table('orders')->where('order_number', $orderNumber)->exists());
-
-            $order->order_number = $orderNumber;
+            $maxNumber = DB::table('orders')->max(DB::raw('CAST(order_number AS UNSIGNED)')) ?? 0;
+            $order->order_number = $maxNumber + 1;
         });
     }
 
