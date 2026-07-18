@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 
 class Order extends Model
 {
@@ -19,8 +20,9 @@ class Order extends Model
 
     protected static function booted(): void
     {
-        static::created(function (Order $order) {
-            $order->update(['order_number' => $order->id]);
+        static::creating(function (Order $order) {
+            $maxNumber = DB::table('orders')->max(DB::raw('CAST(order_number AS UNSIGNED)')) ?? 0;
+            $order->order_number = $maxNumber + 1;
         });
     }
 
