@@ -12,7 +12,6 @@ use App\Services\InstallmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Modules\Order\Models\Order;
 use Modules\Product\Models\Product;
 
@@ -90,8 +89,6 @@ class OrderSubmitController extends Controller
                 $totalAmount += $installmentFee;
             }
 
-            $orderNumber = 'ZT-'.now()->format('YmdHis').'-'.Str::random(4);
-
             $notesData = [
                 'name' => $validated['name'],
                 'phone' => $validated['phone'],
@@ -105,7 +102,6 @@ class OrderSubmitController extends Controller
 
             $order = Order::create([
                 'user_id' => $request->user()?->id,
-                'order_number' => $orderNumber,
                 'status' => 'pending',
                 'total_amount' => $totalAmount,
                 'payment_method' => $paymentMethod,
@@ -114,6 +110,8 @@ class OrderSubmitController extends Controller
                 'shipping_address_snapshot' => $validated['shipping_address_snapshot'] ?? null,
                 'notes' => json_encode($notesData),
             ]);
+
+            $order->update(['order_number' => $order->id]);
 
             foreach ($orderItems as $orderItem) {
                 $order->items()->create($orderItem);
