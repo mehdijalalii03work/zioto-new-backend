@@ -53,6 +53,9 @@ class ManageSettings extends Page
             'hesabfa_enable_reserved_stock' => config('hesabfa.enable_reserved_stock'),
             'hesabfa_webhook_secret' => config('hesabfa.webhook_secret'),
             'show_price_with_tax' => setting('show_price_with_tax', true),
+            'tapsi_emergency_status' => setting('tapsi_emergency_status', 'open'),
+            'tapsi_auth_token' => config('tapsi.auth_token'),
+            'tapsi_auth_name' => config('tapsi.auth_name'),
         ]);
     }
 
@@ -105,6 +108,39 @@ class ManageSettings extends Page
                                         Toggle::make('show_price_with_tax')
                                             ->label('نمایش قیمت با مالیات')
                                             ->helperText('اگر فعال باشد، قیمت محصولات با احتساب مالیات نمایش داده می‌شود'),
+                                    ]),
+                            ]),
+                        Tabs\Tab::make('tapsi')
+                            ->label('تپسی شاپ')
+                            ->icon('heroicon-o-truck')
+                            ->schema([
+                                Section::make('تنظیمات تپسی شاپ')
+                                    ->description('ارسال محصولات و قیمت‌ها به تپسی شاپ')
+                                    ->icon('heroicon-o-cog-6-tooth')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            TextInput::make('tapsi_auth_token')
+                                                ->label('توکن احراز هویت')
+                                                ->maxLength(255)
+                                                ->placeholder('اختیاری - اگر خالی باشد از تنظیمات دیتابیس خوانده می‌شود'),
+                                            TextInput::make('tapsi_auth_name')
+                                                ->label('نام توکن')
+                                                ->maxLength(255)
+                                                ->default('zioto_sync_node'),
+                                        ]),
+                                    ]),
+
+                                Section::make('کلید اضطراری (Kill Switch)')
+                                    ->description('با فعال کردن این گزینه، موجودی تمام محصولات ارسالی به تپسی شاپ صفر ارسال می‌شود')
+                                    ->icon('heroicon-o-exclamation-triangle')
+                                    ->schema([
+                                        Select::make('tapsi_emergency_status')
+                                            ->label('وضعیت اضطراری')
+                                            ->options([
+                                                'open' => 'باز (عادی)',
+                                                'closed' => 'بسته (اضطراری) - موجودی صفر',
+                                            ])
+                                            ->default('open'),
                                     ]),
                             ]),
                     ]),
@@ -242,10 +278,40 @@ class ManageSettings extends Page
         $hesabfaData = collect($data)->filter(fn ($v, $k) => str_starts_with($k, 'hesabfa_'));
         $this->saveHesabfaSettings($hesabfaData->toArray());
 
+        $this->saveTapsiSettings($data);
+
         Notification::make()
             ->title('تنظیمات با موفقیت ذخیره شد')
             ->success()
             ->send();
+    }
+
+    private function saveTapsiSettings(array $data): void
+    {
+        Setting::updateOrCreate(['key' => 'tapsi_emergency_status'], [
+            'value' => $data['tapsi_emergency_status'] ?? 'open',
+            'type' => 'string',
+            'category' => 'tapsi',
+            'label' => 'وضعیت اضطراری تپسی شاپ',
+        ]);
+
+        $envPath = base_path('.env');
+        $envContent = file_get_contents($envPath);
+
+        $envMap = [
+            'tapsi_auth_token' => 'TAPSI_AUTH_TOKEN',
+            'tapsi_auth_name' => 'TAPSI_AUTH_NAME',
+        ];
+
+        foreach ($envMap as $formKey => $envKey) {
+            if (! array_key_exists($formKey, $data)) {
+                continue;
+            }
+            $value = $data[$formKey] ?? '';
+            $envContent = $this->setEnvValue($envContent, $envKey, (string) $value);
+        }
+
+        file_put_contents($envPath, $envContent);
     }
 
     private function saveHesabfaSettings(array $data): void

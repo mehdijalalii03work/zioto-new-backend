@@ -43,6 +43,19 @@ class ProductForm
 
                         Grid::make(3)
                             ->schema([
+                                TextInput::make('tokeniko_sku')
+                                    ->label('کد توکنیکو')
+                                    ->placeholder('مثلاً zioto-gold-bar-1gram-995')
+                                    ->helperText('نام محصول در API توکنیکو (حالت مستقیم)'),
+
+                                TextInput::make('tapsi_product_id')
+                                    ->label('کد تپسی شاپ')
+                                    ->placeholder('مثلاً ZGB5-0001-0')
+                                    ->helperText('شناسه محصول در تپسی شاپ'),
+                            ]),
+
+                        Grid::make(3)
+                            ->schema([
                                 Select::make('metal_type')
                                     ->label('نوع')
                                     ->options(collect(MetalType::cases())->mapWithKeys(fn ($case) => [$case->value => $case->label()]))

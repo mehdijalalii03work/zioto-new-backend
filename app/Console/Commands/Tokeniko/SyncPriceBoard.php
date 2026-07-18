@@ -6,6 +6,8 @@ use App\Events\PriceBoardUpdated;
 use App\Events\ProductsUpdated;
 use App\Models\Setting;
 use App\Services\PriceBoardService;
+use App\Services\TapsiShopService;
+use App\Services\TokenikoShopService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -18,8 +20,17 @@ use Modules\Product\Models\Product;
 #[Description('Fetch prices from Tokeniko, broadcast to clients, and recalculate product prices')]
 class SyncPriceBoard extends Command
 {
-    public function handle(PriceBoardService $priceBoard): int
-    {
+    public function handle(
+        PriceBoardService $priceBoard,
+        TokenikoShopService $tokenikoShop,
+        TapsiShopService $tapsiShop,
+    ): int {
+        $mode = config('pricing.mode', 'dynamic');
+
+        if ($mode === 'direct') {
+            return $this->syncDirect($tokenikoShop, $tapsiShop);
+        }
+
         $this->info('Syncing price board...');
 
         $prices = $priceBoard->fetchAndStore();
@@ -92,10 +103,18 @@ class SyncPriceBoard extends Command
 
     private function broadcastProducts(): void
     {
-        $products = Product::query()
-            ->with(['category:id,name,slug', 'brand:id,name,slug', 'images'])
-            ->whereNotNull('price_board_item')
-            ->get()
+        $mode = config('pricing.mode', 'dynamic');
+        $query = Product::query()
+            ->with(['category:id,name,slug', 'brand:id,name,slug', 'images']);
+
+        if ($mode === 'direct') {
+            $query->whereNotNull('tokeniko_sku')
+                ->where('tokeniko_sku', '!=', '');
+        } else {
+            $query->whereNotNull('price_board_item');
+        }
+
+        $products = $query->get()
             ->map(fn (Product $p) => $this->formatProduct($p))
             ->toArray();
 
@@ -107,7 +126,12 @@ class SyncPriceBoard extends Command
         $price = (int) $p->price;
         $primaryImage = $p->images->firstWhere('is_primary', true) ?? $p->images->first();
 
-        $taxKey = str_starts_with($p->price_board_item ?? '', 'Gold') ? 'tax_gold' : 'tax_silver';
+        if ($p->price_board_item) {
+            $taxKey = str_starts_with($p->price_board_item, 'Gold') ? 'tax_gold' : 'tax_silver';
+        } else {
+            $taxKey = $p->metal_type?->value === 'gold' ? 'tax_gold' : 'tax_silver';
+        }
+
         $taxRate = (float) Setting::getValue($taxKey, 0);
         $priceBeforeTax = $taxRate > 0 ? round($price / (1 + $taxRate / 100)) : $price;
         $taxAmount = $price - $priceBeforeTax;
@@ -120,5 +144,87 @@ class SyncPriceBoard extends Command
             'tax_rate' => $taxRate,
             'old' => null,
         ];
+    }
+
+    private function syncDirect(TokenikoShopService $tokenikoShop, TapsiShopService $tapsiShop): int
+    {
+        $this->info('Direct mode: syncing from Tokeniko shop API...');
+
+        $prices = $tokenikoShop->fetchAndStore();
+
+        if (empty($prices)) {
+            $this->warn('No prices received from Tokeniko API.');
+
+            return self::FAILURE;
+        }
+
+        $emergencyActive = Setting::getValue('tapsi_emergency_status', 'open') === 'closed';
+
+        if ($emergencyActive) {
+            $this->warn('EMERGENCY LOCK ACTIVE — all Tapsi stock will be 0.');
+        }
+
+        $products = Product::whereNotNull('tokeniko_sku')
+            ->where('tokeniko_sku', '!=', '')
+            ->get();
+
+        $updates = [];
+        $tapsiProducts = [];
+
+        foreach ($products as $product) {
+            $sku = mb_strtolower(trim($product->tokeniko_sku));
+
+            if (! isset($prices[$sku])) {
+                continue;
+            }
+
+            $newPrice = (float) $prices[$sku];
+            $currentPrice = (float) $product->price;
+
+            if ($currentPrice !== $newPrice) {
+                $updates[$product->id] = ['price' => $newPrice];
+                $this->line("  {$product->name}: {$currentPrice} -> {$newPrice}");
+            }
+
+            if (! empty($product->tapsi_product_id)) {
+                $tapsiPrice = $tapsiShop->calculateTapsiPrice($newPrice);
+                $availableStock = $emergencyActive ? 0 : ($product->sellable_stock ?? $product->stock_quantity ?? 0);
+
+                $tapsiProducts[] = [
+                    'id' => $product->tapsi_product_id,
+                    'price' => $tapsiPrice,
+                    'specialprice' => $tapsiPrice,
+                    'stock' => (int) $availableStock,
+                    'referenceCode' => 'laravel_sync_'.$product->id.'_'.time(),
+                ];
+            }
+        }
+
+        if (! empty($updates)) {
+            DB::transaction(function () use ($updates) {
+                foreach ($updates as $id => $data) {
+                    Product::where('id', $id)->update($data);
+                }
+            });
+        }
+
+        if (! empty($tapsiProducts) && config('tapsi.enabled')) {
+            $tapsiShop->sendBatch($tapsiProducts);
+        }
+
+        $this->info('Updated '.count($updates).' products in DB.');
+
+        if (! empty($tapsiProducts) && ! config('tapsi.enabled')) {
+            $this->warn('Tapsi sync disabled — skipped sending '.count($tapsiProducts).' products.');
+        }
+
+        $this->broadcastProducts();
+
+        Log::info('[PriceBoard] Direct sync completed', [
+            'products_updated' => count($updates),
+            'tapsi_sent' => count($tapsiProducts),
+        ]);
+
+        return self::SUCCESS;
     }
 }
