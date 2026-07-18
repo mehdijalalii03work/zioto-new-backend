@@ -117,7 +117,7 @@ class SyncTokenikoPrices extends Command
 
     private function formatProduct(Product $p): array
     {
-        $price = (int) round((float) $p->price / 10);
+        $price = (int) $p->price;
 
         $taxKey = $p->metal_type?->value === 'gold' ? 'tax_gold' : 'tax_silver';
         $taxRate = (float) Setting::getValue($taxKey, 0);

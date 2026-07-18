@@ -123,7 +123,7 @@ class SyncPriceBoard extends Command
 
     private function formatProduct(Product $p): array
     {
-        $price = (int) round((float) $p->price / 10);
+        $price = (int) $p->price;
 
         if ($p->price_board_item) {
             $taxKey = str_starts_with($p->price_board_item, 'Gold') ? 'tax_gold' : 'tax_silver';
