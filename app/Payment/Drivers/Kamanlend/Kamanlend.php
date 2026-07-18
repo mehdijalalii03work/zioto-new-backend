@@ -21,7 +21,11 @@ class Kamanlend extends Driver
     {
         $this->invoice($invoice);
         $this->settings = (object) $settings;
-        $this->client = new Client;
+
+        $isSandbox = str_contains($this->settings->apiRegisterPaymentUrl ?? '', 'sandbox');
+        $this->client = new Client([
+            'verify' => ! $isSandbox,
+        ]);
     }
 
     public function purchase(): string
