@@ -17,6 +17,13 @@ class Order extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::created(function (Order $order) {
+            $order->update(['order_number' => $order->id]);
+        });
+    }
+
     protected $fillable = [
         'user_id',
         'order_number',

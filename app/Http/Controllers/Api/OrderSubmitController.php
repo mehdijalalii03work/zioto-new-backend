@@ -102,7 +102,6 @@ class OrderSubmitController extends Controller
 
             $order = Order::create([
                 'user_id' => $request->user()?->id,
-                'order_number' => '0',
                 'status' => 'pending',
                 'total_amount' => $totalAmount,
                 'payment_method' => $paymentMethod,
@@ -111,8 +110,6 @@ class OrderSubmitController extends Controller
                 'shipping_address_snapshot' => $validated['shipping_address_snapshot'] ?? null,
                 'notes' => json_encode($notesData),
             ]);
-
-            $order->update(['order_number' => $order->id]);
 
             foreach ($orderItems as $orderItem) {
                 $order->items()->create($orderItem);
