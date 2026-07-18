@@ -15,7 +15,24 @@ class ShippingController extends Controller
         $cityId = $request->input('city_id');
         $provinceId = $request->input('province_id');
 
+        if (! $cityId && ! $provinceId) {
+            $user = $request->user();
+            $address = $user?->defaultAddress ?? $user?->addresses()->first();
+            if ($address) {
+                $cityId = $address->city_id;
+                $provinceId = $address->province_id;
+            }
+        }
+
         $methods = ShippingMethod::active()->with('rates')->get();
+
+        if (! $cityId && ! $provinceId) {
+            $methods = $methods->filter(fn (ShippingMethod $m) => $m->is_pickup);
+
+            return response()->json([
+                'methods' => $methods->values(),
+            ]);
+        }
 
         if ($cityId || $provinceId) {
             $methods = $methods->filter(function (ShippingMethod $method) use ($cityId, $provinceId) {
@@ -66,6 +83,7 @@ class ShippingController extends Controller
                 $rateType = $method->rates->first()->rate_type;
                 $method->setRelation('rates', $this->filterMatchingRates($method->rates, $rateType, $cityId, $provinceId));
             }
+
             return $method;
         })->filter(function (ShippingMethod $method) {
             return $method->rates->isNotEmpty();
@@ -199,6 +217,7 @@ class ShippingController extends Controller
             if ($rate->city_id && $cityId) {
                 return (int) $rate->city_id === (int) $cityId;
             }
+
             return true;
         })->values();
     }

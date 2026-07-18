@@ -45,7 +45,7 @@ Route::middleware('web')->group(function () {
     });
 
     Route::prefix('shipping')->group(function () {
-        Route::get('/methods', [ShippingController::class, 'methods']);
+        Route::get('/methods', [ShippingController::class, 'methods'])->middleware('auth.token');
         Route::get('/methods/{id}', [ShippingController::class, 'show']);
         Route::post('/calculate', [ShippingController::class, 'calculate']);
     });
