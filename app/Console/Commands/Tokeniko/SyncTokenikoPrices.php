@@ -9,6 +9,7 @@ use App\Services\TokenikoShopService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Product\Models\Product;
@@ -91,6 +92,10 @@ class SyncTokenikoPrices extends Command
 
         $this->info('Updated '.count($updates).' products in DB.');
 
+        if (! empty($updates)) {
+            $this->clearProductCache();
+        }
+
         $this->broadcastProducts();
 
         Log::info('[TokenikoSyncDirect] Completed', [
@@ -132,5 +137,14 @@ class SyncTokenikoPrices extends Command
             'tax_rate' => $taxRate,
             'old' => null,
         ];
+    }
+
+    private function clearProductCache(): void
+    {
+        $redis = Cache::getStore()->getRedis();
+        $keys = $redis->keys('api:products:*');
+        if ($keys) {
+            $redis->del($keys);
+        }
     }
 }
