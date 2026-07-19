@@ -3,8 +3,6 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\File;
-use Intervention\Image\ImageManagerStatic as Image;
 
 class WebpConverter
 {
@@ -14,11 +12,11 @@ class WebpConverter
     {
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
+        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
             return null;
         }
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             return null;
         }
 
@@ -26,7 +24,7 @@ class WebpConverter
 
         $image = self::loadImage($filePath, $extension);
 
-        if (!$image) {
+        if (! $image) {
             return null;
         }
 
@@ -45,7 +43,7 @@ class WebpConverter
         $result = imagewebp($image, $webpPath, 82);
         imagedestroy($image);
 
-        if (!$result || !file_exists($webpPath)) {
+        if (! $result || ! file_exists($webpPath)) {
             return null;
         }
 
@@ -61,21 +59,21 @@ class WebpConverter
         $originalPath = $file->getRealPath();
         $extension = strtolower(pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION));
 
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
+        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
             return $file;
         }
 
         $image = self::loadImage($originalPath, $extension);
 
-        if (!$image) {
+        if (! $image) {
             return $file;
         }
 
-        $webpPath = tempnam(sys_get_temp_dir(), 'webp_') . '.webp';
+        $webpPath = tempnam(sys_get_temp_dir(), 'webp_').'.webp';
         $result = imagewebp($image, $webpPath, 82);
         imagedestroy($image);
 
-        if (!$result || !file_exists($webpPath)) {
+        if (! $result || ! file_exists($webpPath)) {
             return $file;
         }
 

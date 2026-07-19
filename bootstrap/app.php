@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AuthenticateApiToken;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -7,6 +8,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
 use Illuminate\Http\ThrottleRequestsException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
@@ -22,7 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'auth.token' => \App\Http\Middleware\AuthenticateApiToken::class,
+            'auth.token' => AuthenticateApiToken::class,
         ]);
         $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_FOR |
             Request::HEADER_X_FORWARDED_HOST |
@@ -101,9 +103,9 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->renderable(function (\Exception $e, Request $request) {
+        $exceptions->renderable(function (Exception $e, Request $request) {
             if ($request->is('api/*') && ! $e instanceof ValidationException && ! $e instanceof ModelNotFoundException && ! $e instanceof NotFoundHttpException && ! $e instanceof MethodNotAllowedHttpException && ! $e instanceof ThrottleRequestsException && ! $e instanceof BadRequestHttpException) {
-                \Illuminate\Support\Facades\Log::error('Unhandled API exception: '.$e->getMessage(), [
+                Log::error('Unhandled API exception: '.$e->getMessage(), [
                     'exception' => $e,
                     'url' => $request->fullUrl(),
                 ]);

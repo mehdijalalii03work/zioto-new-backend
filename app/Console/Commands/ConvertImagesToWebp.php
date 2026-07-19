@@ -4,16 +4,18 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
 class ConvertImagesToWebp extends Command
 {
     protected $signature = 'images:convert-to-webp';
+
     protected $description = 'Convert all non-webp images to webp and update database records';
 
     private int $converted = 0;
+
     private int $skipped = 0;
+
     private int $failed = 0;
 
     public function handle(): int
@@ -26,10 +28,11 @@ class ConvertImagesToWebp extends Command
         $allFiles = $this->getAllFiles($disk, '');
         $imageFiles = array_filter($allFiles, function ($file) use ($extensions) {
             $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+
             return in_array($ext, $extensions);
         });
 
-        $this->info('Found ' . count($imageFiles) . ' non-webp images to convert.');
+        $this->info('Found '.count($imageFiles).' non-webp images to convert.');
         $this->newLine();
 
         foreach ($imageFiles as $imagePath) {
@@ -49,7 +52,9 @@ class ConvertImagesToWebp extends Command
 
         foreach ($contents as $file) {
             $basename = basename($file);
-            if ($basename === '.gitignore') continue;
+            if ($basename === '.gitignore') {
+                continue;
+            }
             $files[] = $file;
         }
 
@@ -68,22 +73,25 @@ class ConvertImagesToWebp extends Command
 
         if ($disk->exists($webpPath)) {
             $this->skipped++;
+
             return;
         }
 
-        $fullPath = storage_path('app/public/' . $imagePath);
+        $fullPath = storage_path('app/public/'.$imagePath);
 
-        if (!file_exists($fullPath)) {
+        if (! file_exists($fullPath)) {
             $this->warn("  File not found: {$imagePath}");
             $this->failed++;
+
             return;
         }
 
         $image = $this->loadImage($fullPath, $extension);
 
-        if (!$image) {
+        if (! $image) {
             $this->warn("  Failed to load: {$imagePath}");
             $this->failed++;
+
             return;
         }
 
@@ -98,13 +106,14 @@ class ConvertImagesToWebp extends Command
             $image = $trueColor;
         }
 
-        $webpFullPath = storage_path('app/public/' . $webpPath);
+        $webpFullPath = storage_path('app/public/'.$webpPath);
         $result = imagewebp($image, $webpFullPath, 82);
         imagedestroy($image);
 
-        if (!$result || !$disk->exists($webpPath)) {
+        if (! $result || ! $disk->exists($webpPath)) {
             $this->warn("  Failed to save webp: {$imagePath}");
             $this->failed++;
+
             return;
         }
 
@@ -131,7 +140,7 @@ class ConvertImagesToWebp extends Command
         $newFilename = basename($newPath);
 
         $affected = DB::table('product_images')
-            ->where('image_path', 'LIKE', '%' . $oldFilename)
+            ->where('image_path', 'LIKE', '%'.$oldFilename)
             ->update(['image_path' => $newPath]);
 
         if ($affected > 0) {
@@ -139,7 +148,7 @@ class ConvertImagesToWebp extends Command
         }
 
         $affected = DB::table('blog_posts')
-            ->where('image', 'LIKE', '%' . $oldFilename)
+            ->where('image', 'LIKE', '%'.$oldFilename)
             ->update(['image' => $newPath]);
 
         if ($affected > 0) {
@@ -147,7 +156,7 @@ class ConvertImagesToWebp extends Command
         }
 
         $affected = DB::table('brands')
-            ->where('logo', 'LIKE', '%' . $oldFilename)
+            ->where('logo', 'LIKE', '%'.$oldFilename)
             ->update(['logo' => $newPath]);
 
         if ($affected > 0) {
@@ -162,7 +171,7 @@ class ConvertImagesToWebp extends Command
             ]);
 
         DB::table('media')
-            ->where('custom_properties', 'LIKE', '%' . $oldFilename . '%')
+            ->where('custom_properties', 'LIKE', '%'.$oldFilename.'%')
             ->where('custom_properties', 'LIKE', '%"generated_conversions"%')
             ->orderBy('id')
             ->each(function ($media) use ($oldFilename, $newFilename) {

@@ -13,19 +13,19 @@ class ConvertMediaToWebp
 
         $extension = strtolower(pathinfo($media->file_name, PATHINFO_EXTENSION));
 
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
+        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
             return;
         }
 
         $fullPath = $media->getPath();
 
-        if (!file_exists($fullPath)) {
+        if (! file_exists($fullPath)) {
             return;
         }
 
         $webpPath = WebpConverter::convertToWebp($fullPath);
 
-        if (!$webpPath) {
+        if (! $webpPath) {
             return;
         }
 

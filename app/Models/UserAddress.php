@@ -73,8 +73,8 @@ class UserAddress extends Model
         ];
 
         if ($this->plate) {
-            $unitPart = $this->unit ? ' واحد ' . $this->unit : '';
-            $parts[] = 'پلاک ' . $this->plate . $unitPart;
+            $unitPart = $this->unit ? ' واحد '.$this->unit : '';
+            $parts[] = 'پلاک '.$this->plate.$unitPart;
         }
 
         $address = implode('، ', array_filter($parts));

@@ -9,7 +9,6 @@ use App\Http\Resources\CartResource;
 use App\Models\Cart;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
@@ -35,7 +34,7 @@ class CartController extends Controller
 
         Cart::updateOrCreate(
             ['user_id' => $userId, 'product_id' => $productId],
-            ['quantity' => DB::raw("GREATEST(quantity + {$quantity}, 1)")]
+            ['quantity' => $quantity]
         );
 
         return response()->json(['message' => 'به سبد اضافه شد']);
@@ -51,7 +50,7 @@ class CartController extends Controller
         if (! $cart) {
             return response()->json([
                 'message' => 'آیتم در سبد یافت نشد',
-                'error_code' => 'CART_ITEM_NOT_FOUND'
+                'error_code' => 'CART_ITEM_NOT_FOUND',
             ], 404);
         }
 
