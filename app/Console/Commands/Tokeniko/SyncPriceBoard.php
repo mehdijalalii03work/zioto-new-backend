@@ -28,7 +28,7 @@ class SyncPriceBoard extends Command
         $mode = config('pricing.mode', 'dynamic');
 
         if ($mode === 'direct') {
-            return $this->syncDirect($tokenikoShop, $tapsiShop);
+            return $this->syncDirect($priceBoard, $tokenikoShop, $tapsiShop);
         }
 
         $this->info('Syncing price board...');
@@ -145,7 +145,7 @@ class SyncPriceBoard extends Command
         ];
     }
 
-    private function syncDirect(TokenikoShopService $tokenikoShop, TapsiShopService $tapsiShop): int
+    private function syncDirect(PriceBoardService $priceBoard, TokenikoShopService $tokenikoShop, TapsiShopService $tapsiShop): int
     {
         $this->info('Direct mode: syncing from Tokeniko shop API...');
 
@@ -156,6 +156,8 @@ class SyncPriceBoard extends Command
 
             return self::FAILURE;
         }
+
+        $priceBoard->fetchAndStore();
 
         $emergencyActive = Setting::getValue('tapsi_emergency_status', 'open') === 'closed';
 

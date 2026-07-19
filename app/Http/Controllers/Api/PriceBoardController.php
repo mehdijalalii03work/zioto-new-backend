@@ -14,8 +14,14 @@ class PriceBoardController extends Controller
 
     public function index(): JsonResponse
     {
+        $prices = $this->priceBoard->getPrices();
+
+        if (empty($prices)) {
+            $prices = $this->priceBoard->fetchAndStore();
+        }
+
         return response()->json([
-            'data' => $this->priceBoard->getPrices(),
+            'data' => $prices,
         ]);
     }
 }
