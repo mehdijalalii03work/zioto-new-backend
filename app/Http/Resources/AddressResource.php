@@ -23,6 +23,7 @@ class AddressResource extends JsonResource
             'unit' => $this->unit,
             'receiver_name' => $this->receiver_name,
             'receiver_phone' => $this->receiver_phone,
+            'receiver_national_code' => $this->receiver_national_code,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'is_default' => $this->is_default,
