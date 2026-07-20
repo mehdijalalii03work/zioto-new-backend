@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\IranianNationalCode;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateAddressRequest extends FormRequest
@@ -24,7 +25,7 @@ class UpdateAddressRequest extends FormRequest
             'unit' => ['nullable', 'string', 'max:20'],
             'receiver_name' => ['nullable', 'string', 'max:100'],
             'receiver_phone' => ['nullable', 'regex:/^09\d{9}$/'],
-            'receiver_national_code' => ['nullable', 'string', 'max:10'],
+            'receiver_national_code' => ['nullable', 'string', 'max:10', new IranianNationalCode],
             'latitude' => ['nullable', 'numeric'],
             'longitude' => ['nullable', 'numeric'],
             'is_default' => ['boolean'],
@@ -45,6 +46,7 @@ class UpdateAddressRequest extends FormRequest
             'plate.required' => 'پلاک الزامی است',
             'address_line.min' => 'آدرس باید حداقل ۱۰ کاراکتر باشد',
             'receiver_phone.regex' => 'شماره تلفن معتبر نیست',
+            'receiver_national_code' => 'کد ملی معتبر نیست',
         ];
     }
 }
