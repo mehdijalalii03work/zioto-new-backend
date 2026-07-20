@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Product\Models\Product;
 
@@ -55,43 +54,39 @@ class StockSyncService
 
     private function batchUpdateStock(Collection $stockUpdates): array
     {
-        $skus = $stockUpdates->pluck('sku')->toArray();
-        $quantityMap = $stockUpdates->pluck('quantity', 'sku')->toArray();
-
-        $products = Product::whereIn('sku', $skus)->get()->keyBy('sku');
-
         $updatedAt = now();
-        $updates = [];
         $errors = [];
         $updated = 0;
 
-        foreach ($stockUpdates as $item) {
-            $product = $products->get($item['sku']);
+        $stockUpdates->chunk(100, function ($chunk) use ($updatedAt, &$errors, &$updated) {
+            $skus = $chunk->pluck('sku')->toArray();
+            $quantityMap = $chunk->pluck('quantity', 'sku')->toArray();
 
-            if (! $product) {
-                continue;
+            $products = Product::whereIn('sku', $skus)->get()->keyBy('sku');
+
+            foreach ($products as $product) {
+                $quantity = $quantityMap[$product->sku] ?? null;
+
+                if ($quantity === null) {
+                    continue;
+                }
+
+                if ($product->hesabfa_stock_locked) {
+                    continue;
+                }
+
+                try {
+                    $product->update([
+                        'stock_quantity' => $quantity,
+                        'hesabfa_physical_stock' => $quantity,
+                        'hesabfa_stock_synced_at' => $updatedAt,
+                    ]);
+                    $updated++;
+                } catch (\Exception $e) {
+                    $errors[] = "SKU {$product->sku}: ".$e->getMessage();
+                }
             }
-
-            try {
-                $updates[] = [
-                    'id' => $product->id,
-                    'stock_quantity' => $item['quantity'],
-                    'hesabfa_physical_stock' => $item['quantity'],
-                    'hesabfa_stock_synced_at' => $updatedAt,
-                ];
-                $updated++;
-            } catch (\Exception $e) {
-                $errors[] = "SKU {$item['sku']}: ".$e->getMessage();
-            }
-        }
-
-        if (! empty($updates)) {
-            DB::table('products')->upsert(
-                $updates,
-                ['id'],
-                ['stock_quantity', 'hesabfa_physical_stock', 'hesabfa_stock_synced_at']
-            );
-        }
+        });
 
         return [
             'success' => true,
@@ -114,6 +109,10 @@ class StockSyncService
         $excludedSkus = config('hesabfa.excluded_skus', []);
         if (in_array($itemCode, $excludedSkus)) {
             return ['message' => "SKU {$itemCode} is excluded from sync"];
+        }
+
+        if ($product->hesabfa_stock_locked) {
+            return ['message' => "SKU {$itemCode} stock is locked"];
         }
 
         $product->update([

@@ -202,7 +202,7 @@ class HesabfaService
 
     // ── Core HTTP Method ─────────────────────────────────────────────
 
-    private function call(string $endpoint, array $payload): array
+    private function call(string $endpoint, array $payload, int $maxRetries = 3): array
     {
         if (! $this->isConfigured()) {
             return ['success' => false, 'error' => 'تنظیمات حسابفا یافت نشد'];
@@ -220,55 +220,73 @@ class HesabfaService
             ]);
         }
 
-        try {
-            $response = Http::timeout(30)
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ])
-                ->withBody(
-                    json_encode($payload, JSON_UNESCAPED_UNICODE),
-                    'application/json'
-                )
-                ->post("{$this->baseUrl}{$endpoint}");
+        $lastError = null;
 
-            if ($response->successful()) {
-                $data = $response->json();
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            try {
+                $response = Http::timeout(30)
+                    ->withHeaders([
+                        'Content-Type' => 'application/json',
+                        'Accept' => 'application/json',
+                    ])
+                    ->withBody(
+                        json_encode($payload, JSON_UNESCAPED_UNICODE),
+                        'application/json'
+                    )
+                    ->post("{$this->baseUrl}{$endpoint}");
 
-                if (config('app.debug')) {
-                    Log::debug('Hesabfa API response', [
-                        'endpoint' => $endpoint,
-                        'status' => $response->status(),
-                        'success' => $data['Success'] ?? false,
-                    ]);
+                if ($response->successful()) {
+                    $data = $response->json();
+
+                    if (config('app.debug')) {
+                        Log::debug('Hesabfa API response', [
+                            'endpoint' => $endpoint,
+                            'status' => $response->status(),
+                            'success' => $data['Success'] ?? false,
+                        ]);
+                    }
+
+                    if (! empty($data['Success'])) {
+                        return ['success' => true, 'data' => $data];
+                    }
+
+                    return ['success' => false, 'error' => $data['ErrorMessage'] ?? 'خطای ناشناخته از حسابفا'];
                 }
 
-                if (! empty($data['Success'])) {
-                    return ['success' => true, 'data' => $data];
+                if ($response->status() === 429 || $response->status() >= 500) {
+                    $lastError = 'خطای سرور حسابفا ('.$response->status().')';
+
+                    if ($attempt < $maxRetries) {
+                        sleep($attempt * 2);
+
+                        continue;
+                    }
                 }
 
-                Log::warning('Hesabfa API error response', [
+                Log::error('Hesabfa API HTTP error', [
                     'endpoint' => $endpoint,
-                    'error' => $data['ErrorMessage'] ?? 'Unknown error',
+                    'status' => $response->status(),
+                    'body' => $response->body(),
                 ]);
 
-                return ['success' => false, 'error' => $data['ErrorMessage'] ?? 'خطای ناشناخته از حسابفا'];
+                return ['success' => false, 'error' => 'خطای سرور حسابفا ('.$response->status().')'];
+            } catch (\Exception $e) {
+                $lastError = 'خطا در ارتباط با حسابفا: '.$e->getMessage();
+
+                if ($attempt < $maxRetries) {
+                    sleep($attempt * 2);
+
+                    continue;
+                }
             }
-
-            Log::error('Hesabfa API HTTP error', [
-                'endpoint' => $endpoint,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return ['success' => false, 'error' => 'خطای سرور حسابفا ('.$response->status().')'];
-        } catch (\Exception $e) {
-            Log::error('Hesabfa API exception', [
-                'endpoint' => $endpoint,
-                'message' => $e->getMessage(),
-            ]);
-
-            return ['success' => false, 'error' => 'خطا در ارتباط با حسابفا: '.$e->getMessage()];
         }
+
+        Log::error('Hesabfa API failed after retries', [
+            'endpoint' => $endpoint,
+            'attempts' => $maxRetries,
+            'error' => $lastError,
+        ]);
+
+        return ['success' => false, 'error' => $lastError ?? 'خطا در ارتباط با حسابفا'];
     }
 }
