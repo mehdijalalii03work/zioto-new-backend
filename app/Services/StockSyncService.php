@@ -58,7 +58,7 @@ class StockSyncService
         $errors = [];
         $updated = 0;
 
-        $stockUpdates->chunk(100, function ($chunk) use ($updatedAt, &$errors, &$updated) {
+        $stockUpdates->chunk(100)->each(function ($chunk) use ($updatedAt, &$errors, &$updated) {
             $skus = $chunk->pluck('sku')->toArray();
             $quantityMap = $chunk->pluck('quantity', 'sku')->toArray();
 
