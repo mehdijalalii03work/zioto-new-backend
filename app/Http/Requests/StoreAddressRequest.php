@@ -9,20 +9,7 @@ class StoreAddressRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $count = $this->user()->addresses()->count();
-
-        if ($count >= 10) {
-            return false;
-        }
-
         return true;
-    }
-
-    public function failedAuthorization(): void
-    {
-        throw new \Illuminate\Validation\ValidationException(
-            validator([], [], ['addresses' => 'حداکثر ۱۰ آدرس قابل ذخیره است. از صفحه حساب کاربری آدرس قبلی را حذف کنید.']),
-        );
     }
 
     public function rules(): array

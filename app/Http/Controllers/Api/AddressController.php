@@ -26,6 +26,12 @@ class AddressController extends Controller
 
     public function store(StoreAddressRequest $request): JsonResponse
     {
+        if ($request->user()->addresses()->count() >= 10) {
+            return response()->json([
+                'message' => 'حداکثر ۱۰ آدرس قابل ذخیره است. از صفحه پروفایل آدرس قبلی را حذف کنید.',
+            ], 422);
+        }
+
         $address = $request->user()->addresses()->create($request->validated());
 
         if ($request->boolean('is_default')) {
