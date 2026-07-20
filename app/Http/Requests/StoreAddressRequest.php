@@ -9,13 +9,21 @@ class StoreAddressRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $user = $this->user();
+        $count = $this->user()->addresses()->count();
 
-        if ($user->addresses()->count() >= 20) {
+        if ($count >= 10) {
             return false;
         }
 
         return true;
+    }
+
+    public function failedAuthorization(): void
+    {
+        throw new \Symfony\Component\HttpKernel\Exception\HttpException(
+            422,
+            'حداکثر ۱۰ آدرس قابل ذخیره است. لطفاً یکی از آدرس‌های قبلی را حذف کنید.',
+        );
     }
 
     public function rules(): array
