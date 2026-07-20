@@ -236,10 +236,10 @@ class ShippingController extends Controller
                 ->sortBy('min_weight')
                 ->first(),
             'province' => $rates
-                ->filter(fn (ShippingRate $r) => $r->province_id === $provinceId)
+                ->filter(fn (ShippingRate $r) => is_null($r->province_id) || (int) $r->province_id === (int) $provinceId)
                 ->first(),
             'city' => $rates
-                ->filter(fn (ShippingRate $r) => $r->city_id === $cityId)
+                ->filter(fn (ShippingRate $r) => is_null($r->city_id) || (int) $r->city_id === (int) $cityId)
                 ->first(),
             'cart_total' => $rates
                 ->filter(fn (ShippingRate $r) => $r->min_cart_total <= $cartTotal && (! $r->max_cart_total || $cartTotal <= $r->max_cart_total))
