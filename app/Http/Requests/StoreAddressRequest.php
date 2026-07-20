@@ -20,9 +20,8 @@ class StoreAddressRequest extends FormRequest
 
     public function failedAuthorization(): void
     {
-        throw new \Symfony\Component\HttpKernel\Exception\HttpException(
-            422,
-            'حداکثر ۱۰ آدرس قابل ذخیره است. لطفاً یکی از آدرس‌های قبلی را حذف کنید.',
+        throw new \Illuminate\Validation\ValidationException(
+            validator([], [], ['addresses' => 'حداکثر ۱۰ آدرس قابل ذخیره است. از صفحه حساب کاربری آدرس قبلی را حذف کنید.']),
         );
     }
 
