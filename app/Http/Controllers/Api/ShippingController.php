@@ -40,9 +40,6 @@ class ShippingController extends Controller
                 if ($cityId && in_array((int) $cityId, array_map('intval', $exclude))) {
                     return false;
                 }
-                if ($provinceId && in_array((int) $provinceId, array_map('intval', $exclude))) {
-                    return false;
-                }
 
                 $rates = $method->rates;
                 if ($rates->isEmpty()) {
