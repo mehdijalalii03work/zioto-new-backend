@@ -11,7 +11,7 @@ class StoreAddressRequest extends FormRequest
     {
         $user = $this->user();
 
-        if ($user->addresses()->count() >= 10) {
+        if ($user->addresses()->count() >= 20) {
             return false;
         }
 
