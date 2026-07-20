@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Rules\IranianNationalCode;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 
 class StoreAddressRequest extends FormRequest
 {
@@ -16,6 +17,15 @@ class StoreAddressRequest extends FormRequest
         }
 
         return true;
+    }
+
+    public function prepareForValidation(): void
+    {
+        $this->merge([
+            'receiver_name' => Str::empty($this->receiver_name) ? null : $this->receiver_name,
+            'receiver_phone' => Str::empty($this->receiver_phone) ? null : $this->receiver_phone,
+            'receiver_national_code' => Str::empty($this->receiver_national_code) ? null : $this->receiver_national_code,
+        ]);
     }
 
     public function rules(): array
