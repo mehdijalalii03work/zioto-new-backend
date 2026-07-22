@@ -148,8 +148,6 @@ class OrderSubmitController extends Controller
                 'shipping_cost' => $shippingCost,
             ]);
 
-            $cartItems->each->delete();
-
             return [
                 'order' => $order->load(['shipping', 'items']),
                 'method' => $method,

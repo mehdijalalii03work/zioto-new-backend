@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CalculateFeeRequest;
 use App\Http\Requests\InitPaymentRequest;
 use App\Http\Resources\PaymentResource;
+use App\Models\Cart;
 use App\Services\InstallmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -197,6 +198,8 @@ class PaymentController extends Controller
                     'payment',
                     true
                 );
+
+                Cart::where('user_id', $order->user_id)->delete();
             });
 
             return redirect($frontendUrl.'/confirm?order_id='.$order->id);
