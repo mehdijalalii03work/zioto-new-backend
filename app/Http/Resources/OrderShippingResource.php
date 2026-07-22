@@ -18,6 +18,7 @@ class OrderShippingResource extends JsonResource
             'estimated_delivery_min' => $this->estimated_delivery_min,
             'estimated_delivery_max' => $this->estimated_delivery_max,
             'delivered_at' => $this->delivered_at,
+            'is_pickup' => $this->shippingMethod?->is_pickup ?? false,
         ];
     }
 }
