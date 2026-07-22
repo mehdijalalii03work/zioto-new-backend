@@ -58,7 +58,8 @@ class OrdersTable
                 TextColumn::make('total_amount')
                     ->label('مبلغ کل (تومان)')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(fn ($state): string => number_format($state / 10)),
 
                 TextColumn::make('payment_status')
                     ->label('وضعیت پرداخت')
