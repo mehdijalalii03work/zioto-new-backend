@@ -34,13 +34,14 @@ class Kamanlend extends Driver
         $shoppingCardCode = $this->invoice->getDetails()['shoppingCardCode'] ?? (string) time();
         $redirectionUrl = $this->invoice->getDetails()['redirectionUrl'] ?? $this->settings->callbackUrl;
         $saleItems = $this->invoice->getDetails()['saleItems'] ?? $this->buildDefaultSaleItems();
+        $stateChangeCallbackUrl = $this->settings->callbackUrl;
 
         $payload = [
             'terminalCode' => $this->settings->terminalCode,
             'terminalSecret' => $this->settings->terminalSecret,
             'customerNationalCode' => $nationalCode,
             'shoppingCardCode' => $shoppingCardCode,
-            'stateChangeCallbackUrl' => $this->settings->callbackUrl,
+            'stateChangeCallbackUrl' => $stateChangeCallbackUrl,
             'redirectionUrl' => $redirectionUrl,
             'saleItems' => $saleItems,
         ];
@@ -110,12 +111,23 @@ class Kamanlend extends Driver
             'token' => $token,
         ];
 
+        Log::channel('payment')->info('Kamanlend verify request', [
+            'token' => $token,
+            'nationalCode' => $nationalCode,
+            'url' => $this->settings->apiGetPaymentStateUrl,
+        ]);
+
         $response = $this->client->request('POST', $this->settings->apiGetPaymentStateUrl, [
             'json' => $payload,
             'http_errors' => false,
         ]);
 
         $body = array_change_key_case(json_decode($response->getBody()->getContents(), true), CASE_LOWER);
+
+        Log::channel('payment')->info('Kamanlend verify response', [
+            'status_code' => $response->getStatusCode(),
+            'body' => $body,
+        ]);
 
         if (empty($body['success'])) {
             $message = $body['messages'][0]['message'] ?? 'پرداخت تایید نشد';

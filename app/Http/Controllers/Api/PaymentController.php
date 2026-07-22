@@ -61,6 +61,8 @@ class PaymentController extends Controller
         $nationalCode = $order->address?->receiver_national_code ?? $order->user?->national_code ?? '';
         $phone = $order->address?->receiver_phone ?? $order->user?->phone ?? '';
         $callbackUrl = route('payment.callback', ['orderId' => $order->id, 'gateway' => $validated['gateway']]);
+        $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
+        $redirectToFrontend = $frontendUrl . '/confirm?order_id=' . $order->id;
 
         $invoice = (new Invoice)->amount($order->total_amount)->detail([
             'orderId' => $order->id,
@@ -68,7 +70,7 @@ class PaymentController extends Controller
             'phone' => $phone,
             'nationalCode' => $nationalCode,
             'description' => 'پرداخت سفارش '.$order->order_number,
-            'redirectionUrl' => $callbackUrl,
+            'redirectionUrl' => $redirectToFrontend,
         ]);
 
         Log::channel('payment')->info('Payment init started', [
@@ -78,6 +80,7 @@ class PaymentController extends Controller
             'phone' => $phone,
             'nationalCode' => $nationalCode,
             'callbackUrl' => $callbackUrl,
+            'redirectToFrontend' => $redirectToFrontend,
         ]);
 
         try {
@@ -140,6 +143,14 @@ class PaymentController extends Controller
 
     public function callback(Request $request, string $orderId, string $gateway): RedirectResponse
     {
+        Log::channel('payment')->info('Payment callback received', [
+            'order_id' => $orderId,
+            'gateway' => $gateway,
+            'method' => $request->method(),
+            'query' => $request->query(),
+            'post' => $request->post(),
+        ]);
+
         $order = Order::findOrFail($orderId);
         $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
 
