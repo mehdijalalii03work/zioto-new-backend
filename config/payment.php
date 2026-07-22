@@ -1,8 +1,8 @@
 <?php
 
+use App\Payment\Drivers\CustomDigipay;
 use App\Payment\Drivers\Kamanlend\Kamanlend;
 use App\Payment\Drivers\Smartis\Smartis;
-use Shetabit\Multipay\Drivers\Digipay\Digipay;
 use Shetabit\Multipay\Drivers\Parsian\Parsian;
 
 $packageConfig = require dirname(__DIR__).'/vendor/shetabit/multipay/config/payment.php';
@@ -54,7 +54,7 @@ $customConfig = [
 
     'map' => [
         'parsian' => Parsian::class,
-        'digipay' => Digipay::class,
+        'digipay' => CustomDigipay::class,
         'kamanlend' => Kamanlend::class,
         'smartis' => Smartis::class,
     ],
