@@ -7,6 +7,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 
 class PaymentsTable
@@ -105,6 +106,8 @@ class PaymentsTable
                         'card_to_card' => 'کارت به کارت',
                         'installment' => 'اقساطی',
                     ]),
+
+                TrashedFilter::make(),
             ])
             ->defaultSort('created_at', 'desc')
             ->recordActions([

@@ -4,6 +4,8 @@ namespace App\Filament\Resources\Payments\Pages;
 
 use App\Filament\Resources\Payments\PaymentResource;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditPayment extends EditRecord
@@ -17,6 +19,12 @@ class EditPayment extends EditRecord
         return [
             DeleteAction::make()
                 ->label('حذف تراکنش'),
+
+            RestoreAction::make()
+                ->label('بازیابی تراکنش'),
+
+            ForceDeleteAction::make()
+                ->label('حذف دائمی'),
         ];
     }
 }
