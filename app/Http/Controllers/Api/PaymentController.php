@@ -7,6 +7,8 @@ use App\Http\Requests\CalculateFeeRequest;
 use App\Http\Requests\InitPaymentRequest;
 use App\Http\Resources\PaymentResource;
 use App\Models\Cart;
+use App\Models\ShippingMethod;
+use App\Models\ShippingRate;
 use App\Services\InstallmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -26,13 +28,26 @@ class PaymentController extends Controller
     public function calculateFee(CalculateFeeRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $user = $request->user();
 
         $baseTotal = 0;
+        $totalWeight = 0;
         foreach ($validated['items'] as $item) {
             $product = Product::findOrFail($item['product_id']);
             $baseTotal += $product->price * $item['quantity'];
+            $totalWeight += ($product->weight ?? 0) * $item['quantity'];
         }
-        $baseTotal += $validated['shipping_cost'] * 10;
+
+        $address = $user->addresses()->findOrFail($validated['user_address_id']);
+        $shippingCost = $this->calculateShippingCost(
+            $validated['shipping_method_id'],
+            $totalWeight,
+            $baseTotal,
+            $address->province_id,
+            $address->city_id
+        );
+
+        $baseTotal += $shippingCost;
 
         $isInstallment = InstallmentService::isInstallmentGateway($validated['gateway']);
         $feeAmount = 0;
@@ -43,6 +58,7 @@ class PaymentController extends Controller
 
         return response()->json([
             'base_total' => (int) $baseTotal,
+            'shipping_cost' => $shippingCost,
             'fee_amount' => $feeAmount,
             'total_with_fee' => (int) $baseTotal + $feeAmount,
         ]);
@@ -251,5 +267,77 @@ class PaymentController extends Controller
             'payment_status' => $order->payment_status,
             'payment' => $payment ? new PaymentResource($payment) : null,
         ]);
+    }
+
+    private function calculateShippingCost(int $shippingMethodId, float $totalWeight, int $cartTotal, ?int $provinceId, ?int $cityId): int
+    {
+        $method = ShippingMethod::active()->with('rates')->find($shippingMethodId);
+
+        if (! $method || $method->rates->isEmpty() || $method->is_pickup) {
+            return 0;
+        }
+
+        $rate = $this->findMatchingRate($method, $totalWeight, $cartTotal, $provinceId, $cityId);
+
+        if (! $rate) {
+            return 0;
+        }
+
+        $shippingCost = (int) $rate->base_rate;
+
+        if ($rate->per_kg_rate && $totalWeight > 0) {
+            $extraKg = max(0, ceil($totalWeight / 1000) - 1);
+            $shippingCost += $extraKg * (int) $rate->per_kg_rate;
+        }
+
+        $insuranceCost = 0;
+        if ($method->code === 'post_precious') {
+            $insuranceCost = $cartTotal <= 50000000
+                ? (int) ($cartTotal * 0.005)
+                : (int) ($cartTotal * 0.01);
+        }
+
+        $freeShipping = false;
+        if ($rate->free_shipping_min && $cartTotal >= $rate->free_shipping_min) {
+            $shippingCost = 0;
+            $freeShipping = true;
+        }
+
+        $taxAmount = 0;
+        if ($rate->tax_rate && $rate->tax_rate > 0 && ! $freeShipping) {
+            $taxAmount = (int) round($shippingCost * $rate->tax_rate / 100);
+        }
+
+        return $shippingCost + $insuranceCost + $taxAmount;
+    }
+
+    private function findMatchingRate(ShippingMethod $method, float $totalWeight, int $cartTotal, ?int $provinceId, ?int $cityId): ?ShippingRate
+    {
+        $rates = $method->rates;
+
+        if ($rates->isEmpty()) {
+            return null;
+        }
+
+        $rateType = $rates->first()->rate_type;
+
+        return match ($rateType) {
+            'flat' => $rates->first(),
+            'weight' => $rates
+                ->filter(fn (ShippingRate $r) => $r->min_weight <= $totalWeight && (! $r->max_weight || $totalWeight <= $r->max_weight))
+                ->sortBy('min_weight')
+                ->first(),
+            'province' => $rates
+                ->filter(fn (ShippingRate $r) => is_null($r->province_id) || (int) $r->province_id === (int) $provinceId)
+                ->first(),
+            'city' => $rates
+                ->filter(fn (ShippingRate $r) => is_null($r->city_id) || (int) $r->city_id === (int) $cityId)
+                ->first(),
+            'cart_total' => $rates
+                ->filter(fn (ShippingRate $r) => $r->min_cart_total <= $cartTotal && (! $r->max_cart_total || $cartTotal <= $r->max_cart_total))
+                ->sortBy('min_cart_total')
+                ->first(),
+            default => $rates->first(),
+        };
     }
 }

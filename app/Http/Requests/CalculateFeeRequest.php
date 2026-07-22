@@ -17,7 +17,8 @@ class CalculateFeeRequest extends FormRequest
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
-            'shipping_cost' => ['required', 'numeric', 'min:0'],
+            'user_address_id' => ['required', 'integer', 'exists:user_addresses,id'],
+            'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
             'gateway' => ['required', 'in:parsian,digipay,kamanlend,smartis'],
         ];
     }
