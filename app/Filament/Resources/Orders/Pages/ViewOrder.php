@@ -4,10 +4,10 @@ namespace App\Filament\Resources\Orders\Pages;
 
 use App\Filament\Resources\Orders\OrderResource;
 use Filament\Actions\Action;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\TextEntry;
-use Filament\Schemas\Components\RepeatableEntry;
 use Filament\Schemas\Schema;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\HtmlString;

@@ -23,7 +23,7 @@ class Order extends Model
     {
         static::creating(function (Order $order) {
             $maxNumber = DB::table('orders')->max(DB::raw('CAST(order_number AS UNSIGNED)')) ?? 0;
-            $order->order_number = $maxNumber + 1;
+            $order->order_number = str_pad($maxNumber + 1, 5, '0', STR_PAD_LEFT);
         });
     }
 
@@ -77,6 +77,11 @@ class Order extends Model
     public function notes(): HasMany
     {
         return $this->hasMany(OrderNote::class)->latest();
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(\Modules\Payment\Models\Payment::class);
     }
 
     public function addNote(string $note, string $type = 'general', bool $isCustomerNote = false): OrderNote

@@ -25,7 +25,8 @@ class OrdersTable
                 TextColumn::make('order_number')
                     ->label('شماره سفارش')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(fn ($state): string => str_pad($state, 5, '0', STR_PAD_LEFT)),
 
                 TextColumn::make('user.name')
                     ->label('مشتری')
@@ -76,6 +77,25 @@ class OrdersTable
                         'refunded' => 'مسترد شده',
                         default => $state,
                     }),
+
+                TextColumn::make('payments.gateway')
+                    ->label('درگاه')
+                    ->badge()
+                    ->color(fn ($state): string => match ($state) {
+                        'parsian' => 'info',
+                        'digipay' => 'primary',
+                        'kamanlend' => 'warning',
+                        'smartis' => 'success',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn ($state): string => match ($state) {
+                        'parsian' => 'پارسیان',
+                        'digipay' => 'دیجی‌پی',
+                        'kamanlend' => 'کمان‌لند',
+                        'smartis' => ' اسمارتیس',
+                        default => $state ?? '—',
+                    })
+                    ->limit(1),
 
                 TextColumn::make('shipping.shipping_method_name')
                     ->label('روش ارسال')
