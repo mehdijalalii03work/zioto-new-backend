@@ -204,7 +204,7 @@ class PaymentController extends Controller
                 ]);
 
                 $order->addNote(
-                    "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: ".number_format($order->total_amount).' تومان',
+                    "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: ".number_format($order->total_amount / 10).' تومان',
                     'payment',
                     true
                 );
