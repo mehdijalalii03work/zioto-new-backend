@@ -97,7 +97,7 @@ Route::middleware('web')->group(function () {
         Route::delete('/', [CartController::class, 'clear']);
     });
 
-    Route::post('/payment/calculate-fee', [PaymentController::class, 'calculateFee']);
+    Route::post('/payment/calculate-fee', [PaymentController::class, 'calculateFee'])->middleware('auth.token');
 
     Route::middleware('throttle:10,1')->prefix('payment')->group(function () {
         Route::post('/init', [PaymentController::class, 'init']);
