@@ -5,6 +5,10 @@ namespace App\Filament\Resources\Payments\Tables;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreAction;
+use Filament\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -113,11 +117,23 @@ class PaymentsTable
             ->recordActions([
                 EditAction::make()
                     ->label('ویرایش'),
+
+                RestoreAction::make()
+                    ->label('بازیابی'),
+
+                ForceDeleteAction::make()
+                    ->label('حذف دائمی'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->label('حذف انتخاب شده‌ها'),
+
+                    RestoreBulkAction::make()
+                        ->label('بازیابی انتخاب شده‌ها'),
+
+                    ForceDeleteBulkAction::make()
+                        ->label('حذف دائمی انتخاب شده‌ها'),
                 ]),
             ]);
     }
