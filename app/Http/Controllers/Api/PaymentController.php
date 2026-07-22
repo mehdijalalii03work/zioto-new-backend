@@ -32,7 +32,7 @@ class PaymentController extends Controller
             $product = Product::findOrFail($item['product_id']);
             $baseTotal += $product->price * $item['quantity'];
         }
-        $baseTotal += $validated['shipping_cost'];
+        $baseTotal += $validated['shipping_cost'] * 10;
 
         $isInstallment = InstallmentService::isInstallmentGateway($validated['gateway']);
         $feeAmount = 0;
