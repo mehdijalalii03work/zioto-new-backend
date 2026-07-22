@@ -15,8 +15,7 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             'gateway' => ['nullable', 'in:parsian,digipay,kamanlend,smartis'],
-            'user_address_id' => ['nullable', 'integer', 'exists:user_addresses,id'],
-            'shipping_address_snapshot' => ['nullable', 'string'],
+            'user_address_id' => ['required', 'integer', 'exists:user_addresses,id'],
             'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
         ];
     }
