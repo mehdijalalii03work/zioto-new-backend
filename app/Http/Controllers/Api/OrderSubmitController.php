@@ -32,7 +32,7 @@ class OrderSubmitController extends Controller
 
     public function show(Request $request, int $orderId): JsonResponse
     {
-        $order = Order::with(['shipping', 'items', 'address.province', 'address.city', 'notes'])
+        $order = Order::with(['shipping', 'items', 'address.province', 'address.city', 'orderNotes'])
             ->where('id', $orderId)
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
@@ -48,7 +48,7 @@ class OrderSubmitController extends Controller
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
-        $notes = $order->notes()
+        $notes = $order->orderNotes()
             ->where('is_customer_note', true)
             ->get();
 

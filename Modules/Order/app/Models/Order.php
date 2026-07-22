@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use Modules\Payment\Models\Payment;
 
 class Order extends Model
 {
@@ -74,19 +75,19 @@ class Order extends Model
         return $this->hasMany(HesabfaSyncLog::class);
     }
 
-    public function notes(): HasMany
+    public function orderNotes(): HasMany
     {
         return $this->hasMany(OrderNote::class)->latest();
     }
 
     public function payments(): HasMany
     {
-        return $this->hasMany(\Modules\Payment\Models\Payment::class);
+        return $this->hasMany(Payment::class);
     }
 
     public function addNote(string $note, string $type = 'general', bool $isCustomerNote = false): OrderNote
     {
-        return $this->notes()->create([
+        return $this->orderNotes()->create([
             'note' => $note,
             'type' => $type,
             'is_customer_note' => $isCustomerNote,
