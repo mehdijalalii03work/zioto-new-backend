@@ -38,9 +38,10 @@ class PaymentsTable
                     ->formatStateUsing(fn ($state) => $state ?: '—'),
 
                 TextColumn::make('amount')
-                    ->label('مبلغ (ریال)')
+                    ->label('مبلغ (تومان)')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(fn ($state): string => number_format($state / 10)),
 
                 TextColumn::make('payment_method')
                     ->label('روش پرداخت')
