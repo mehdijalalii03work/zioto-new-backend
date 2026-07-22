@@ -20,16 +20,15 @@ class PaymentsTable
     {
         return $table
             ->columns([
-                TextColumn::make('transaction_id')
-                    ->label('شماره تراکنش')
-                    ->searchable()
-                    ->copyable()
+                TextColumn::make('id')
+                    ->label('شناسه')
                     ->sortable(),
 
                 TextColumn::make('user.name')
                     ->label('کاربر')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->getStateUsing(fn ($record): string => $record->user?->name ?? $record->order?->user?->name ?? '—'),
 
                 TextColumn::make('order.order_number')
                     ->label('شماره سفارش')
@@ -72,6 +71,7 @@ class PaymentsTable
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pending' => 'در انتظار',
                         'successful' => 'موفق',
+                        'paid' => 'پرداخت شده',
                         'failed' => 'ناموفق',
                         'refunded' => 'مسترد شده',
                         default => $state,
