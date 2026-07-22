@@ -55,6 +55,7 @@ class ProductCategoriesTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([])
+            ->defaultPaginationPageOption(25)
             ->reorderable('sort_order')
             ->defaultSort('sort_order')
             ->recordActions([

@@ -77,6 +77,7 @@ class UsersTable
             ->filters([
                 TrashedFilter::make(),
             ])
+            ->defaultPaginationPageOption(25)
             ->recordActions([
                 ViewAction::make()
                     ->label('نمایش'),

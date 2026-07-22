@@ -113,6 +113,7 @@ class PaymentsTable
 
                 TrashedFilter::make(),
             ])
+            ->defaultPaginationPageOption(25)
             ->defaultSort('created_at', 'desc')
             ->recordActions([
                 EditAction::make()

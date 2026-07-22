@@ -46,7 +46,6 @@ class AdminPanelProvider extends PanelProvider
             ->spa()
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('19rem')
-            ->defaultPaginationPageOption(25)
             ->favicon(asset('favicon.ico'))
             ->globalSearch(false)
             ->colors([

@@ -33,6 +33,7 @@ class ShippingMethodsTable
                     ->counts('rates'),
             ])
             ->filters([])
+            ->defaultPaginationPageOption(25)
             ->reorderable('sort_order')
             ->recordActions([
                 EditAction::make()

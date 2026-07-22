@@ -56,6 +56,7 @@ class BlogPostsTable
             ->filters([
                 //
             ])
+            ->defaultPaginationPageOption(25)
             ->reorderable('sort_order')
             ->recordActions([
                 EditAction::make()

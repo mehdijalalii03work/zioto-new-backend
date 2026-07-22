@@ -36,6 +36,7 @@ class BlogTagsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([])
+            ->defaultPaginationPageOption(25)
             ->recordActions([
                 EditAction::make()
                     ->label('ویرایش'),

@@ -51,6 +51,7 @@ class ContactMessagesTable
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
+            ->defaultPaginationPageOption(25)
             ->filters([
                 //
             ])

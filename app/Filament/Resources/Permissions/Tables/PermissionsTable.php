@@ -31,6 +31,7 @@ class PermissionsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultPaginationPageOption(25)
             ->recordActions([
                 EditAction::make()
                     ->label('ویرایش'),
