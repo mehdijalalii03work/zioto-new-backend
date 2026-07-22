@@ -35,12 +35,12 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 ## Verification Scripts
 
 - Do not create verification scripts or tinker when tests cover that functionality and prove they work. Unit and feature tests are more important.
-- After modifying PHP files, always run `php -l <file>` on each changed file to check for syntax errors before considering the task done. This catches typos like wrong method names or incorrect argument types early.
 
 ## Application Structure & Architecture
 
 - Stick to existing directory structure; don't create new base folders without approval.
 - Do not change the application's dependencies without approval.
+- **NEVER modify files in `vendor/` directory.** Changes to vendor files are lost on `composer update`. Instead, create a custom class in `app/` that extends the vendor class and override the needed method. Register it in `config/` to replace the original.
 
 ## Frontend Bundling
 
@@ -99,7 +99,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Always use curly braces for control structures, even for single-line bodies.
 - Use PHP 8 constructor property promotion: `public function __construct(public GitHub $github) { }`. Do not leave empty zero-parameter `__construct()` methods unless the constructor is private.
 - Use explicit return type declarations and type hints for all method parameters: `function isAccessible(User $user, ?string $path = null): bool`
-- Use TitleCase for Enum keys: `FavoritePerson`, `BestLake`, `Monthly`.
+- Follow existing application Enum naming conventions.
 - Prefer PHPDoc blocks over inline comments. Only add inline comments for exceptionally complex logic.
 - Use array shape type definitions in PHPDoc blocks.
 
