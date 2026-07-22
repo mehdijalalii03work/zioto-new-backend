@@ -118,7 +118,7 @@ class OrderSubmitController extends Controller
             $notesData = [
                 'name' => $buyerName,
                 'phone' => $buyerPhone,
-                'national_id' => $nationalId,
+                'national_code' => $nationalId,
             ];
 
             if ($installmentFee > 0) {

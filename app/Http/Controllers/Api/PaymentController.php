@@ -52,15 +52,14 @@ class PaymentController extends Controller
     {
         $validated = $request->validated();
 
-        $order = Order::findOrFail($validated['order_id']);
+        $order = Order::with(['user', 'address'])->findOrFail($validated['order_id']);
 
         if ($order->payment_status === 'paid') {
             return response()->json(['message' => 'سفارش قبلاً پرداخت شده', 'error_code' => 'ORDER_ALREADY_PAID'], 422);
         }
 
-        $notes = json_decode($order->notes, true) ?? [];
-        $phone = $notes['phone'] ?? $request->user()?->phone ?? '';
-        $nationalCode = $notes['national_code'] ?? '';
+        $nationalCode = $order->address?->receiver_national_code ?? $order->user?->national_code ?? '';
+        $phone = $order->address?->receiver_phone ?? $order->user?->phone ?? '';
         $callbackUrl = route('payment.callback', ['orderId' => $order->id, 'gateway' => $validated['gateway']]);
 
         $invoice = (new Invoice)->amount($order->total_amount)->detail([
