@@ -2,9 +2,9 @@
 
 namespace App\Payment\Drivers;
 
+use GuzzleHttp\RequestOptions;
 use Shetabit\Multipay\Drivers\Digipay\Digipay;
 use Shetabit\Multipay\Exceptions\PurchaseFailedException;
-use Shetabit\Multipay\RequestOptions;
 
 class CustomDigipay extends Digipay
 {
