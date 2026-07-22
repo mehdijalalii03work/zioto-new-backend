@@ -35,6 +35,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 ## Verification Scripts
 
 - Do not create verification scripts or tinker when tests cover that functionality and prove they work. Unit and feature tests are more important.
+- After modifying PHP files, always run `php -l <file>` on each changed file to check for syntax errors before considering the task done. This catches typos like wrong method names or incorrect argument types early.
 
 ## Application Structure & Architecture
 

@@ -26,17 +26,17 @@ class ListOrders extends ListRecords
         return [
             'all' => Tab::make('همه سفارشات'),
             'pending' => Tab::make('در انتظار بررسی')
-                ->modifyQuery(fn ($query) => $query->where('status', 'pending')),
+                ->query(fn ($query) => $query->where('status', 'pending')),
             'confirmed' => Tab::make('تایید شده')
-                ->modifyQuery(fn ($query) => $query->where('status', 'confirmed')),
+                ->query(fn ($query) => $query->where('status', 'confirmed')),
             'processing' => Tab::make('در حال پردازش')
-                ->modifyQuery(fn ($query) => $query->where('status', 'processing')),
+                ->query(fn ($query) => $query->where('status', 'processing')),
             'shipped' => Tab::make('ارسال شده')
-                ->modifyQuery(fn ($query) => $query->where('status', 'shipped')),
+                ->query(fn ($query) => $query->where('status', 'shipped')),
             'delivered' => Tab::make('تحویل شده')
-                ->modifyQuery(fn ($query) => $query->where('status', 'delivered')),
+                ->query(fn ($query) => $query->where('status', 'delivered')),
             'cancelled' => Tab::make('لغو شده')
-                ->modifyQuery(fn ($query) => $query->where('status', 'cancelled')),
+                ->query(fn ($query) => $query->where('status', 'cancelled')),
         ];
     }
 }
