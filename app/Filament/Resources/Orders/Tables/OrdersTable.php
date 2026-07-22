@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Orders\Tables;
 
+use App\Filament\Resources\Orders\Exports\OrderExcelExport;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -103,6 +105,11 @@ class OrdersTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('export_excel')
+                        ->label('دانلود خروجی اکسل')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->action(fn ($records) => app(OrderExcelExport::class)->export($records))
+                        ->deselectRecordsAfterCompletion(),
                     DeleteBulkAction::make()
                         ->label('حذف انتخاب شده‌ها'),
                 ]),
