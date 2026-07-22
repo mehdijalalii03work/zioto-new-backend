@@ -97,15 +97,9 @@ class Kamanlend extends Driver
         $nationalCode = $this->invoice->getDetails()['nationalCode'] ?? null;
 
         if (! $nationalCode && $token) {
-            $payment = \Modules\Payment\Models\Payment::where('transaction_id', $token)->first();
-            if ($payment) {
-                $nationalCode = $payment->national_code ?? null;
-                if (! $nationalCode) {
-                    $order = \Modules\Order\Models\Order::with(['user', 'address'])->find($payment->order_id);
-                    if ($order) {
-                        $nationalCode = $order->address?->receiver_national_code ?? $order->user?->national_code ?? null;
-                    }
-                }
+            $payment = \Modules\Payment\Models\Payment::with(['order.user', 'order.address'])->where('transaction_id', $token)->first();
+            if ($payment?->order) {
+                $nationalCode = $payment->order->address?->receiver_national_code ?? $payment->order->user?->national_code ?? null;
             }
         }
 

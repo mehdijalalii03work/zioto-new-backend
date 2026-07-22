@@ -24,7 +24,6 @@ class Payment extends Model
         'gateway_response',
         'description',
         'paid_at',
-        'national_code',
     ];
 
     protected function casts(): array

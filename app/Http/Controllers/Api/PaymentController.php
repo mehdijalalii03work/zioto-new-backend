@@ -88,7 +88,7 @@ class PaymentController extends Controller
             $capturedTransactionId = null;
 
             $form = $payment->callbackUrl($callbackUrl)
-                ->purchase($invoice, function ($driver, $transactionId) use (&$capturedTransactionId, $request, $order, $validated, $nationalCode) {
+                ->purchase($invoice, function ($driver, $transactionId) use (&$capturedTransactionId, $request, $order, $validated) {
                     $capturedTransactionId = $transactionId;
 
                     Payment::create([
@@ -100,7 +100,6 @@ class PaymentController extends Controller
                         'gateway' => $validated['gateway'],
                         'status' => 'pending',
                         'description' => 'در انتظار پرداخت',
-                        'national_code' => $nationalCode,
                     ]);
                 })
                 ->pay();
