@@ -6,14 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Resources\OrderNoteResource;
 use App\Http\Resources\OrderResource;
+use App\Models\Cart;
 use App\Models\OrderShipping;
 use App\Models\ShippingMethod;
+use App\Models\ShippingRate;
 use App\Services\InstallmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Order\Models\Order;
-use Modules\Product\Models\Product;
 
 class OrderSubmitController extends Controller
 {
@@ -58,26 +59,54 @@ class OrderSubmitController extends Controller
 
     public function store(StoreOrderRequest $request): JsonResponse
     {
+        $user = $request->user();
         $validated = $request->validated();
 
-        $result = DB::transaction(function () use ($validated, $request) {
+        $cartItems = Cart::where('user_id', $user->id)
+            ->with('product:id,name,price')
+            ->get();
+
+        if ($cartItems->isEmpty()) {
+            return response()->json([
+                'message' => 'سبد خرید شما خالی است',
+                'error_code' => 'CART_EMPTY',
+            ], 422);
+        }
+
+        $result = DB::transaction(function () use ($validated, $user, $cartItems) {
+            $address = null;
+            if (! empty($validated['user_address_id'])) {
+                $address = $user->addresses()->with(['province', 'city'])->findOrFail($validated['user_address_id']);
+            }
+
+            $buyerName = $address?->receiver_name ?: $user->name;
+            $buyerPhone = $address?->receiver_phone ?: $user->phone;
+            $nationalId = $address?->receiver_national_code ?: $user->national_code;
+
             $totalAmount = 0;
             $orderItems = [];
 
-            foreach ($validated['items'] as $item) {
-                $product = Product::findOrFail($item['product_id']);
-                $subtotal = $product->price * $item['quantity'];
+            foreach ($cartItems as $cartItem) {
+                $product = $cartItem->product;
+                $subtotal = $product->price * $cartItem->quantity;
                 $totalAmount += $subtotal;
                 $orderItems[] = [
                     'product_id' => $product->id,
                     'product_name' => $product->name,
                     'product_price' => $product->price,
-                    'quantity' => $item['quantity'],
+                    'quantity' => $cartItem->quantity,
                     'subtotal' => $subtotal,
                 ];
             }
 
-            $shippingCost = $validated['shipping_cost'] ?? 0;
+            $shippingCost = $this->calculateShippingCost(
+                $validated['shipping_method_id'],
+                $cartItems,
+                $totalAmount,
+                $address?->province_id,
+                $address?->city_id
+            );
+
             $totalAmount += $shippingCost;
 
             $gateway = $validated['gateway'] ?? 'parsian';
@@ -90,10 +119,9 @@ class OrderSubmitController extends Controller
             }
 
             $notesData = [
-                'name' => $validated['name'],
-                'phone' => $validated['phone'],
-                'national_id' => $validated['national_id'],
-                'employee_id' => $validated['employee_id'],
+                'name' => $buyerName,
+                'phone' => $buyerPhone,
+                'national_id' => $nationalId,
             ];
 
             if ($installmentFee > 0) {
@@ -101,7 +129,7 @@ class OrderSubmitController extends Controller
             }
 
             $order = Order::create([
-                'user_id' => $request->user()?->id,
+                'user_id' => $user->id,
                 'status' => 'pending',
                 'total_amount' => $totalAmount,
                 'payment_method' => $paymentMethod,
@@ -121,14 +149,16 @@ class OrderSubmitController extends Controller
                 'order_id' => $order->id,
                 'shipping_method_id' => $validated['shipping_method_id'],
                 'shipping_method_name' => $method?->name ?? '',
-                'shipping_cost' => $validated['shipping_cost'],
+                'shipping_cost' => $shippingCost,
             ]);
+
+            $cartItems->each->delete();
 
             return [
                 'order' => $order->load(['shipping', 'items']),
                 'method' => $method,
                 'installmentFee' => $installmentFee,
-                'shippingCost' => $validated['shipping_cost'],
+                'shippingCost' => $shippingCost,
             ];
         });
 
@@ -136,5 +166,78 @@ class OrderSubmitController extends Controller
             'message' => 'سفارش با موفقیت ثبت شد',
             'order' => new OrderResource($result['order']),
         ], 201);
+    }
+
+    private function calculateShippingCost(int $shippingMethodId, $cartItems, int $cartTotal, ?int $provinceId, ?int $cityId): int
+    {
+        $method = ShippingMethod::active()->with('rates')->find($shippingMethodId);
+
+        if (! $method || $method->rates->isEmpty()) {
+            return 0;
+        }
+
+        if ($method->is_pickup) {
+            return 0;
+        }
+
+        $totalWeight = 0;
+        foreach ($cartItems as $item) {
+            $totalWeight += ($item->product->weight ?? 0) * $item->quantity;
+        }
+
+        $rate = $this->findMatchingRate($method, $totalWeight, $cartTotal, $provinceId, $cityId);
+
+        if (! $rate) {
+            return 0;
+        }
+
+        $shippingCost = (int) $rate->base_rate;
+
+        if ($rate->per_kg_rate && $totalWeight > 0) {
+            $extraKg = max(0, ceil($totalWeight / 1000) - 1);
+            $shippingCost += $extraKg * (int) $rate->per_kg_rate;
+        }
+
+        $freeShipping = false;
+        if ($rate->free_shipping_min && $cartTotal >= $rate->free_shipping_min) {
+            $shippingCost = 0;
+            $freeShipping = true;
+        }
+
+        if ($rate->tax_rate && $rate->tax_rate > 0 && ! $freeShipping) {
+            $shippingCost += (int) round($shippingCost * $rate->tax_rate / 100);
+        }
+
+        return $shippingCost;
+    }
+
+    private function findMatchingRate(ShippingMethod $method, float $totalWeight, int $cartTotal, ?int $provinceId, ?int $cityId): ?ShippingRate
+    {
+        $rates = $method->rates;
+
+        if ($rates->isEmpty()) {
+            return null;
+        }
+
+        $rateType = $rates->first()->rate_type;
+
+        return match ($rateType) {
+            'flat' => $rates->first(),
+            'weight' => $rates
+                ->filter(fn (ShippingRate $r) => $r->min_weight <= $totalWeight && (! $r->max_weight || $totalWeight <= $r->max_weight))
+                ->sortBy('min_weight')
+                ->first(),
+            'province' => $rates
+                ->filter(fn (ShippingRate $r) => is_null($r->province_id) || (int) $r->province_id === (int) $provinceId)
+                ->first(),
+            'city' => $rates
+                ->filter(fn (ShippingRate $r) => is_null($r->city_id) || (int) $r->city_id === (int) $cityId)
+                ->first(),
+            'cart_total' => $rates
+                ->filter(fn (ShippingRate $r) => $r->min_cart_total <= $cartTotal && (! $r->max_cart_total || $cartTotal <= $r->max_cart_total))
+                ->sortBy('min_cart_total')
+                ->first(),
+            default => $rates->first(),
+        };
     }
 }
