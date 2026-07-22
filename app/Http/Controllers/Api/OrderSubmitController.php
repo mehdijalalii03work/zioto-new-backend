@@ -194,17 +194,25 @@ class OrderSubmitController extends Controller
             $shippingCost += $extraKg * (int) $rate->per_kg_rate;
         }
 
+        $insuranceCost = 0;
+        if ($method->code === 'post_precious') {
+            $insuranceCost = $cartTotal <= 50000000
+                ? (int) ($cartTotal * 0.005)
+                : (int) ($cartTotal * 0.01);
+        }
+
         $freeShipping = false;
         if ($rate->free_shipping_min && $cartTotal >= $rate->free_shipping_min) {
             $shippingCost = 0;
             $freeShipping = true;
         }
 
+        $taxAmount = 0;
         if ($rate->tax_rate && $rate->tax_rate > 0 && ! $freeShipping) {
-            $shippingCost += (int) round($shippingCost * $rate->tax_rate / 100);
+            $taxAmount = (int) round($shippingCost * $rate->tax_rate / 100);
         }
 
-        return $shippingCost;
+        return $shippingCost + $insuranceCost + $taxAmount;
     }
 
     private function findMatchingRate(ShippingMethod $method, float $totalWeight, int $cartTotal, ?int $provinceId, ?int $cityId): ?ShippingRate
