@@ -58,11 +58,11 @@ class PaymentController extends Controller
             return response()->json(['message' => 'سفارش قبلاً پرداخت شده', 'error_code' => 'ORDER_ALREADY_PAID'], 422);
         }
 
-        $nationalCode = $order->address?->receiver_national_code ?? $order->user?->national_code ?? '';
+        $nationalCode = $order->user?->national_code ?? '';
         $phone = $order->address?->receiver_phone ?? $order->user?->phone ?? '';
         $callbackUrl = route('payment.callback', ['orderId' => $order->id, 'gateway' => $validated['gateway']]);
         $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
-        $redirectToFrontend = $frontendUrl . '/confirm?order_id=' . $order->id;
+        $redirectToFrontend = $frontendUrl.'/confirm?order_id='.$order->id;
 
         $invoice = (new Invoice)->amount($order->total_amount)->detail([
             'orderId' => $order->id,

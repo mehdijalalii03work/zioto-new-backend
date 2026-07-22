@@ -78,7 +78,7 @@ class OrderSubmitController extends Controller
 
             $buyerName = $address?->receiver_name ?: $user->name;
             $buyerPhone = $address?->receiver_phone ?: $user->phone;
-            $nationalId = $address?->receiver_national_code ?: $user->national_code;
+            $nationalId = $user->national_code;
 
             $totalAmount = 0;
             $orderItems = [];
