@@ -6,6 +6,8 @@ use App\Filament\Resources\Orders\OrderResource;
 use App\Observers\HesabfaObserver;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\RestoreAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
@@ -44,6 +46,12 @@ class EditOrder extends EditRecord
 
             DeleteAction::make()
                 ->label('حذف سفارش'),
+
+            RestoreAction::make()
+                ->label('بازیابی سفارش'),
+
+            ForceDeleteAction::make()
+                ->label('حذف دائمی'),
         ];
     }
 

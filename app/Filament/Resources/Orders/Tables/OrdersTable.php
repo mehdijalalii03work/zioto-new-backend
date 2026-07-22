@@ -7,7 +7,12 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreAction;
+use Filament\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 
 class OrdersTable
@@ -96,13 +101,19 @@ class OrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                TrashedFilter::make(),
             ])
             ->defaultPaginationPageOption(25)
             ->defaultSort('created_at', 'desc')
             ->recordActions([
                 EditAction::make()
                     ->label('ویرایش'),
+
+                RestoreAction::make()
+                    ->label('بازیابی'),
+
+                ForceDeleteAction::make()
+                    ->label('حذف دائمی'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -113,6 +124,12 @@ class OrdersTable
                         ->deselectRecordsAfterCompletion(),
                     DeleteBulkAction::make()
                         ->label('حذف انتخاب شده‌ها'),
+
+                    RestoreBulkAction::make()
+                        ->label('بازیابی انتخاب شده‌ها'),
+
+                    ForceDeleteBulkAction::make()
+                        ->label('حذف دائمی انتخاب شده‌ها'),
                 ]),
             ]);
     }
