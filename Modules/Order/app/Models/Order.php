@@ -22,7 +22,7 @@ class Order extends Model
     protected static function booted(): void
     {
         static::creating(function (Order $order) {
-            $maxNumber = DB::table('orders')->max(DB::raw('CAST(order_number AS UNSIGNED)')) ?? 0;
+            $maxNumber = DB::table('orders')->max(DB::raw('CAST(order_number AS UNSIGNED)')) ?? 20999;
             $order->order_number = str_pad($maxNumber + 1, 5, '0', STR_PAD_LEFT);
         });
     }
