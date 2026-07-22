@@ -11,6 +11,7 @@ use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
@@ -106,6 +107,9 @@ class OrdersTable
             ->defaultPaginationPageOption(25)
             ->defaultSort('created_at', 'desc')
             ->recordActions([
+                ViewAction::make()
+                    ->label('مشاهده'),
+
                 EditAction::make()
                     ->label('ویرایش'),
 

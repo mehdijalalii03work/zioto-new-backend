@@ -94,7 +94,20 @@ class Kamanlend extends Driver
     public function verify(): ReceiptInterface
     {
         $token = $this->invoice->getTransactionId() ?? Request::input('token');
-        $nationalCode = $this->invoice->getDetails()['nationalCode'] ?? Request::input('nationalCode');
+        $nationalCode = $this->invoice->getDetails()['nationalCode'] ?? null;
+
+        if (! $nationalCode && $token) {
+            $payment = \Modules\Payment\Models\Payment::where('transaction_id', $token)->first();
+            if ($payment) {
+                $nationalCode = $payment->national_code ?? null;
+                if (! $nationalCode) {
+                    $order = \Modules\Order\Models\Order::with(['user', 'address'])->find($payment->order_id);
+                    if ($order) {
+                        $nationalCode = $order->address?->receiver_national_code ?? $order->user?->national_code ?? null;
+                    }
+                }
+            }
+        }
 
         $payload = [
             'terminalCode' => $this->settings->terminalCode,

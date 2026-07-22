@@ -1,0 +1,229 @@
+<?php
+
+namespace App\Filament\Resources\Orders\Pages;
+
+use App\Filament\Resources\Orders\OrderResource;
+use Filament\Actions\Action;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\TextEntry;
+use Filament\Schemas\Components\RepeatableEntry;
+use Filament\Schemas\Schema;
+use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Support\HtmlString;
+
+class ViewOrder extends ViewRecord
+{
+    protected static string $resource = OrderResource::class;
+
+    protected static ?string $title = 'مشاهده سفارش';
+
+    public function infolist(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Section::make('اطلاعات سفارش')
+                    ->icon('heroicon-o-shopping-cart')
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextEntry::make('order_number')
+                                    ->label('شماره سفارش')
+                                    ->badge(),
+
+                                TextEntry::make('user.name')
+                                    ->label('مشتری'),
+
+                                TextEntry::make('status')
+                                    ->label('وضعیت')
+                                    ->badge()
+                                    ->color(fn (string $state): string => match ($state) {
+                                        'pending' => 'warning',
+                                        'confirmed' => 'info',
+                                        'processing' => 'info',
+                                        'shipped' => 'primary',
+                                        'delivered' => 'success',
+                                        'cancelled' => 'danger',
+                                        default => 'gray',
+                                    }),
+                            ]),
+
+                        Grid::make(3)
+                            ->schema([
+                                TextEntry::make('payment_method')
+                                    ->label('روش پرداخت')
+                                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                                        'online' => 'آنلاین',
+                                        'installment' => 'قسطی',
+                                        default => $state,
+                                    }),
+
+                                TextEntry::make('payment_status')
+                                    ->label('وضعیت پرداخت')
+                                    ->badge()
+                                    ->color(fn (string $state): string => match ($state) {
+                                        'paid' => 'success',
+                                        'failed' => 'danger',
+                                        'refunded' => 'warning',
+                                        default => 'gray',
+                                    }),
+
+                                TextEntry::make('total_amount')
+                                    ->label('مبلغ کل')
+                                    ->formatStateUsing(fn ($state): string => number_format($state) . ' ریال'),
+                            ]),
+                    ]),
+
+                Section::make('آدرس ارسال')
+                    ->icon('heroicon-o-map-pin')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextEntry::make('address.receiver_name')
+                                    ->label('نام گیرنده')
+                                    ->placeholder('—'),
+
+                                TextEntry::make('address.receiver_phone')
+                                    ->label('تلفن گیرنده')
+                                    ->placeholder('—'),
+                            ]),
+
+                        TextEntry::make('address.full_address')
+                            ->label('آدرس کامل')
+                            ->placeholder('—')
+                            ->columnSpanFull(),
+
+                        Grid::make(3)
+                            ->schema([
+                                TextEntry::make('address.receiver_national_code')
+                                    ->label('کد ملی')
+                                    ->placeholder('—'),
+
+                                TextEntry::make('address.postal_code')
+                                    ->label('کد پستی')
+                                    ->placeholder('—'),
+
+                                TextEntry::make('address.province.name')
+                                    ->label('استان')
+                                    ->placeholder('—'),
+                            ]),
+                    ]),
+
+                Section::make('اطلاعات ارسال')
+                    ->icon('heroicon-o-truck')
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextEntry::make('shipping.shippingMethod.name')
+                                    ->label('روش ارسال')
+                                    ->placeholder('—'),
+
+                                TextEntry::make('shipping.shipping_cost')
+                                    ->label('هزینه ارسال')
+                                    ->formatStateUsing(fn ($state): string => $state ? number_format($state) . ' ریال' : '—')
+                                    ->placeholder('—'),
+
+                                TextEntry::make('shipping.tracking_number')
+                                    ->label('شماره رهگیری')
+                                    ->placeholder('—'),
+                            ]),
+
+                        Grid::make(3)
+                            ->schema([
+                                TextEntry::make('shipping.tracking_url')
+                                    ->label('لینک رهگیری')
+                                    ->url(fn ($state): string => $state ?? '#')
+                                    ->openUrlInNewTab()
+                                    ->placeholder('—'),
+
+                                TextEntry::make('shipping.pickup_date')
+                                    ->label('تاریخ مراجعه')
+                                    ->placeholder('—'),
+
+                                TextEntry::make('shipping.delivered_at')
+                                    ->label('تاریخ تحویل')
+                                    ->placeholder('—'),
+                            ]),
+                    ]),
+
+                Section::make('محصولات سفارش')
+                    ->icon('heroicon-o-cube')
+                    ->schema([
+                        RepeatableEntry::make('items')
+                            ->label('')
+                            ->schema([
+                                Grid::make(4)
+                                    ->schema([
+                                        TextEntry::make('product_name')
+                                            ->label('نام محصول'),
+
+                                        TextEntry::make('product_price')
+                                            ->label('قیمت واحد')
+                                            ->formatStateUsing(fn ($state): string => number_format($state) . ' ریال'),
+
+                                        TextEntry::make('quantity')
+                                            ->label('تعداد'),
+
+                                        TextEntry::make('subtotal')
+                                            ->label('قیمت کل')
+                                            ->formatStateUsing(fn ($state): string => number_format($state) . ' ریال'),
+                                    ]),
+                            ])
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('یادداشت‌ها')
+                    ->icon('heroicon-o-document-text')
+                    ->schema([
+                        TextEntry::make('notes')
+                            ->label('')
+                            ->formatStateUsing(function ($state): HtmlString {
+                                if (!$state) return new HtmlString('<span class="text-muted-foreground">—</span>');
+
+                                $data = json_decode($state, true);
+                                if (!is_array($data)) {
+                                    return new HtmlString('<span class="text-muted-foreground">' . e($state) . '</span>');
+                                }
+
+                                $items = [];
+                                if (isset($data['name'])) $items[] = '<strong>نام:</strong> ' . e($data['name']);
+                                if (isset($data['phone'])) $items[] = '<strong>تلفن:</strong> ' . e($data['phone']);
+                                if (isset($data['national_code'])) $items[] = '<strong>کد ملی:</strong> ' . e($data['national_code']);
+                                if (isset($data['installment_fee'])) $items[] = '<strong>کارمزد اقساط:</strong> ' . number_format($data['installment_fee']) . ' ریال';
+
+                                return new HtmlString(implode('<br>', $items) ?: '<span class="text-muted-foreground">—</span>');
+                            })
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('اطلاعات حسابفا')
+                    ->icon('heroicon-o-arrow-path')
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextEntry::make('hesabfa_contact_code')
+                                    ->label('کد مشتری')
+                                    ->placeholder('—'),
+
+                                TextEntry::make('hesabfa_invoice_number')
+                                    ->label('شماره فاکتور')
+                                    ->placeholder('—'),
+
+                                TextEntry::make('hesabfa_synced_at')
+                                    ->label('تاریخ همگام‌سازی')
+                                    ->placeholder('—'),
+                            ]),
+                    ]),
+            ]);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('edit')
+                ->label('ویرایش')
+                ->icon('heroicon-o-pencil')
+                ->url(fn ($record): string => $record ? $this->getResource()::getUrl('edit', ['record' => $record]) : '#'),
+        ];
+    }
+}

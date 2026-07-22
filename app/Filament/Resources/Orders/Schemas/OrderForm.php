@@ -71,10 +71,6 @@ class OrderForm
                                     ])
                                     ->default('pending'),
                             ]),
-
-                        Textarea::make('notes')
-                            ->label('یادداشت‌ها')
-                            ->rows(3),
                     ])
                     ->columnSpanFull(),
 
@@ -107,11 +103,6 @@ class OrderForm
                             ->label('متن آدرس')
                             ->rows(3)
                             ->placeholder('متن کامل آدرس در زمان ثبت سفارش'),
-
-                        Textarea::make('shipping_address')
-                            ->label('آدرس قدیمی (متنی)')
-                            ->rows(3)
-                            ->dehydrated(),
                     ])
                     ->columnSpanFull(),
 
@@ -215,6 +206,19 @@ class OrderForm
                             ->reorderable()
                             ->defaultItems(0)
                             ->collapsible(),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('یادداشت‌ها')
+                    ->description('یادداشت‌های سفارش')
+                    ->icon('heroicon-o-document-text')
+                    ->collapsible()
+                    ->schema([
+                        Textarea::make('notes')
+                            ->label('یادداشت‌ها (JSON)')
+                            ->rows(4)
+                            ->placeholder('{"name": "...", "phone": "...", "national_code": "..."}')
+                            ->helperText('فرمت JSON. این فیلد برای توسعه‌دهندگان است.'),
                     ])
                     ->columnSpanFull(),
 

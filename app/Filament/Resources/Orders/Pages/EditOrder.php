@@ -8,6 +8,7 @@ use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
+use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
@@ -20,6 +21,10 @@ class EditOrder extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ViewAction::make()
+                ->label('مشاهده')
+                ->url(fn ($record): string => $this->getResource()::getUrl('view', ['record' => $record])),
+
             Action::make('syncToHesabfa')
                 ->label('ارسال به حسابفا')
                 ->icon('heroicon-o-arrow-up-tray')
