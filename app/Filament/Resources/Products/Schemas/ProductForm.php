@@ -145,8 +145,7 @@ class ProductForm
                                     ->dehydrated(fn ($get) => ($get('price_type') ?? 'fixed') === 'fixed')
                                     ->numeric()
                                     ->suffix('ریال')
-                                    ->minValue(0)
-                                    ->formatStateUsing(fn ($state): string => $state ? number_format($state) : ''),
+                                    ->minValue(0),
 
                                 TextInput::make('weight')
                                     ->label('وزن')
