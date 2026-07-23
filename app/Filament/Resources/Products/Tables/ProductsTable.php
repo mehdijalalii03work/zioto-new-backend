@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Products\Tables;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -98,6 +99,11 @@ class ProductsTable
             ->defaultPaginationPageOption(25)
             ->reorderable('sort_order')
             ->recordActions([
+                ViewAction::make()
+                    ->label('مشاهده در سایت')
+                    ->url(fn ($record): string => config('app.frontend_url', 'https://new.sawiss.com') . '/product/' . $record->slug)
+                    ->openUrlInNewTab(),
+
                 EditAction::make()
                     ->label('ویرایش'),
             ])
