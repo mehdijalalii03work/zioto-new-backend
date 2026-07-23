@@ -144,8 +144,9 @@ class ProductForm
                                     ->disabled(fn ($get) => ($get('price_type') ?? 'fixed') === 'dynamic')
                                     ->dehydrated(fn ($get) => ($get('price_type') ?? 'fixed') === 'fixed')
                                     ->numeric()
-                                    ->suffix('تومان')
-                                    ->minValue(0),
+                                    ->suffix('ریال')
+                                    ->minValue(0)
+                                    ->formatStateUsing(fn ($state): string => $state ? number_format($state) : ''),
 
                                 TextInput::make('weight')
                                     ->label('وزن')
