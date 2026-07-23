@@ -4,6 +4,7 @@ namespace App\Payment\Drivers\Kamanlend;
 
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
+use Modules\Payment\Models\Payment;
 use Shetabit\Multipay\Abstracts\Driver;
 use Shetabit\Multipay\Contracts\ReceiptInterface;
 use Shetabit\Multipay\Exceptions\InvalidPaymentException;
@@ -98,7 +99,7 @@ class Kamanlend extends Driver
         $nationalCode = $this->invoice->getDetails()['nationalCode'] ?? null;
 
         if (! $nationalCode && $token) {
-            $payment = \Modules\Payment\Models\Payment::with(['order.user', 'order.address'])->where('transaction_id', $token)->first();
+            $payment = Payment::with(['order.user', 'order.address'])->where('transaction_id', $token)->first();
             if ($payment?->order) {
                 $nationalCode = $payment->order->address?->receiver_national_code ?? $payment->order->user?->national_code ?? null;
             }

@@ -122,7 +122,7 @@ class ProductsTable
             ->recordActions([
                 ViewAction::make()
                     ->label('مشاهده در سایت')
-                    ->url(fn ($record): string => config('app.frontend_url') . '/product/' . $record->slug)
+                    ->url(fn ($record): string => config('app.frontend_url').'/product/'.$record->slug)
                     ->openUrlInNewTab(),
 
                 EditAction::make()

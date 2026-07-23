@@ -146,6 +146,21 @@ class Product extends Model implements HasMedia
         return round($basePrice * (1 + $taxPercentage / 100));
     }
 
+    public function scopePublished($query)
+    {
+        return $query->where('status', 'published');
+    }
+
+    public function scopePublicVisible($query)
+    {
+        return $query->where('visibility', 'public');
+    }
+
+    public function scopePubliclyListed($query)
+    {
+        return $query->published()->publicVisible();
+    }
+
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('product-images')

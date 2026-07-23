@@ -6,10 +6,10 @@ use App\Filament\Resources\Orders\OrderResource;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\HtmlString;
 
 class ViewOrder extends ViewRecord
@@ -70,7 +70,7 @@ class ViewOrder extends ViewRecord
 
                                 TextEntry::make('total_amount')
                                     ->label('مبلغ کل')
-                                    ->formatStateUsing(fn ($state): string => number_format($state) . ' ریال'),
+                                    ->formatStateUsing(fn ($state): string => number_format($state).' ریال'),
                             ]),
                     ]),
 
@@ -120,7 +120,7 @@ class ViewOrder extends ViewRecord
 
                                 TextEntry::make('shipping.shipping_cost')
                                     ->label('هزینه ارسال')
-                                    ->formatStateUsing(fn ($state): string => $state ? number_format($state) . ' ریال' : '—')
+                                    ->formatStateUsing(fn ($state): string => $state ? number_format($state).' ریال' : '—')
                                     ->placeholder('—'),
 
                                 TextEntry::make('shipping.tracking_number')
@@ -159,14 +159,14 @@ class ViewOrder extends ViewRecord
 
                                         TextEntry::make('product_price')
                                             ->label('قیمت واحد')
-                                            ->formatStateUsing(fn ($state): string => number_format($state) . ' ریال'),
+                                            ->formatStateUsing(fn ($state): string => number_format($state).' ریال'),
 
                                         TextEntry::make('quantity')
                                             ->label('تعداد'),
 
                                         TextEntry::make('subtotal')
                                             ->label('قیمت کل')
-                                            ->formatStateUsing(fn ($state): string => number_format($state) . ' ریال'),
+                                            ->formatStateUsing(fn ($state): string => number_format($state).' ریال'),
                                     ]),
                             ])
                             ->columnSpanFull(),
@@ -178,18 +178,28 @@ class ViewOrder extends ViewRecord
                         TextEntry::make('notes')
                             ->label('')
                             ->formatStateUsing(function ($state): HtmlString {
-                                if (!$state) return new HtmlString('<span class="text-muted-foreground">—</span>');
+                                if (! $state) {
+                                    return new HtmlString('<span class="text-muted-foreground">—</span>');
+                                }
 
                                 $data = json_decode($state, true);
-                                if (!is_array($data)) {
-                                    return new HtmlString('<span class="text-muted-foreground">' . e($state) . '</span>');
+                                if (! is_array($data)) {
+                                    return new HtmlString('<span class="text-muted-foreground">'.e($state).'</span>');
                                 }
 
                                 $items = [];
-                                if (isset($data['name'])) $items[] = '<strong>نام:</strong> ' . e($data['name']);
-                                if (isset($data['phone'])) $items[] = '<strong>تلفن:</strong> ' . e($data['phone']);
-                                if (isset($data['national_code'])) $items[] = '<strong>کد ملی:</strong> ' . e($data['national_code']);
-                                if (isset($data['installment_fee'])) $items[] = '<strong>کارمزد اقساط:</strong> ' . number_format($data['installment_fee']) . ' ریال';
+                                if (isset($data['name'])) {
+                                    $items[] = '<strong>نام:</strong> '.e($data['name']);
+                                }
+                                if (isset($data['phone'])) {
+                                    $items[] = '<strong>تلفن:</strong> '.e($data['phone']);
+                                }
+                                if (isset($data['national_code'])) {
+                                    $items[] = '<strong>کد ملی:</strong> '.e($data['national_code']);
+                                }
+                                if (isset($data['installment_fee'])) {
+                                    $items[] = '<strong>کارمزد اقساط:</strong> '.number_format($data['installment_fee']).' ریال';
+                                }
 
                                 return new HtmlString(implode('<br>', $items) ?: '<span class="text-muted-foreground">—</span>');
                             })

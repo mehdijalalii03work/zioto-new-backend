@@ -19,9 +19,7 @@ class ProductController extends Controller
         $cacheKey = 'api:products:'.($slugs ? md5($slugs) : ($skus ? md5($skus) : 'all'));
 
         $products = Cache::remember($cacheKey, 300, function () use ($slugs, $skus) {
-            $query = Product::query()
-                ->where('status', 'published')
-                ->where('visibility', 'public')
+            $query = Product::publiclyListed()
                 ->with(['category:id,name,slug', 'brand:id,name,slug', 'images']);
 
             if ($slugs) {
@@ -62,10 +60,12 @@ class ProductController extends Controller
 
     public function show(string $slugOrId): JsonResponse
     {
-        $product = Product::query()
+        $product = Product::published()
             ->with(['category:id,name,slug', 'brand:id,name,slug', 'images'])
-            ->where('slug', $slugOrId)
-            ->orWhere('id', $slugOrId)
+            ->where(function ($q) use ($slugOrId) {
+                $q->where('slug', $slugOrId)
+                    ->orWhere('id', $slugOrId);
+            })
             ->first();
 
         if (! $product) {
