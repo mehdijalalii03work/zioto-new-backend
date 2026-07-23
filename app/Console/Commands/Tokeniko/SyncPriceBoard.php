@@ -213,6 +213,14 @@ class SyncPriceBoard extends Command
             $tapsiShop->sendBatch($tapsiProducts);
         }
 
+        if (! empty($updates)) {
+            $redis = Cache::getStore()->getRedis();
+            $keys = $redis->keys('api:products:*');
+            if ($keys) {
+                $redis->del($keys);
+            }
+        }
+
         $this->info('Updated '.count($updates).' products in DB.');
 
         if (! empty($tapsiProducts) && ! config('tapsi.enabled')) {
