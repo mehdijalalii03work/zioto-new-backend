@@ -89,7 +89,8 @@ class ProductsTable
                 TextColumn::make('price')
                     ->label('قیمت (تومان)')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(fn ($state): string => number_format((int) $state / 10)),
 
                 TextColumn::make('stock_quantity')
                     ->label('موجودی')
