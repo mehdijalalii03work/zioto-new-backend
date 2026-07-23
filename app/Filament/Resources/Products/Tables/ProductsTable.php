@@ -7,6 +7,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class ProductsTable
@@ -25,6 +26,20 @@ class ProductsTable
                     ->label('نام محصول')
                     ->searchable()
                     ->sortable(),
+
+                TextColumn::make('status')
+                    ->label('وضعیت')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'published' => 'success',
+                        'draft' => 'warning',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'published' => 'منشتر شده',
+                        'draft' => 'پیش‌نویس',
+                        default => $state,
+                    }),
 
                 TextColumn::make('category.name')
                     ->label('دسته‌بندی')
@@ -73,7 +88,12 @@ class ProductsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->label('وضعیت')
+                    ->options([
+                        'published' => 'منشتر شده',
+                        'draft' => 'پیش‌نویس',
+                    ]),
             ])
             ->defaultPaginationPageOption(25)
             ->reorderable('sort_order')

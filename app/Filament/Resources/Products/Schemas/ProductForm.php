@@ -39,6 +39,15 @@ class ProductForm
                                 TextInput::make('sku')
                                     ->label('کد اختصاصی محصول')
                                     ->unique(ignoreRecord: true),
+
+                                Select::make('status')
+                                    ->label('وضعیت انتشار')
+                                    ->options([
+                                        'published' => 'منشتر شده',
+                                        'draft' => 'پیش‌نویس',
+                                    ])
+                                    ->default('published')
+                                    ->required(),
                             ]),
 
                         Grid::make(3)

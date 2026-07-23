@@ -26,6 +26,7 @@ class Product extends Model implements HasMedia
         'name',
         'slug',
         'sku',
+        'status',
         'tokeniko_sku',
         'tapsi_product_id',
         'price_type',
