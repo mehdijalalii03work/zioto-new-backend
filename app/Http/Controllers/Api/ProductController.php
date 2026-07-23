@@ -21,6 +21,7 @@ class ProductController extends Controller
         $products = Cache::remember($cacheKey, 300, function () use ($slugs, $skus) {
             $query = Product::query()
                 ->where('status', 'published')
+                ->where('visibility', 'public')
                 ->with(['category:id,name,slug', 'brand:id,name,slug', 'images']);
 
             if ($slugs) {

@@ -48,6 +48,15 @@ class ProductForm
                                     ])
                                     ->default('published')
                                     ->required(),
+
+                                Select::make('visibility')
+                                    ->label('نوع نمایش')
+                                    ->options([
+                                        'public' => 'عمومی',
+                                        'private' => 'خصوصی',
+                                    ])
+                                    ->default('public')
+                                    ->required(),
                             ]),
 
                         Grid::make(3)

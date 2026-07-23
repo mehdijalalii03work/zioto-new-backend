@@ -42,6 +42,20 @@ class ProductsTable
                         default => $state,
                     }),
 
+                TextColumn::make('visibility')
+                    ->label('نمایش')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'public' => 'info',
+                        'private' => 'danger',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'public' => 'عمومی',
+                        'private' => 'خصوصی',
+                        default => $state,
+                    }),
+
                 TextColumn::make('category.name')
                     ->label('دسته‌بندی')
                     ->searchable()
@@ -94,6 +108,13 @@ class ProductsTable
                     ->options([
                         'published' => 'منشتر شده',
                         'draft' => 'پیش‌نویس',
+                    ]),
+
+                SelectFilter::make('visibility')
+                    ->label('نمایش')
+                    ->options([
+                        'public' => 'عمومی',
+                        'private' => 'خصوصی',
                     ]),
             ])
             ->defaultPaginationPageOption(25)
