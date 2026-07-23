@@ -18,7 +18,7 @@ class ProductController extends Controller
 
         $cacheKey = 'api:products:'.($slugs ? md5($slugs) : ($skus ? md5($skus) : 'all'));
 
-        $products = Cache::remember($cacheKey, 300, function () use ($slugs, $skus) {
+        $products = Cache::remember($cacheKey, 60, function () use ($slugs, $skus) {
             $query = Product::publiclyListed()
                 ->with(['category:id,name,slug', 'brand:id,name,slug', 'images']);
 
