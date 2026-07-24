@@ -95,8 +95,7 @@ class OrdersTable
                         'kamanlend' => 'کمان‌لند',
                         'smartis' => ' اسمارتیس',
                         default => $state ?? '—',
-                    })
-                    ->limit(1),
+                    }),
 
                 TextColumn::make('shipping.shipping_method_name')
                     ->label('روش ارسال')
