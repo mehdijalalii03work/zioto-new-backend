@@ -19,6 +19,7 @@ class OrderForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns(1)
             ->components([
                 Section::make('اطلاعات سفارش')
                     ->description('شماره سفارش، وضعیت و اطلاعات پرداخت')
@@ -26,7 +27,6 @@ class OrderForm
                     ->collapsible()
                     ->schema([
                         Grid::make(3)
-                            ->columnSpanFull()
                             ->schema([
                                 TextInput::make('order_number')
                                     ->label('شماره سفارش')
@@ -54,7 +54,6 @@ class OrderForm
                             ]),
 
                         Grid::make(2)
-                            ->columnSpanFull()
                             ->schema([
                                 Select::make('payment_method')
                                     ->label('روش پرداخت')
