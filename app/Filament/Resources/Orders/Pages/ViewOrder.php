@@ -45,6 +45,15 @@ class ViewOrder extends ViewRecord
                                         'delivered' => 'success',
                                         'cancelled' => 'danger',
                                         default => 'gray',
+                                    })
+                                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                                        'pending' => 'در انتظار بررسی',
+                                        'confirmed' => 'تایید شده',
+                                        'processing' => 'در حال پردازش',
+                                        'shipped' => 'ارسال شده',
+                                        'delivered' => 'تحویل شده',
+                                        'cancelled' => 'لغو شده',
+                                        default => $state,
                                     }),
                             ]),
 
@@ -66,6 +75,13 @@ class ViewOrder extends ViewRecord
                                         'failed' => 'danger',
                                         'refunded' => 'warning',
                                         default => 'gray',
+                                    })
+                                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                                        'pending' => 'در انتظار پرداخت',
+                                        'paid' => 'پرداخت شده',
+                                        'failed' => 'ناموفق',
+                                        'refunded' => 'مسترد شده',
+                                        default => $state,
                                     }),
 
                                 TextEntry::make('total_amount')
