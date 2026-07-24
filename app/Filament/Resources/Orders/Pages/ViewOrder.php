@@ -21,11 +21,12 @@ class ViewOrder extends ViewRecord
     public function infolist(Schema $schema): Schema
     {
         return $schema
+            ->columns(2)
             ->components([
                 Section::make('اطلاعات سفارش')
                     ->icon('heroicon-o-shopping-cart')
                     ->schema([
-                        Grid::make(3)
+                        Grid::make(2)
                             ->schema([
                                 TextEntry::make('order_number')
                                     ->label('شماره سفارش')
@@ -55,10 +56,7 @@ class ViewOrder extends ViewRecord
                                         'cancelled' => 'لغو شده',
                                         default => $state,
                                     }),
-                            ]),
 
-                        Grid::make(3)
-                            ->schema([
                                 TextEntry::make('payment_method')
                                     ->label('روش پرداخت')
                                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -106,57 +104,49 @@ class ViewOrder extends ViewRecord
                             ->placeholder('—')
                             ->columnSpanFull(),
 
-                        Grid::make(3)
-                            ->schema([
-                                TextEntry::make('address.receiver_national_code')
-                                    ->label('کد ملی')
-                                    ->placeholder('—'),
+                        TextEntry::make('address.receiver_national_code')
+                            ->label('کد ملی')
+                            ->placeholder('—'),
 
-                                TextEntry::make('address.postal_code')
-                                    ->label('کد پستی')
-                                    ->placeholder('—'),
+                        TextEntry::make('address.postal_code')
+                            ->label('کد پستی')
+                            ->placeholder('—'),
 
-                                TextEntry::make('address.province.name')
-                                    ->label('استان')
-                                    ->placeholder('—'),
-                            ]),
+                        TextEntry::make('address.province.name')
+                            ->label('استان')
+                            ->placeholder('—'),
 
-                        Grid::make(3)
-                            ->schema([
-                                TextEntry::make('shipping.shippingMethod.name')
-                                    ->label('روش ارسال')
-                                    ->placeholder('—'),
+                        TextEntry::make('shipping.shippingMethod.name')
+                            ->label('روش ارسال')
+                            ->placeholder('—'),
 
-                                TextEntry::make('shipping.shipping_cost')
-                                    ->label('هزینه ارسال')
-                                    ->formatStateUsing(fn ($state): string => $state ? number_format($state).' ریال' : '—')
-                                    ->placeholder('—'),
+                        TextEntry::make('shipping.shipping_cost')
+                            ->label('هزینه ارسال')
+                            ->formatStateUsing(fn ($state): string => $state ? number_format($state).' ریال' : '—')
+                            ->placeholder('—'),
 
-                                TextEntry::make('shipping.tracking_number')
-                                    ->label('شماره رهگیری')
-                                    ->placeholder('—'),
-                            ]),
+                        TextEntry::make('shipping.tracking_number')
+                            ->label('شماره رهگیری')
+                            ->placeholder('—'),
 
-                        Grid::make(3)
-                            ->schema([
-                                TextEntry::make('shipping.tracking_url')
-                                    ->label('لینک رهگیری')
-                                    ->url(fn ($state): string => $state ?? '#')
-                                    ->openUrlInNewTab()
-                                    ->placeholder('—'),
+                        TextEntry::make('shipping.tracking_url')
+                            ->label('لینک رهگیری')
+                            ->url(fn ($state): string => $state ?? '#')
+                            ->openUrlInNewTab()
+                            ->placeholder('—'),
 
-                                TextEntry::make('shipping.pickup_date')
-                                    ->label('تاریخ مراجعه')
-                                    ->placeholder('—'),
+                        TextEntry::make('shipping.pickup_date')
+                            ->label('تاریخ مراجعه')
+                            ->placeholder('—'),
 
-                                TextEntry::make('shipping.delivered_at')
-                                    ->label('تاریخ تحویل')
-                                    ->placeholder('—'),
-                            ]),
+                        TextEntry::make('shipping.delivered_at')
+                            ->label('تاریخ تحویل')
+                            ->placeholder('—'),
                     ]),
 
                 Section::make('محصولات سفارش')
                     ->icon('heroicon-o-cube')
+                    ->columnSpanFull()
                     ->schema([
                         RepeatableEntry::make('items')
                             ->label('')
@@ -183,6 +173,7 @@ class ViewOrder extends ViewRecord
 
                 Section::make('یادداشت‌ها و حسابفا')
                     ->icon('heroicon-o-document-text')
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('notes')
                             ->label('یادداشت‌ها')
