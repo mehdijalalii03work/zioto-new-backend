@@ -26,7 +26,7 @@ class OrderForm
                     ->icon('heroicon-o-shopping-cart')
                     ->collapsible()
                     ->schema([
-                        Grid::make(3)
+                        Grid::make(4)
                             ->schema([
                                 TextInput::make('order_number')
                                     ->label('شماره سفارش')
@@ -51,10 +51,7 @@ class OrderForm
                                         'cancelled' => 'لغو شده',
                                     ])
                                     ->default('pending'),
-                            ]),
 
-                        Grid::make(2)
-                            ->schema([
                                 Select::make('payment_method')
                                     ->label('روش پرداخت')
                                     ->options([
@@ -107,121 +104,122 @@ class OrderForm
                     ])
                     ->columnSpanFull(),
 
-                Section::make('اطلاعات ارسال')
-                    ->description('روش ارسال، هزینه و رهگیری')
-                    ->icon('heroicon-o-truck')
-                    ->collapsible()
-                    ->schema([
-                        Grid::make(3)
-                            ->schema([
-                                Select::make('shipping.shipping_method_id')
-                                    ->label('روش ارسال')
-                                    ->relationship('shipping', 'shipping_method_id')
-                                    ->options(fn () => ShippingMethod::pluck('name', 'id'))
-                                    ->nullable(),
+                // Section::make('اطلاعات ارسال')
+                //     ->description('روش ارسال، هزینه و رهگیری')
+                //     ->icon('heroicon-o-truck')
+                //     ->collapsible()
+                //     ->schema([
+                //         Grid::make(3)
+                //             ->schema([
+                //                 Select::make('shipping.shipping_method_id')
+                //                     ->label('روش ارسال')
+                //                     ->relationship('shipping', 'shipping_method_id')
+                //                     ->options(fn () => ShippingMethod::pluck('name', 'id'))
+                //                     ->nullable(),
 
-                                TextInput::make('shipping.shipping_cost')
-                                    ->label('هزینه ارسال (ریال)')
-                                    ->numeric()
-                                    ->nullable(),
+                //                 TextInput::make('shipping.shipping_cost')
+                //                     ->label('هزینه ارسال (ریال)')
+                //                     ->numeric()
+                //                     ->nullable(),
 
-                                TextInput::make('shipping.tracking_number')
-                                    ->label('شماره رهگیری')
-                                    ->maxLength(100)
-                                    ->nullable(),
-                            ]),
+                //                 TextInput::make('shipping.tracking_number')
+                //                     ->label('شماره رهگیری')
+                //                     ->maxLength(100)
+                //                     ->nullable(),
+                //             ]),
 
-                        Grid::make(3)
-                            ->schema([
-                                TextInput::make('shipping.tracking_url')
-                                    ->label('لینک رهگیری')
-                                    ->maxLength(500)
-                                    ->nullable(),
+                //         Grid::make(3)
+                //             ->schema([
+                //                 TextInput::make('shipping.tracking_url')
+                //                     ->label('لینک رهگیری')
+                //                     ->maxLength(500)
+                //                     ->nullable(),
 
-                                DatePicker::make('shipping.pickup_date')
-                                    ->label('تاریخ مراجعه (تحویل حضوری)')
-                                    ->nullable(),
+                //                 DatePicker::make('shipping.pickup_date')
+                //                     ->label('تاریخ مراجعه (تحویل حضوری)')
+                //                     ->nullable(),
 
-                                DatePicker::make('shipping.delivered_at')
-                                    ->label('تاریخ تحویل')
-                                    ->nullable(),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
+                //                 DatePicker::make('shipping.delivered_at')
+                //                     ->label('تاریخ تحویل')
+                //                     ->nullable(),
+                //             ]),
+                //     ])
+                //     ->columnSpanFull(),
 
-                Section::make('محصولات سفارش')
-                    ->description('اقلام موجود در این سفارش')
-                    ->icon('heroicon-o-cube')
-                    ->collapsible()
-                    ->schema([
-                        Repeater::make('items')
-                            ->relationship()
-                            ->schema([
-                                Grid::make(5)
-                                    ->schema([
-                                        Select::make('product_id')
-                                            ->label('محصول')
-                                            ->relationship('product', 'name')
-                                            ->searchable()
-                                            ->preload()
-                                            ->live()
-                                            ->afterStateUpdated(function ($state, $set) {
-                                                if (! $state) {
-                                                    return;
-                                                }
-                                                $product = Product::find($state);
-                                                if ($product) {
-                                                    $set('product_name', $product->name);
-                                                    $set('product_price', $product->price);
-                                                    $set('subtotal', $product->price * ($set('quantity', 1) ?: 1));
-                                                }
-                                            }),
 
-                                        TextInput::make('product_name')
-                                            ->label('نام محصول')
-                                            ->disabled()
-                                            ->dehydrated(),
+                // Section::make('محصولات سفارش')
+                //     ->description('اقلام موجود در این سفارش')
+                //     ->icon('heroicon-o-cube')
+                //     ->collapsible()
+                //     ->schema([
+                //         Repeater::make('items')
+                //             ->relationship()
+                //             ->schema([
+                //                 Grid::make(5)
+                //                     ->schema([
+                //                         Select::make('product_id')
+                //                             ->label('محصول')
+                //                             ->relationship('product', 'name')
+                //                             ->searchable()
+                //                             ->preload()
+                //                             ->live()
+                //                             ->afterStateUpdated(function ($state, $set) {
+                //                                 if (! $state) {
+                //                                     return;
+                //                                 }
+                //                                 $product = Product::find($state);
+                //                                 if ($product) {
+                //                                     $set('product_name', $product->name);
+                //                                     $set('product_price', $product->price);
+                //                                     $set('subtotal', $product->price * ($set('quantity', 1) ?: 1));
+                //                                 }
+                //                             }),
 
-                                        TextInput::make('product_price')
-                                            ->label('قیمت واحد')
-                                            ->numeric()
-                                            ->live()
-                                            ->afterStateUpdated(fn ($state, $set, $get) => $set('subtotal', ($state ?? 0) * ($get('quantity') ?? 1))),
+                //                         TextInput::make('product_name')
+                //                             ->label('نام محصول')
+                //                             ->disabled()
+                //                             ->dehydrated(),
 
-                                        TextInput::make('quantity')
-                                            ->label('تعداد')
-                                            ->numeric()
-                                            ->default(1)
-                                            ->minValue(1)
-                                            ->live()
-                                            ->afterStateUpdated(fn ($state, $set, $get) => $set('subtotal', ($state ?? 1) * ($get('product_price') ?? 0))),
+                //                         TextInput::make('product_price')
+                //                             ->label('قیمت واحد')
+                //                             ->numeric()
+                //                             ->live()
+                //                             ->afterStateUpdated(fn ($state, $set, $get) => $set('subtotal', ($state ?? 0) * ($get('quantity') ?? 1))),
 
-                                        TextInput::make('subtotal')
-                                            ->label('قیمت کل')
-                                            ->numeric()
-                                            ->disabled()
-                                            ->dehydrated(),
-                                    ]),
-                            ])
-                            ->addActionLabel('افزودن محصول')
-                            ->reorderable()
-                            ->defaultItems(0)
-                            ->collapsible(),
-                    ])
-                    ->columnSpanFull(),
+                //                         TextInput::make('quantity')
+                //                             ->label('تعداد')
+                //                             ->numeric()
+                //                             ->default(1)
+                //                             ->minValue(1)
+                //                             ->live()
+                //                             ->afterStateUpdated(fn ($state, $set, $get) => $set('subtotal', ($state ?? 1) * ($get('product_price') ?? 0))),
 
-                Section::make('یادداشت‌ها')
-                    ->description('یادداشت‌های سفارش')
-                    ->icon('heroicon-o-document-text')
-                    ->collapsible()
-                    ->schema([
-                        Textarea::make('notes')
-                            ->label('یادداشت‌ها (JSON)')
-                            ->rows(4)
-                            ->placeholder('{"name": "...", "phone": "...", "national_code": "..."}')
-                            ->helperText('فرمت JSON. این فیلد برای توسعه‌دهندگان است.'),
-                    ])
-                    ->columnSpanFull(),
+                //                         TextInput::make('subtotal')
+                //                             ->label('قیمت کل')
+                //                             ->numeric()
+                //                             ->disabled()
+                //                             ->dehydrated(),
+                //                     ]),
+                //             ])
+                //             ->addActionLabel('افزودن محصول')
+                //             ->reorderable()
+                //             ->defaultItems(0)
+                //             ->collapsible(),
+                //     ])
+                //     ->columnSpanFull(),
+
+                // Section::make('یادداشت‌ها')
+                //     ->description('یادداشت‌های سفارش')
+                //     ->icon('heroicon-o-document-text')
+                //     ->collapsible()
+                //     ->schema([
+                //         Textarea::make('notes')
+                //             ->label('یادداشت‌ها (JSON)')
+                //             ->rows(4)
+                //             ->placeholder('{"name": "...", "phone": "...", "national_code": "..."}')
+                //             ->helperText('فرمت JSON. این فیلد برای توسعه‌دهندگان است.'),
+                //     ])
+                //     ->columnSpanFull(),
 
                 Section::make('اطلاعات حسابفا')
                     ->description('وضعیت همگام‌سازی با حسابفا')
@@ -233,20 +231,17 @@ class OrderForm
                                 TextInput::make('hesabfa_contact_code')
                                     ->label('کد مشتری')
                                     ->disabled()
-                                    ->dehydrated()
-                                    ->visible(fn ($record) => $record?->hesabfa_contact_code),
+                                    ->dehydrated(),
 
                                 TextInput::make('hesabfa_invoice_number')
                                     ->label('شماره فاکتور')
                                     ->disabled()
-                                    ->dehydrated()
-                                    ->visible(fn ($record) => $record?->hesabfa_invoice_number),
+                                    ->dehydrated(),
 
                                 TextInput::make('hesabfa_synced_at')
                                     ->label('تاریخ همگام‌سازی')
                                     ->disabled()
-                                    ->dehydrated()
-                                    ->visible(fn ($record) => $record?->hesabfa_synced_at),
+                                    ->dehydrated(),
                             ]),
                     ])
                     ->columnSpanFull(),

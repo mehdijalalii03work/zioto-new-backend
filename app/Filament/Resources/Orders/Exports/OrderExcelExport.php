@@ -72,7 +72,7 @@ class OrderExcelExport
         }
         $itemsText = trim($itemsText);
         $itemCount = $order->items->sum('quantity');
-        $itemCountStr = 'تعداد اقلام سفارشیه '.$itemCount.' عدد';
+        $itemCountStr = 'تعداد اقلام سفارش '.$itemCount.' عدد';
 
         $shippingMethodName = $order->shipping?->shipping_method_name ?? '';
         $isPickup = $order->shipping?->shippingMethod?->is_pickup ?? false;
@@ -343,7 +343,7 @@ class OrderExcelExport
             ]);
 
             $c = $sheet->getCell("E$r10");
-            $c->setValue("=ROUND(INDEX('خروجی اکسل سایت'!A:X,G$r10,15)/1000000,0)");
+            $c->setValue("=ROUND(INDEX('خروجی اکسل سایت'!A:X,G$r10,15)/10000000,0)");
             $c->getStyle()->applyFromArray([
                 'font' => ['name' => 'B Titr', 'size' => 20, 'bold' => true],
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'FFFF00']],
