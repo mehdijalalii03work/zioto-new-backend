@@ -33,6 +33,19 @@ class OrdersTable
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('address.receiver_name')
+                    ->label('تحویل گیرنده')
+                    ->state(function ($record): string {
+                        $receiverName = $record->address?->receiver_name;
+                        $buyerName = $record->user?->name;
+
+                        if ($receiverName && $receiverName !== $buyerName) {
+                            return $receiverName;
+                        }
+
+                        return '—';
+                    }),
+
                 TextColumn::make('status')
                     ->label('وضعیت')
                     ->badge()
