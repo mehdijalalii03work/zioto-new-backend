@@ -93,11 +93,13 @@ class ViewOrder extends ViewRecord
                     ->schema([
                         TextEntry::make('address.receiver_name')
                             ->label('نام گیرنده')
-                            ->placeholder('—'),
+                            ->placeholder('—')
+                            ->visible(fn ($record): bool => filled($record->address?->receiver_name) && $record->address->receiver_name !== $record->user?->name),
 
                         TextEntry::make('address.receiver_phone')
                             ->label('تلفن گیرنده')
-                            ->placeholder('—'),
+                            ->placeholder('—')
+                            ->visible(fn ($record): bool => filled($record->address?->receiver_name) && $record->address->receiver_name !== $record->user?->name),
 
                         TextEntry::make('address.full_address')
                             ->label('آدرس کامل')
@@ -106,7 +108,8 @@ class ViewOrder extends ViewRecord
 
                         TextEntry::make('address.receiver_national_code')
                             ->label('کد ملی')
-                            ->placeholder('—'),
+                            ->placeholder('—')
+                            ->visible(fn ($record): bool => filled($record->address?->receiver_name) && $record->address->receiver_name !== $record->user?->name),
 
                         TextEntry::make('address.postal_code')
                             ->label('کد پستی')
