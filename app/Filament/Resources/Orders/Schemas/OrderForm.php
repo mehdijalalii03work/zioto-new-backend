@@ -26,6 +26,7 @@ class OrderForm
                     ->collapsible()
                     ->schema([
                         Grid::make(3)
+                            ->columnSpanFull()
                             ->schema([
                                 TextInput::make('order_number')
                                     ->label('شماره سفارش')
@@ -53,6 +54,7 @@ class OrderForm
                             ]),
 
                         Grid::make(2)
+                            ->columnSpanFull()
                             ->schema([
                                 Select::make('payment_method')
                                     ->label('روش پرداخت')
