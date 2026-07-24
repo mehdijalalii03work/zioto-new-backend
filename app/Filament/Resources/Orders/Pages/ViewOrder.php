@@ -90,19 +90,16 @@ class ViewOrder extends ViewRecord
                             ]),
                     ]),
 
-                Section::make('آدرس ارسال')
-                    ->icon('heroicon-o-map-pin')
+                Section::make('آدرس و ارسال')
+                    ->icon('heroicon-o-truck')
                     ->schema([
-                        Grid::make(2)
-                            ->schema([
-                                TextEntry::make('address.receiver_name')
-                                    ->label('نام گیرنده')
-                                    ->placeholder('—'),
+                        TextEntry::make('address.receiver_name')
+                            ->label('نام گیرنده')
+                            ->placeholder('—'),
 
-                                TextEntry::make('address.receiver_phone')
-                                    ->label('تلفن گیرنده')
-                                    ->placeholder('—'),
-                            ]),
+                        TextEntry::make('address.receiver_phone')
+                            ->label('تلفن گیرنده')
+                            ->placeholder('—'),
 
                         TextEntry::make('address.full_address')
                             ->label('آدرس کامل')
@@ -123,11 +120,7 @@ class ViewOrder extends ViewRecord
                                     ->label('استان')
                                     ->placeholder('—'),
                             ]),
-                    ]),
 
-                Section::make('اطلاعات ارسال')
-                    ->icon('heroicon-o-truck')
-                    ->schema([
                         Grid::make(3)
                             ->schema([
                                 TextEntry::make('shipping.shippingMethod.name')
@@ -188,11 +181,11 @@ class ViewOrder extends ViewRecord
                             ->columnSpanFull(),
                     ]),
 
-                Section::make('یادداشت‌ها')
+                Section::make('یادداشت‌ها و حسابفا')
                     ->icon('heroicon-o-document-text')
                     ->schema([
                         TextEntry::make('notes')
-                            ->label('')
+                            ->label('یادداشت‌ها')
                             ->formatStateUsing(function ($state): HtmlString {
                                 if (! $state) {
                                     return new HtmlString('<span class="text-muted-foreground">—</span>');
@@ -220,11 +213,7 @@ class ViewOrder extends ViewRecord
                                 return new HtmlString(implode('<br>', $items) ?: '<span class="text-muted-foreground">—</span>');
                             })
                             ->columnSpanFull(),
-                    ]),
 
-                Section::make('اطلاعات حسابفا')
-                    ->icon('heroicon-o-arrow-path')
-                    ->schema([
                         Grid::make(3)
                             ->schema([
                                 TextEntry::make('hesabfa_contact_code')
