@@ -142,18 +142,6 @@ class ShippingController extends Controller
             $shippingCost += $extraKg * (int) $rate->per_kg_rate;
         }
 
-        $insuranceCost = 0;
-        $hasInsurance = false;
-
-        if ($method->code === 'post_precious') {
-            $hasInsurance = true;
-            if ($cartTotal <= 50000000) {
-                $insuranceCost = (int) ($cartTotal * 0.005);
-            } else {
-                $insuranceCost = (int) ($cartTotal * 0.01);
-            }
-        }
-
         $freeShipping = false;
         if ($rate->free_shipping_min && $cartTotal >= $rate->free_shipping_min) {
             $shippingCost = 0;
@@ -174,10 +162,6 @@ class ShippingController extends Controller
             $breakdown['weight_surcharge'] = $shippingCost - (int) $rate->base_rate;
         }
 
-        if ($hasInsurance) {
-            $breakdown['insurance'] = $insuranceCost;
-        }
-
         if ($taxAmount > 0) {
             $breakdown['tax'] = $taxAmount;
         }
@@ -188,12 +172,10 @@ class ShippingController extends Controller
             'shipping_cost' => $shippingCost,
             'estimated_min_days' => $rate->estimated_days_min,
             'estimated_max_days' => $rate->estimated_days_max,
-            'has_insurance' => $hasInsurance,
-            'insurance_cost' => $insuranceCost,
             'has_tax' => $taxAmount > 0,
             'tax_rate' => $taxRate,
             'tax_amount' => $taxAmount,
-            'total_shipping_cost' => $shippingCost + $insuranceCost + $taxAmount,
+            'total_shipping_cost' => $shippingCost + $taxAmount,
             'free_shipping' => $freeShipping,
             'breakdown' => $breakdown,
         ]);
