@@ -236,15 +236,15 @@ class ViewOrder extends ViewRecord
                                         }
 
                                         $items = [];
-                                        // if (isset($data['name'])) {
-                                        //     $items[] = '<strong>نام:</strong> ' . e($data['name']);
-                                        // }
-                                        // if (isset($data['phone'])) {
-                                        //     $items[] = '<strong>تلفن:</strong> ' . e($data['phone']);
-                                        // }
-                                        // if (isset($data['national_code'])) {
-                                        //     $items[] = '<strong>کد ملی:</strong> ' . e($data['national_code']);
-                                        // }
+                                         if (isset($data['name'])) {
+                                             $items[] = '<strong>نام:</strong> ' . e($data['name']);
+                                         }
+                                         if (isset($data['phone'])) {
+                                             $items[] = '<strong>تلفن:</strong> ' . e($data['phone']);
+                                         }
+                                         if (isset($data['national_code'])) {
+                                             $items[] = '<strong>کد ملی:</strong> ' . e($data['national_code']);
+                                         }
                                         // if (isset($data['installment_fee'])) {
                                         //     $items[] = '<strong>کارمزد اقساط:</strong> ' . number_format($data['installment_fee']) . ' ریال';
                                         // }
