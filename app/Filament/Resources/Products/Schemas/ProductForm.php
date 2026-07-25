@@ -57,6 +57,11 @@ class ProductForm
                                     ])
                                     ->default('public')
                                     ->required(),
+
+                                Toggle::make('contact_only')
+                                    ->label('فقط تماس')
+                                    ->helperText('خرید فقط از طریق تماس تلفنی')
+                                    ->inline(false),
                             ]),
 
                         Grid::make(3)

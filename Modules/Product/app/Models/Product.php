@@ -28,6 +28,7 @@ class Product extends Model implements HasMedia
         'sku',
         'status',
         'visibility',
+        'contact_only',
         'tokeniko_sku',
         'tapsi_product_id',
         'price_type',
@@ -68,6 +69,7 @@ class Product extends Model implements HasMedia
             'hesabfa_exclude_from_sync' => 'boolean',
             'hesabfa_stock_locked' => 'boolean',
             'hesabfa_stock_synced_at' => 'datetime',
+            'contact_only' => 'boolean',
         ];
     }
 

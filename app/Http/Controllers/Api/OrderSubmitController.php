@@ -74,7 +74,7 @@ class OrderSubmitController extends Controller
         }
 
         $result = DB::transaction(function () use ($validated, $user, $cartItems) {
-            $address = $user->addresses()->with(['province', 'city'])->findOrFail($validated['user_address_id']);
+            $address = empty($validated['user_address_id']) ? null : $user->addresses()->with(['province', 'city'])->find($validated['user_address_id']);
 
             $buyerName = $address?->receiver_name ?: $user->name;
             $buyerPhone = $address?->receiver_phone ?: $user->phone;
@@ -131,7 +131,7 @@ class OrderSubmitController extends Controller
                 'total_amount' => $totalAmount,
                 'payment_method' => $paymentMethod,
                 'payment_status' => 'pending',
-                'user_address_id' => $validated['user_address_id'],
+                'user_address_id' => $validated['user_address_id'] ?? null,
                 'notes' => json_encode($notesData),
             ]);
 

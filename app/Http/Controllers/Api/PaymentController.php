@@ -38,13 +38,13 @@ class PaymentController extends Controller
             $totalWeight += ($product->weight ?? 0) * $item['quantity'];
         }
 
-        $address = $user->addresses()->findOrFail($validated['user_address_id']);
+        $address = empty($validated['user_address_id']) ? null : $user->addresses()->find($validated['user_address_id']);
         $shippingCost = $this->calculateShippingCost(
             $validated['shipping_method_id'],
             $totalWeight,
             $baseTotal,
-            $address->province_id,
-            $address->city_id
+            $address?->province_id,
+            $address?->city_id
         );
 
         $baseTotal += $shippingCost;
@@ -111,7 +111,7 @@ class PaymentController extends Controller
                     $capturedTransactionId = $transactionId;
 
                     Payment::create([
-                        'user_id' => $request->user()?->id,
+                        'user_id' => $order->user_id,
                         'order_id' => $order->id,
                         'transaction_id' => $transactionId,
                         'amount' => $order->total_amount,

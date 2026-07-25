@@ -7,6 +7,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -55,6 +56,11 @@ class ProductsTable
                         'private' => 'خصوصی',
                         default => $state,
                     }),
+
+                IconColumn::make('contact_only')
+                    ->label('فقط تماس')
+                    ->boolean()
+                    ->toggleable(),
 
                 TextColumn::make('category.name')
                     ->label('دسته‌بندی')
@@ -116,6 +122,13 @@ class ProductsTable
                     ->options([
                         'public' => 'عمومی',
                         'private' => 'خصوصی',
+                    ]),
+
+                SelectFilter::make('contact_only')
+                    ->label('فقط تماس')
+                    ->options([
+                        1 => 'بله',
+                        0 => 'خیر',
                     ]),
             ])
             ->defaultPaginationPageOption(25)
