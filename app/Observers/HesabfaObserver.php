@@ -52,6 +52,10 @@ class HesabfaObserver
         try {
             $contactResult = $this->syncContact($order);
             if (! $contactResult['success']) {
+                Log::channel('hesabfa')->error('Hesabfa contact sync failed', [
+                    'order_id' => $order->id,
+                    'message' => $contactResult['message'],
+                ]);
                 $this->log($order, 'contact', 'failed', null, $contactResult['message']);
 
                 return $contactResult;
@@ -59,6 +63,10 @@ class HesabfaObserver
 
             $invoiceResult = $this->syncInvoice($order, $contactResult['contact_code']);
             if (! $invoiceResult['success']) {
+                Log::channel('hesabfa')->error('Hesabfa invoice sync failed', [
+                    'order_id' => $order->id,
+                    'message' => $invoiceResult['message'],
+                ]);
                 $this->log($order, 'invoice', 'failed', null, $invoiceResult['message']);
 
                 return $invoiceResult;
@@ -111,6 +119,13 @@ class HesabfaObserver
         $result = $this->hesabfa->saveContact($contactData);
 
         if (! $result['success']) {
+            Log::channel('hesabfa')->error('Hesabfa saveContact API error', [
+                'order_id' => $order->id,
+                'national_code' => $nationalCode,
+                'error' => $result['error'],
+                'payload' => $contactData,
+            ]);
+
             return ['success' => false, 'message' => 'خطا در ذخیره مشتری: '.$result['error']];
         }
 
@@ -336,6 +351,12 @@ class HesabfaObserver
         $result = $this->hesabfa->saveInvoice($invoiceData);
 
         if (! $result['success']) {
+            Log::channel('hesabfa')->error('Hesabfa saveInvoice API error', [
+                'order_id' => $order->id,
+                'reference' => $reference,
+                'error' => $result['error'],
+            ]);
+
             return ['success' => false, 'message' => 'خطا در ذخیره فاکتور: '.$result['error']];
         }
 
