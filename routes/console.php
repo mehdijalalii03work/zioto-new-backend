@@ -11,3 +11,7 @@ Schedule::command('priceboard:sync')
 Schedule::command('orders:cancel-unpaid')
     ->everyMinute()
     ->withoutOverlapping(1);
+
+Schedule::command('pulse:check')
+    ->everyMinute()
+    ->withoutOverlapping(5);

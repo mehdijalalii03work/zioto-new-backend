@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Listeners\ConvertMediaToWebp;
+use App\Models\User;
 use App\Observers\HesabfaObserver;
 use App\Observers\ProductImageObserver;
 use App\Observers\StockReservationObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\ServiceProvider;
@@ -29,6 +31,12 @@ class AppServiceProvider extends ServiceProvider
         ProductImage::observe(ProductImageObserver::class);
 
         $this->app['events']->listen(MediaAdded::class, ConvertMediaToWebp::class);
+
+        $this->app->booted(function () {
+            Gate::define('viewPulse', function (User $user) {
+                return $user->hasRole(['admin', 'manager', 'operator']);
+            });
+        });
 
         $interval = config('hesabfa.sync_interval', 60);
         Schedule::command('hesabfa:sync-stock')->cron("*/{$interval} * * * *");
