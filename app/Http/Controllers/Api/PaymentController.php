@@ -243,12 +243,12 @@ class PaymentController extends Controller
                 'payment'
             );
 
-            return redirect($frontendUrl.'/checkout?payment=failed');
+            return redirect($frontendUrl.'/payment-failed');
 
         } catch (\Exception $e) {
             $payment->update(['status' => 'pending']);
 
-            return redirect($frontendUrl.'/checkout?payment=error');
+            return redirect($frontendUrl.'/payment-failed');
         }
     }
 
