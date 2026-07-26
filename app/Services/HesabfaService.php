@@ -69,7 +69,7 @@ class HesabfaService
 
     public function saveContact(array $contactData): array
     {
-        return $this->call('/contact/save', $contactData);
+        return $this->call('/contact/save', ['contact' => $contactData]);
     }
 
     // ── Item Methods ─────────────────────────────────────────────────
@@ -128,7 +128,7 @@ class HesabfaService
 
     public function saveInvoice(array $invoiceData): array
     {
-        return $this->call('/invoice/save', $invoiceData);
+        return $this->call('/invoice/save', ['invoice' => $invoiceData]);
     }
 
     public function saveWarehouseReceipt(int $invoiceNumber): array
