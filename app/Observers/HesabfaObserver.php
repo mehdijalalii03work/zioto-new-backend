@@ -129,7 +129,11 @@ class HesabfaObserver
             return ['success' => false, 'message' => 'خطا در ذخیره مشتری: '.$result['error']];
         }
 
-        $contactCode = $result['data']['Result'] ?? $existing['Code'] ?? null;
+        $contactCode = $result['data']['Result']['Code'] ?? $result['data']['Result'] ?? $existing['Code'] ?? null;
+
+        if (is_array($contactCode)) {
+            $contactCode = $contactCode['Code'] ?? null;
+        }
 
         if (! $contactCode) {
             $recheck = $this->hesabfa->findContactByNationalCode($nationalCode);
@@ -369,7 +373,11 @@ class HesabfaObserver
             return ['success' => false, 'message' => 'خطا در ذخیره فاکتور: '.$result['error']];
         }
 
-        $invoiceNumber = $result['data']['Result'] ?? null;
+        $invoiceNumber = $result['data']['Result']['Number'] ?? $result['data']['Result'] ?? null;
+
+        if (is_array($invoiceNumber)) {
+            $invoiceNumber = $invoiceNumber['Number'] ?? $invoiceNumber['InvoiceNumber'] ?? null;
+        }
 
         if (! $invoiceNumber) {
             $existing = $this->hesabfa->findInvoiceByReference($reference);
