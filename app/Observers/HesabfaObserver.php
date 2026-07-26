@@ -158,9 +158,18 @@ class HesabfaObserver
             'Mobile' => $this->normalizeMobile($user?->phone ?? ''),
             'Country' => 'ایران',
             'IsCustomer' => true,
-            'NodeName' => config('hesabfa.customer_node', 'مشتریان'),
-            'NodeFamily' => config('hesabfa.customer_family', 'اشخاص : مشتریان'),
         ];
+
+        $nodeName = config('hesabfa.customer_node');
+        $nodeFamily = config('hesabfa.customer_family');
+
+        if ($nodeName) {
+            $contactData['NodeName'] = $nodeName;
+        }
+
+        if ($nodeFamily) {
+            $contactData['NodeFamily'] = $nodeFamily;
+        }
 
         if ($existing) {
             $contactData['Code'] = $existing['Code'];

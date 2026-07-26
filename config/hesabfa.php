@@ -47,8 +47,8 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'customer_node' => env('HESABFA_CUSTOMER_NODE', 'مشتریان'),
-    'customer_family' => env('HESABFA_CUSTOMER_FAMILY', 'اشخاص : مشتریان'),
+    'customer_node' => env('HESABFA_CUSTOMER_NODE', ''),
+    'customer_family' => env('HESABFA_CUSTOMER_FAMILY', ''),
 
     /*
     |--------------------------------------------------------------------------
