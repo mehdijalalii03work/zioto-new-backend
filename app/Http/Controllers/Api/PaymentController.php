@@ -171,40 +171,68 @@ class PaymentController extends Controller
         $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
 
         $payment = DB::transaction(function () use ($order, $gateway) {
+
             $payment = Payment::where('order_id', $order->id)
                 ->where('gateway', $gateway)
-                ->where('status', 'pending')
+                ->whereIn('status', ['pending', 'processing'])
                 ->latest()
                 ->lockForUpdate()
                 ->first();
 
-            if ($payment) {
-                $payment->update(['status' => 'processing']);
+            if ($payment && $payment->status === 'pending') {
+                $payment->update([
+                    'status' => 'processing',
+                ]);
             }
 
             return $payment;
         });
 
         if (! $payment) {
+
             $existingPaid = Payment::where('order_id', $order->id)
                 ->where('gateway', $gateway)
                 ->where('status', 'paid')
                 ->exists();
 
-            return redirect($existingPaid ? $frontendUrl.'/confirm?order_id='.$order->id : $frontendUrl.'/checkout');
+            Log::channel('payment')->warning('Payment callback without pending payment', [
+                'order_id' => $order->id,
+                'gateway' => $gateway,
+                'already_paid' => $existingPaid,
+            ]);
+
+            return redirect(
+                $existingPaid
+                    ? $frontendUrl.'/confirm?order_id='.$order->id
+                    : $frontendUrl.'/checkout'
+            );
         }
 
-        try {
-            $paymentConfig = config('payment');
-            $shetabitPayment = new ShetabitPayment($paymentConfig);
-            $shetabitPayment->via($gateway);
+        Log::channel('payment')->info('Starting payment verify', [
+            'payment_id' => $payment->id,
+            'order_id' => $order->id,
+            'gateway' => $gateway,
+            'transaction_id' => $payment->transaction_id,
+            'amount' => $order->total_amount,
+        ]);
 
-            $receipt = $shetabitPayment
+        try {
+
+            $receipt = (new ShetabitPayment(config('payment')))
+                ->via($gateway)
                 ->amount($order->total_amount)
                 ->transactionId($payment->transaction_id)
                 ->verify();
 
+            Log::channel('payment')->info('Payment verify success', [
+                'payment_id' => $payment->id,
+                'order_id' => $order->id,
+                'reference_id' => $receipt->getReferenceId(),
+                'details' => $receipt->getDetails(),
+            ]);
+
             DB::transaction(function () use ($payment, $order, $receipt, $gateway) {
+
                 $payment->update([
                     'status' => 'paid',
                     'gateway_response' => [
@@ -220,7 +248,9 @@ class PaymentController extends Controller
                 ]);
 
                 $order->addNote(
-                    "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: ".number_format($order->total_amount / 10).' تومان',
+                    "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: " .
+                    number_format($order->total_amount / 10) .
+                    ' تومان',
                     'payment',
                     true
                 );
@@ -231,12 +261,25 @@ class PaymentController extends Controller
             return redirect($frontendUrl.'/confirm?order_id='.$order->id);
 
         } catch (InvalidPaymentException $e) {
-            $payment->update([
-                'status' => 'failed',
-                'gateway_response' => ['error' => $e->getMessage()],
+
+            Log::channel('payment')->warning('Payment verify failed', [
+                'payment_id' => $payment->id,
+                'order_id' => $order->id,
+                'gateway' => $gateway,
+                'transaction_id' => $payment->transaction_id,
+                'message' => $e->getMessage(),
             ]);
 
-            $order->update(['payment_status' => 'failed']);
+            $payment->update([
+                'status' => 'failed',
+                'gateway_response' => [
+                    'error' => $e->getMessage(),
+                ],
+            ]);
+
+            $order->update([
+                'payment_status' => 'failed',
+            ]);
 
             $order->addNote(
                 "پرداخت ناموفق بود. خطا: {$e->getMessage()} | درگاه: {$gateway}",
@@ -245,8 +288,22 @@ class PaymentController extends Controller
 
             return redirect($frontendUrl.'/payment-failed');
 
-        } catch (\Exception $e) {
-            $payment->update(['status' => 'pending']);
+        } catch (\Throwable $e) {
+
+            Log::channel('payment')->error('Payment verify exception', [
+                'payment_id' => $payment->id,
+                'order_id' => $order->id,
+                'gateway' => $gateway,
+                'transaction_id' => $payment->transaction_id,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            $payment->update([
+                'status' => 'pending',
+            ]);
 
             return redirect($frontendUrl.'/payment-failed');
         }
