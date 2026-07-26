@@ -12,7 +12,6 @@
         "filament/spatie-laravel-media-library-plugin": "^5.0",
         "intervention/image": "^4.2",
         "laravel/framework": "^13.8",
-        "laravel/pulse": "^1.7",
         "laravel/reverb": "^1.10",
         "laravel/tinker": "^3.0",
         "nwidart/laravel-modules": "^13.0",
