@@ -211,14 +211,12 @@ class HesabfaService
         $payload['apiKey'] = $this->apiKey;
         $payload['loginToken'] = $this->loginToken;
 
-        if (config('app.debug')) {
-            $sanitized = $payload;
-            unset($sanitized['apiKey'], $sanitized['loginToken']);
-            Log::channel('hesabfa')->debug('Hesabfa API request', [
-                'endpoint' => $endpoint,
-                'payload' => $sanitized,
-            ]);
-        }
+        $sanitized = $payload;
+        unset($sanitized['apiKey'], $sanitized['loginToken']);
+        Log::channel('hesabfa')->debug('Hesabfa API request', [
+            'endpoint' => $endpoint,
+            'payload' => $sanitized,
+        ]);
 
         $lastError = null;
 
@@ -238,13 +236,11 @@ class HesabfaService
                 if ($response->successful()) {
                     $data = $response->json();
 
-                    if (config('app.debug')) {
-                        Log::channel('hesabfa')->debug('Hesabfa API response', [
-                            'endpoint' => $endpoint,
-                            'status' => $response->status(),
-                            'success' => $data['Success'] ?? false,
-                        ]);
-                    }
+                    Log::channel('hesabfa')->debug('Hesabfa API response', [
+                        'endpoint' => $endpoint,
+                        'status' => $response->status(),
+                        'response' => $data,
+                    ]);
 
                     if (! empty($data['Success'])) {
                         return ['success' => true, 'data' => $data];
