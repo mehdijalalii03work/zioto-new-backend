@@ -403,7 +403,13 @@ class HesabfaObserver
 
         $item = $this->hesabfa->findItemBySku($sku);
 
-        return $item['ItemCode'] ?? null;
+        Log::channel('hesabfa')->debug('Hesabfa findItemBySku result', [
+            'sku' => $sku,
+            'item' => $item,
+            'item_code' => $item['Code'] ?? $item['ItemCode'] ?? null,
+        ]);
+
+        return $item['Code'] ?? $item['ItemCode'] ?? null;
     }
 
     private function extractNationalCode(Order $order): ?string
