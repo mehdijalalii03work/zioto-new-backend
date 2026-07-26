@@ -214,7 +214,7 @@ class HesabfaService
         if (config('app.debug')) {
             $sanitized = $payload;
             unset($sanitized['apiKey'], $sanitized['loginToken']);
-            Log::debug('Hesabfa API request', [
+            Log::channel('hesabfa')->debug('Hesabfa API request', [
                 'endpoint' => $endpoint,
                 'payload' => $sanitized,
             ]);
@@ -239,7 +239,7 @@ class HesabfaService
                     $data = $response->json();
 
                     if (config('app.debug')) {
-                        Log::debug('Hesabfa API response', [
+                        Log::channel('hesabfa')->debug('Hesabfa API response', [
                             'endpoint' => $endpoint,
                             'status' => $response->status(),
                             'success' => $data['Success'] ?? false,
@@ -263,7 +263,7 @@ class HesabfaService
                     }
                 }
 
-                Log::error('Hesabfa API HTTP error', [
+                Log::channel('hesabfa')->error('Hesabfa API HTTP error', [
                     'endpoint' => $endpoint,
                     'status' => $response->status(),
                     'body' => $response->body(),
@@ -281,7 +281,7 @@ class HesabfaService
             }
         }
 
-        Log::error('Hesabfa API failed after retries', [
+        Log::channel('hesabfa')->error('Hesabfa API failed after retries', [
             'endpoint' => $endpoint,
             'attempts' => $maxRetries,
             'error' => $lastError,

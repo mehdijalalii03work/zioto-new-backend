@@ -80,7 +80,7 @@ class HesabfaObserver
             return ['success' => true, 'message' => 'سفارش با موفقیت به حسابفا ارسال شد'];
 
         } catch (\Exception $e) {
-            Log::error('Hesabfa sync error', [
+            Log::channel('hesabfa')->error('Hesabfa sync error', [
                 'order_id' => $order->id,
                 'message' => $e->getMessage(),
             ]);
