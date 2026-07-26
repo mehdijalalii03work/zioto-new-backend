@@ -250,6 +250,11 @@ class HesabfaService
                         return ['success' => true, 'data' => $data];
                     }
 
+                    Log::channel('hesabfa')->error('Hesabfa API business error', [
+                        'endpoint' => $endpoint,
+                        'response' => $data,
+                    ]);
+
                     return ['success' => false, 'error' => $data['ErrorMessage'] ?? 'خطای ناشناخته از حسابفا'];
                 }
 
