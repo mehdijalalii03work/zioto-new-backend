@@ -170,23 +170,35 @@ class PaymentController extends Controller
         $order = Order::findOrFail($orderId);
         $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
 
-        $payment = DB::transaction(function () use ($order, $gateway) {
+        try {
+            $payment = DB::transaction(function () use ($order, $gateway) {
 
-            $payment = Payment::where('order_id', $order->id)
-                ->where('gateway', $gateway)
-                ->whereIn('status', ['pending', 'processing'])
-                ->latest()
-                ->lockForUpdate()
-                ->first();
+                $payment = Payment::where('order_id', $order->id)
+                    ->where('gateway', $gateway)
+                    ->whereIn('status', ['pending', 'processing'])
+                    ->latest()
+                    ->lockForUpdate()
+                    ->first();
 
-            if ($payment && $payment->status === 'pending') {
-                $payment->update([
-                    'status' => 'processing',
-                ]);
-            }
+                if ($payment && $payment->status === 'pending') {
+                    $payment->update([
+                        'status' => 'processing',
+                    ]);
+                }
 
-            return $payment;
-        });
+                return $payment;
+            });
+        } catch (\Throwable $e) {
+            Log::channel('payment')->error('Payment callback lock/lookup exception', [
+                'order_id' => $order->id,
+                'gateway' => $gateway,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return redirect($frontendUrl.'/payment-failed');
+        }
 
         if (! $payment) {
 
@@ -216,7 +228,17 @@ class PaymentController extends Controller
             'amount' => $order->total_amount,
         ]);
 
+        $receipt = null;
+
         try {
+            if ($gateway === 'parsian') {
+                $parsianStatus = $request->input('status');
+                if ($parsianStatus !== null && $parsianStatus !== '0') {
+                    throw new InvalidPaymentException(
+                        'پرداخت تکمیل نشد (کد وضعیت درگاه پارسیان: '.$parsianStatus.')'
+                    );
+                }
+            }
 
             $receipt = (new ShetabitPayment(config('payment')))
                 ->via($gateway)
@@ -230,35 +252,6 @@ class PaymentController extends Controller
                 'reference_id' => $receipt->getReferenceId(),
                 'details' => $receipt->getDetails(),
             ]);
-
-            DB::transaction(function () use ($payment, $order, $receipt, $gateway) {
-
-                $payment->update([
-                    'status' => 'paid',
-                    'gateway_response' => [
-                        'reference_id' => $receipt->getReferenceId(),
-                        'details' => $receipt->getDetails(),
-                    ],
-                    'paid_at' => now(),
-                ]);
-
-                $order->update([
-                    'payment_status' => 'paid',
-                    'status' => 'confirmed',
-                ]);
-
-                $order->addNote(
-                    "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: " .
-                    number_format($order->total_amount / 10) .
-                    ' تومان',
-                    'payment',
-                    true
-                );
-
-                Cart::where('user_id', $order->user_id)->delete();
-            });
-
-            return redirect($frontendUrl.'/confirm?order_id='.$order->id);
 
         } catch (InvalidPaymentException $e) {
 
@@ -302,11 +295,92 @@ class PaymentController extends Controller
             ]);
 
             $payment->update([
-                'status' => 'pending',
+                'status' => 'failed',
+                'gateway_response' => [
+                    'error' => $e->getMessage(),
+                ],
             ]);
+
+            $order->update([
+                'payment_status' => 'failed',
+            ]);
+
+            $order->addNote(
+                "خطای غیرمنتظره هنگام تایید پرداخت. خطا: {$e->getMessage()} | درگاه: {$gateway}",
+                'payment'
+            );
 
             return redirect($frontendUrl.'/payment-failed');
         }
+
+        try {
+            DB::transaction(function () use ($payment, $order, $receipt, $gateway) {
+
+                $payment->update([
+                    'status' => 'paid',
+                    'gateway_response' => [
+                        'reference_id' => $receipt->getReferenceId(),
+                        'details' => $receipt->getDetails(),
+                    ],
+                    'paid_at' => now(),
+                ]);
+
+                $order->update([
+                    'payment_status' => 'paid',
+                    'status' => 'confirmed',
+                ]);
+
+                $order->addNote(
+                    "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: " .
+                    number_format($order->total_amount / 10) .
+                    ' تومان',
+                    'payment',
+                    true
+                );
+
+                Cart::where('user_id', $order->user_id)->delete();
+            });
+
+        } catch (\Throwable $e) {
+            Log::channel('payment')->critical('Payment verified successfully but post-processing failed - needs manual review', [
+                'payment_id' => $payment->id,
+                'order_id' => $order->id,
+                'gateway' => $gateway,
+                'reference_id' => $receipt->getReferenceId(),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            try {
+                $payment->forceFill([
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                    'gateway_response' => [
+                        'reference_id' => $receipt->getReferenceId(),
+                        'details' => $receipt->getDetails(),
+                    ],
+                ])->saveQuietly();
+
+                $order->forceFill([
+                    'payment_status' => 'paid',
+                    'status' => 'confirmed',
+                ])->saveQuietly();
+
+                Cart::where('user_id', $order->user_id)->delete();
+
+            } catch (\Throwable $inner) {
+                Log::channel('payment')->critical('Failed to persist paid status after verify success - MANUAL FIX REQUIRED', [
+                    'payment_id' => $payment->id,
+                    'order_id' => $order->id,
+                    'gateway' => $gateway,
+                    'reference_id' => $receipt->getReferenceId(),
+                    'message' => $inner->getMessage(),
+                ]);
+            }
+        }
+
+        return redirect($frontendUrl.'/confirm?order_id='.$order->id);
     }
 
     public function status(Request $request, int $orderId): JsonResponse
