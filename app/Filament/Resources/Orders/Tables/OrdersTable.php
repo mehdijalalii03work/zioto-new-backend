@@ -13,6 +13,7 @@ use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 
@@ -135,6 +136,22 @@ class OrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('gateway')
+                    ->label('درگاه پرداخت')
+                    ->placeholder('همه')
+                    ->options([
+                        'parsian' => 'پارسیان',
+                        'digipay' => 'دیجی‌پی',
+                        'kamanlend' => 'کمان‌لند',
+                        'smartis' => 'اسمارتیس',
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (blank($data['value'])) {
+                            return $query;
+                        }
+
+                        return $query->whereHas('payments', fn ($q) => $q->where('gateway', $data['value']));
+                    }),
                 TrashedFilter::make(),
             ])
             ->defaultPaginationPageOption(25)
