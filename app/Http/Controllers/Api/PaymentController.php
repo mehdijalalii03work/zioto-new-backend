@@ -74,6 +74,18 @@ class PaymentController extends Controller
             return response()->json(['message' => 'سفارش قبلاً پرداخت شده', 'error_code' => 'ORDER_ALREADY_PAID'], 422);
         }
 
+        if (in_array($order->status, ['cancelled', 'expired'])) {
+            return response()->json(['message' => 'سفارش لغو شده یا منقضی شده است', 'error_code' => 'ORDER_NOT_ACTIVE'], 422);
+        }
+
+        $existingPending = Payment::where('order_id', $order->id)
+            ->whereIn('status', ['pending', 'processing'])
+            ->first();
+
+        if ($existingPending) {
+            return response()->json(['message' => 'درخواست پرداخت قبلاً ثبت شده است', 'error_code' => 'PAYMENT_ALREADY_INITIATED'], 422);
+        }
+
         $nationalCode = $order->user?->national_code ?? '';
         $phone = $order->address?->receiver_phone ?? $order->user?->phone ?? '';
         $callbackUrl = route('payment.callback', ['orderId' => $order->id, 'gateway' => $validated['gateway']]);
@@ -107,7 +119,7 @@ class PaymentController extends Controller
             $capturedTransactionId = null;
 
             $form = $payment->callbackUrl($callbackUrl)
-                ->purchase($invoice, function ($driver, $transactionId) use (&$capturedTransactionId, $request, $order, $validated) {
+                ->purchase($invoice, function ($driver, $transactionId) use (&$capturedTransactionId, $order, $validated) {
                     $capturedTransactionId = $transactionId;
 
                     Payment::create([
@@ -170,15 +182,46 @@ class PaymentController extends Controller
         $order = Order::findOrFail($orderId);
         $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
 
-        try {
-            $payment = DB::transaction(function () use ($order, $gateway) {
+        $callbackTransactionId = $request->input('Token') ?? $request->input('token')
+            ?? $request->input('uuid') ?? null;
 
-                $payment = Payment::where('order_id', $order->id)
-                    ->where('gateway', $gateway)
-                    ->whereIn('status', ['pending', 'processing'])
-                    ->latest()
-                    ->lockForUpdate()
-                    ->first();
+        $resolvedPayment = null;
+
+        if ($callbackTransactionId) {
+            $resolvedPayment = Payment::where('transaction_id', $callbackTransactionId)
+                ->where('order_id', $order->id)
+                ->first();
+
+            if ($resolvedPayment && ! in_array($resolvedPayment->status, ['pending', 'processing'])) {
+                return redirect($frontendUrl.'/confirm?order_id='.$order->id);
+            }
+
+            if (! $resolvedPayment) {
+                Log::channel('payment')->warning('Payment callback with unknown transaction_id', [
+                    'order_id' => $order->id,
+                    'gateway' => $gateway,
+                    'callback_transaction_id' => $callbackTransactionId,
+                ]);
+
+                return redirect($frontendUrl.'/checkout');
+            }
+        }
+
+        try {
+            $payment = DB::transaction(function () use ($order, $gateway, $resolvedPayment) {
+
+                if ($resolvedPayment) {
+                    $payment = Payment::where('id', $resolvedPayment->id)
+                        ->lockForUpdate()
+                        ->first();
+                } else {
+                    $payment = Payment::where('order_id', $order->id)
+                        ->where('gateway', $gateway)
+                        ->whereIn('status', ['pending', 'processing'])
+                        ->latest('id')
+                        ->lockForUpdate()
+                        ->first();
+                }
 
                 if ($payment && $payment->status === 'pending') {
                     $payment->update([
@@ -255,6 +298,19 @@ class PaymentController extends Controller
 
         } catch (InvalidPaymentException $e) {
 
+            $payment->refresh();
+
+            if ($payment->status === 'paid') {
+                Log::channel('payment')->warning('Race condition avoided: InvalidPaymentException on already-paid payment', [
+                    'payment_id' => $payment->id,
+                    'order_id' => $order->id,
+                    'gateway' => $gateway,
+                    'message' => $e->getMessage(),
+                ]);
+
+                return redirect($frontendUrl.'/confirm?order_id='.$order->id);
+            }
+
             Log::channel('payment')->warning('Payment verify failed', [
                 'payment_id' => $payment->id,
                 'order_id' => $order->id,
@@ -282,6 +338,19 @@ class PaymentController extends Controller
             return redirect($frontendUrl.'/payment-failed');
 
         } catch (\Throwable $e) {
+
+            $payment->refresh();
+
+            if ($payment->status === 'paid') {
+                Log::channel('payment')->warning('Race condition avoided: generic exception on already-paid payment', [
+                    'payment_id' => $payment->id,
+                    'order_id' => $order->id,
+                    'gateway' => $gateway,
+                    'message' => $e->getMessage(),
+                ]);
+
+                return redirect($frontendUrl.'/confirm?order_id='.$order->id);
+            }
 
             Log::channel('payment')->error('Payment verify exception', [
                 'payment_id' => $payment->id,
@@ -331,8 +400,8 @@ class PaymentController extends Controller
                 ]);
 
                 $order->addNote(
-                    "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: " .
-                    number_format($order->total_amount / 10) .
+                    "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: ".
+                    number_format($order->total_amount / 10).
                     ' تومان',
                     'payment',
                     true
@@ -353,6 +422,9 @@ class PaymentController extends Controller
             ]);
 
             try {
+                $payment->refresh();
+                $order->refresh();
+
                 $payment->forceFill([
                     'status' => 'paid',
                     'paid_at' => now(),

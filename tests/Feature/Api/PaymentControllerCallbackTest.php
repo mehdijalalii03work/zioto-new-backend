@@ -6,7 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
-use Shetabit\Multipay\Exceptions\InvalidPaymentException;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use Shetabit\Multipay\Payment as ShetabitPayment;
 use Shetabit\Multipay\Receipt;
 use Tests\TestCase;
@@ -25,7 +25,7 @@ class PaymentControllerCallbackTest extends TestCase
     {
         $order = Order::factory()->create([
             'total_amount' => $amount,
-            'payment_status' => null,
+            'payment_status' => 'pending',
             'status' => 'awaiting_payment',
         ]);
 
@@ -63,7 +63,7 @@ class PaymentControllerCallbackTest extends TestCase
         $this->assertSame('failed', $order->payment_status);
     }
 
-    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[RunInSeparateProcess]
     public function test_generic_verify_exception_marks_failed_not_pending(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
@@ -91,7 +91,7 @@ class PaymentControllerCallbackTest extends TestCase
         $this->assertSame('failed', $order->payment_status);
     }
 
-    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[RunInSeparateProcess]
     public function test_successful_verify_marks_order_paid(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
@@ -122,7 +122,7 @@ class PaymentControllerCallbackTest extends TestCase
         $this->assertNotNull($payment->paid_at);
     }
 
-    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[RunInSeparateProcess]
     public function test_post_verify_failure_still_persists_paid_status(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
@@ -156,7 +156,6 @@ class PaymentControllerCallbackTest extends TestCase
         $this->assertSame('confirmed', $order->status);
     }
 
-
     public function test_callback_without_pending_payment_but_already_paid_redirects_to_confirm(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('parsian');
@@ -168,5 +167,135 @@ class PaymentControllerCallbackTest extends TestCase
 
         $response->assertRedirect();
         $this->assertStringContainsString('/confirm?order_id='.$order->id, $response->headers->get('Location'));
+    }
+
+    #[RunInSeparateProcess]
+    public function test_duplicate_callback_after_success_does_not_overwrite_paid(): void
+    {
+        [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+
+        $receipt = Mockery::mock(Receipt::class);
+        $receipt->shouldReceive('getReferenceId')->andReturn('REF-789');
+        $receipt->shouldReceive('getDetails')->andReturn([]);
+
+        $mock = Mockery::mock('overload:'.ShetabitPayment::class);
+        $mock->shouldReceive('via')->andReturnSelf();
+        $mock->shouldReceive('amount')->andReturnSelf();
+        $mock->shouldReceive('transactionId')->andReturnSelf();
+        $mock->shouldReceive('verify')->andReturn($receipt);
+
+        $this->post("/api/payment/callback/{$order->id}/digipay", [
+            'result' => 'SUCCESS',
+        ]);
+
+        $payment->refresh();
+
+        $this->assertSame('paid', $payment->status);
+
+        $secondResponse = $this->post("/api/payment/callback/{$order->id}/digipay", [
+            'result' => 'SUCCESS',
+        ]);
+
+        $secondResponse->assertRedirect();
+        $this->assertStringContainsString('/confirm?order_id='.$order->id, $secondResponse->headers->get('Location'));
+
+        $payment->refresh();
+
+        $this->assertSame('paid', $payment->status, 'Duplicate callback must not overwrite paid status');
+        $this->assertSame('paid', $order->fresh()->payment_status);
+    }
+
+    #[RunInSeparateProcess]
+    public function test_callback_matches_payment_by_transaction_id_from_request(): void
+    {
+        $order = Order::factory()->create([
+            'total_amount' => 200000,
+            'payment_status' => 'pending',
+            'status' => 'awaiting_payment',
+        ]);
+
+        $payment = Payment::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'transaction_id' => 'parsian-token-999',
+            'amount' => 200000,
+            'payment_method' => 'online',
+            'gateway' => 'parsian',
+            'status' => 'pending',
+            'description' => 'در انتظار پرداخت',
+        ]);
+
+        $receipt = Mockery::mock(Receipt::class);
+        $receipt->shouldReceive('getReferenceId')->andReturn('RRN-888');
+        $receipt->shouldReceive('getDetails')->andReturn([]);
+
+        $mock = Mockery::mock('overload:'.ShetabitPayment::class);
+        $mock->shouldReceive('via')->andReturnSelf();
+        $mock->shouldReceive('amount')->andReturnSelf();
+        $mock->shouldReceive('transactionId')->andReturnSelf();
+        $mock->shouldReceive('verify')->andReturn($receipt);
+
+        $response = $this->post("/api/payment/callback/{$order->id}/parsian", [
+            'Token' => 'parsian-token-999',
+            'status' => '0',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertStringContainsString('/confirm?order_id='.$order->id, $response->headers->get('Location'));
+
+        $payment->refresh();
+
+        $this->assertSame('paid', $payment->status);
+    }
+
+    #[RunInSeparateProcess]
+    public function test_callback_with_matching_transaction_id_already_paid_redirects_to_confirm(): void
+    {
+        $order = Order::factory()->create([
+            'total_amount' => 300000,
+            'payment_status' => 'pending',
+            'status' => 'awaiting_payment',
+        ]);
+
+        $payment = Payment::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'transaction_id' => 'already-paid-txn',
+            'amount' => 300000,
+            'payment_method' => 'online',
+            'gateway' => 'parsian',
+            'status' => 'paid',
+            'paid_at' => now(),
+            'description' => 'قبلاً پرداخت شده',
+        ]);
+
+        $response = $this->post("/api/payment/callback/{$order->id}/parsian", [
+            'Token' => 'already-paid-txn',
+            'status' => '0',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertStringContainsString('/confirm?order_id='.$order->id, $response->headers->get('Location'));
+
+        $payment->refresh();
+
+        $this->assertSame('paid', $payment->status);
+    }
+
+    public function test_callback_with_unknown_transaction_id_redirects_to_checkout(): void
+    {
+        $order = Order::factory()->create([
+            'total_amount' => 150000,
+            'payment_status' => 'pending',
+            'status' => 'awaiting_payment',
+        ]);
+
+        $response = $this->post("/api/payment/callback/{$order->id}/parsian", [
+            'Token' => 'nonexistent-token',
+            'status' => '0',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertStringContainsString('/checkout', $response->headers->get('Location'));
     }
 }

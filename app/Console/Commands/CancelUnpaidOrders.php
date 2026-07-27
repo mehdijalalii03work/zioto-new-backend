@@ -19,6 +19,7 @@ class CancelUnpaidOrders extends Command
                     ->orWhere('payment_status', 'failed');
             })
             ->where('created_at', '<', now()->subMinutes(20))
+            ->whereDoesntHave('payments', fn ($q) => $q->where('status', 'processing'))
             ->get();
 
         $cancelled = 0;

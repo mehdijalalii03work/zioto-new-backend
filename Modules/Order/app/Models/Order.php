@@ -14,11 +14,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use Modules\Order\Database\Factories\OrderFactory;
 use Modules\Payment\Models\Payment;
 
 class Order extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected static function newFactory(): OrderFactory
+    {
+        return OrderFactory::new();
+    }
 
     protected static function booted(): void
     {
