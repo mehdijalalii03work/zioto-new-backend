@@ -216,17 +216,10 @@ class HesabfaService
 
         $url = "{$this->baseUrl}{$endpoint}";
         $requestBody = json_encode($payload, JSON_UNESCAPED_UNICODE);
-        $escapedBody = str_replace("'", "'\\''", $requestBody);
 
         Log::channel('hesabfa')->info('Hesabfa API request', [
-            'method' => 'POST',
             'url' => $url,
-            'headers' => [
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
-            ],
             'payload' => $sanitized,
-            'curl' => "curl -X POST '{$url}' -H 'Content-Type: application/json' -d '{$escapedBody}'",
         ]);
 
         $lastError = null;
@@ -247,7 +240,7 @@ class HesabfaService
                 if ($response->successful()) {
                     $data = $response->json();
 
-                    Log::channel('hesabfa')->info('Hesabfa API response', [
+                    Log::channel('hesabfa')->debug('Hesabfa API response', [
                         'endpoint' => $endpoint,
                         'status' => $response->status(),
                         'response' => $data,
