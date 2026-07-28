@@ -57,7 +57,7 @@ return [
     */
 
     'auto_sync' => env('HESABFA_AUTO_SYNC', true),
-    'sync_statuses' => ['confirmed', 'processing'],
+    'sync_statuses' => ['confirmed'],
 
     /*
     |--------------------------------------------------------------------------
@@ -68,6 +68,7 @@ return [
     'sync_stock' => env('HESABFA_SYNC_STOCK', true),
     'sync_interval' => (int) env('HESABFA_SYNC_INTERVAL', 60),
     'enable_reserved_stock' => env('HESABFA_ENABLE_RESERVED_STOCK', false),
+    'price_unit' => env('HESABFA_PRICE_UNIT', 'rial'),
     'excluded_skus' => array_filter(explode(',', env('HESABFA_EXCLUDED_SKUS', ''))),
 
     /*

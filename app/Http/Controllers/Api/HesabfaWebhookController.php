@@ -29,8 +29,7 @@ class HesabfaWebhookController extends Controller
         }
 
         $providedSecret = $request->header('X-Webhook-Secret')
-            ?? $request->input('secret')
-            ?? $request->query('secret');
+            ?? $request->input('secret');
 
         if ($providedSecret !== $secret) {
             Log::warning('Hesabfa webhook: invalid secret');

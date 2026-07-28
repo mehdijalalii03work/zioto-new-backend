@@ -2,9 +2,12 @@
 
 namespace App\Observers;
 
+use App\Enums\Product\MetalType;
 use App\Models\HesabfaSyncLog;
+use App\Models\Setting;
 use App\Services\HesabfaService;
 use App\Services\InstallmentService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Order\Models\Order;
 
@@ -50,8 +53,11 @@ class HesabfaObserver
         $order->load(['items.product', 'shipping.shippingMethod', 'address.province', 'address.city', 'user']);
 
         try {
+            DB::beginTransaction();
+
             $contactResult = $this->syncContact($order);
             if (! $contactResult['success']) {
+                DB::rollBack();
                 Log::channel('hesabfa')->error('Hesabfa contact sync failed', [
                     'order_id' => $order->id,
                     'message' => $contactResult['message'],
@@ -63,6 +69,7 @@ class HesabfaObserver
 
             $invoiceResult = $this->syncInvoice($order, $contactResult['contact_code']);
             if (! $invoiceResult['success']) {
+                DB::rollBack();
                 Log::channel('hesabfa')->error('Hesabfa invoice sync failed', [
                     'order_id' => $order->id,
                     'message' => $invoiceResult['message'],
@@ -79,6 +86,14 @@ class HesabfaObserver
                 'hesabfa_synced_at' => now(),
             ])->save();
 
+            DB::commit();
+
+            $this->log($order, 'full_sync', 'success', [
+                'contact_code' => $contactResult['contact_code'],
+                'invoice_number' => $invoiceResult['invoice_number'],
+                'reference' => $invoiceResult['reference'],
+            ]);
+
             $order->addNote(
                 "فاکتور با موفقیت به حسابفا ارسال شد.\nشماره فاکتور: {$invoiceResult['invoice_number']}\nکد مرجع: {$invoiceResult['reference']}",
                 'hesabfa',
@@ -88,6 +103,7 @@ class HesabfaObserver
             return ['success' => true, 'message' => 'سفارش با موفقیت به حسابفا ارسال شد'];
 
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::channel('hesabfa')->error('Hesabfa sync error', [
                 'order_id' => $order->id,
                 'message' => $e->getMessage(),
@@ -193,6 +209,11 @@ class HesabfaObserver
 
     private function syncInvoice(Order $order, string $contactCode): array
     {
+        $preValidate = $this->preValidateInvoiceItems($order);
+        if (! $preValidate['success']) {
+            return $preValidate;
+        }
+
         $reference = $this->buildInvoiceReference($order);
         $date = $this->buildInvoiceDate($order);
 
@@ -205,6 +226,33 @@ class HesabfaObserver
         $invoiceData = $this->buildInvoicePayload($order, $reference, $date, $contactCode, $items);
 
         return $this->saveAndConfirmInvoice($order, $invoiceData, $reference);
+    }
+
+    private function preValidateInvoiceItems(Order $order): array
+    {
+        if ($order->shipping && $order->shipping->shipping_cost > 0) {
+            $shippingCode = config('hesabfa.shipping_item_code');
+            if (empty($shippingCode)) {
+                return ['success' => false, 'message' => 'کد کالای هزینه ارسال در تنظیمات وارد نشده است'];
+            }
+            $shippingItem = $this->hesabfa->getItemByCode($shippingCode);
+            if (! $shippingItem || isset($shippingItem['error'])) {
+                return ['success' => false, 'message' => "کد کالای هزینه ارسال '{$shippingCode}' در حسابفا یافت نشد"];
+            }
+        }
+
+        if ($order->payment_method === 'installment') {
+            $feeCode = config('hesabfa.installment_fee_item_code');
+            if (empty($feeCode)) {
+                return ['success' => false, 'message' => 'کد کالای کارمزد خرید اقساطی در تنظیمات وارد نشده است'];
+            }
+            $feeItem = $this->hesabfa->getItemByCode($feeCode);
+            if (! $feeItem || isset($feeItem['error'])) {
+                return ['success' => false, 'message' => "کد کالای کارمزد خرید اقساطی '{$feeCode}' در حسابفا یافت نشد"];
+            }
+        }
+
+        return ['success' => true];
     }
 
     private function buildInvoiceReference(Order $order): string
@@ -252,14 +300,40 @@ class HesabfaObserver
     {
         $items = [];
         $rowNumber = $startRowNumber;
+        $skuCache = [];
+        $missingSkus = [];
 
         foreach ($order->items as $orderItem) {
             $product = $orderItem->product;
             $sku = $product?->sku ?? '';
-            $itemCode = $this->findHesabfaItemCode($sku);
+
+            if (! isset($skuCache[$sku])) {
+                $skuCache[$sku] = $this->findHesabfaItemCode($sku);
+            }
+
+            $itemCode = $skuCache[$sku];
 
             if (! $itemCode) {
-                return false;
+                $missingSkus[] = $sku;
+
+                continue;
+            }
+
+            $price = (int) $orderItem->product_price;
+            $tax = 0;
+            $unitPrice = $price;
+
+            $metalType = $product?->metal_type;
+            $priceBoardItem = $product?->price_board_item ?? '';
+            $isSilver = $metalType === MetalType::Silver
+                || str_starts_with($priceBoardItem, 'Silver');
+
+            if ($isSilver) {
+                $taxRate = (float) Setting::getValue('tax_silver', 10);
+                if ($taxRate > 0) {
+                    $unitPrice = (int) round($price / (1 + $taxRate / 100));
+                    $tax = $price - $unitPrice;
+                }
             }
 
             $items[] = [
@@ -268,10 +342,19 @@ class HesabfaObserver
                 'itemCode' => $itemCode,
                 'unit' => config('hesabfa.default_unit', 'عدد'),
                 'quantity' => $orderItem->quantity,
-                'unitPrice' => (int) $orderItem->product_price,
+                'unitPrice' => (int) $unitPrice,
                 'discount' => $this->calculateItemDiscount($orderItem),
-                'tax' => 0,
+                'tax' => (int) $tax,
             ];
+        }
+
+        if (! empty($missingSkus)) {
+            Log::channel('hesabfa')->error('Hesabfa sync: SKUs not found in Hesabfa', [
+                'order_id' => $order->id,
+                'missing_skus' => $missingSkus,
+            ]);
+
+            return false;
         }
 
         return $items;

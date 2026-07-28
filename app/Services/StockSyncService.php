@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\HesabfaSyncLog;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Modules\Product\Models\Product;
@@ -57,8 +58,9 @@ class StockSyncService
         $updatedAt = now();
         $errors = [];
         $updated = 0;
+        $reservedEnabled = config('hesabfa.enable_reserved_stock', false);
 
-        $stockUpdates->chunk(100)->each(function ($chunk) use ($updatedAt, &$errors, &$updated) {
+        $stockUpdates->chunk(100)->each(function ($chunk) use ($updatedAt, &$errors, &$updated, $reservedEnabled) {
             $skus = $chunk->pluck('sku')->toArray();
             $quantityMap = $chunk->pluck('quantity', 'sku')->toArray();
 
@@ -71,22 +73,39 @@ class StockSyncService
                     continue;
                 }
 
-                if ($product->hesabfa_stock_locked) {
+                if ($product->hesabfa_stock_locked || $product->hesabfa_exclude_from_sync) {
                     continue;
                 }
 
                 try {
-                    $product->update([
-                        'stock_quantity' => $quantity,
+                    $updateData = [
                         'hesabfa_physical_stock' => $quantity,
                         'hesabfa_stock_synced_at' => $updatedAt,
-                    ]);
+                    ];
+
+                    if ($reservedEnabled) {
+                        $reserved = (int) ($product->hesabfa_reserved_stock ?? 0);
+                        $manualReserved = (int) ($product->hesabfa_manual_reserved ?? 0);
+                        $updateData['stock_quantity'] = max(0, $quantity - $reserved - $manualReserved);
+                    } else {
+                        $updateData['stock_quantity'] = $quantity;
+                    }
+
+                    $product->update($updateData);
                     $updated++;
                 } catch (\Exception $e) {
                     $errors[] = "SKU {$product->sku}: ".$e->getMessage();
                 }
             }
         });
+
+        if ($updated > 0) {
+            HesabfaSyncLog::create([
+                'sync_type' => 'stock_sync',
+                'status' => 'success',
+                'response_data' => ['updated_count' => $updated, 'errors' => $errors],
+            ]);
+        }
 
         return [
             'success' => true,
@@ -111,15 +130,26 @@ class StockSyncService
             return ['message' => "SKU {$itemCode} is excluded from sync"];
         }
 
-        if ($product->hesabfa_stock_locked) {
-            return ['message' => "SKU {$itemCode} stock is locked"];
+        if ($product->hesabfa_stock_locked || $product->hesabfa_exclude_from_sync) {
+            return ['message' => "SKU {$itemCode} stock is locked or excluded"];
         }
 
-        $product->update([
-            'stock_quantity' => max(0, $quantity),
+        $reservedEnabled = config('hesabfa.enable_reserved_stock', false);
+
+        $updateData = [
             'hesabfa_physical_stock' => max(0, $quantity),
             'hesabfa_stock_synced_at' => now(),
-        ]);
+        ];
+
+        if ($reservedEnabled) {
+            $reserved = (int) ($product->hesabfa_reserved_stock ?? 0);
+            $manualReserved = (int) ($product->hesabfa_manual_reserved ?? 0);
+            $updateData['stock_quantity'] = max(0, $quantity - $reserved - $manualReserved);
+        } else {
+            $updateData['stock_quantity'] = max(0, $quantity);
+        }
+
+        $product->update($updateData);
 
         Log::info('Hesabfa webhook: stock updated', [
             'item_code' => $itemCode,
@@ -129,7 +159,7 @@ class StockSyncService
         return ['message' => "Stock updated for {$itemCode}: {$quantity}"];
     }
 
-    public function updatePriceByItemCode(string $itemCode, int $priceInRials): array
+    public function updatePriceByItemCode(string $itemCode, int $priceIncoming): array
     {
         $product = Product::where('sku', $itemCode)->first();
 
@@ -137,18 +167,20 @@ class StockSyncService
             return ['message' => "Product not found for SKU: {$itemCode}"];
         }
 
-        $priceInToman = (int) round($priceInRials / 10);
+        $priceUnit = config('hesabfa.price_unit', 'rial');
+        $price = $priceUnit === 'rial' ? (int) round($priceIncoming / 10) : $priceIncoming;
 
         $product->update([
-            'price' => $priceInToman,
+            'price' => $price,
         ]);
 
         Log::info('Hesabfa webhook: price updated', [
             'item_code' => $itemCode,
-            'price_rials' => $priceInRials,
-            'price_toman' => $priceInToman,
+            'price_incoming' => $priceIncoming,
+            'price_unit' => $priceUnit,
+            'price_stored' => $price,
         ]);
 
-        return ['message' => "Price updated for {$itemCode}: {$priceInToman} تومان"];
+        return ['message' => "Price updated for {$itemCode}: {$price}"];
     }
 }

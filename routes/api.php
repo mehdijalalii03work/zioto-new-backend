@@ -66,7 +66,7 @@ Route::middleware('web')->group(function () {
     });
 
     Route::prefix('hesabfa')->group(function () {
-        Route::post('/webhook', [HesabfaWebhookController::class, 'handle'])->name('hesabfa.webhook');
+        Route::post('/webhook', [HesabfaWebhookController::class, 'handle'])->name('hesabfa.webhook')->middleware('throttle:60,1');
         Route::get('/webhook', [HesabfaWebhookController::class, 'test']);
     });
 
