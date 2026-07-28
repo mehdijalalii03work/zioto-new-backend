@@ -382,6 +382,18 @@ class PaymentController extends Controller
             return redirect($frontendUrl.'/payment-failed');
         }
 
+        $stockCheck = $this->validateOrderStock($order);
+        if (! $stockCheck['valid']) {
+            Log::channel('payment')->error('Payment callback: insufficient stock for order', [
+                'order_id' => $order->id,
+                'product' => $stockCheck['product'],
+            ]);
+
+            $order->addNote("رد پرداخت: {$stockCheck['message']}", 'payment');
+
+            return redirect($frontendUrl.'/payment-failed');
+        }
+
         try {
             DB::transaction(function () use ($payment, $order, $receipt, $gateway) {
 
@@ -535,5 +547,42 @@ class PaymentController extends Controller
                 ->first(),
             default => $rates->first(),
         };
+    }
+
+    private function validateOrderStock(Order $order): array
+    {
+        $reservedEnabled = config('hesabfa.enable_reserved_stock', false);
+        if (! $reservedEnabled) {
+            return ['valid' => true];
+        }
+
+        $order->load('items.product');
+        $insufficient = [];
+
+        foreach ($order->items as $item) {
+            $product = $item->product;
+            if (! $product) {
+                continue;
+            }
+
+            $physical = (int) ($product->hesabfa_physical_stock ?? $product->stock_quantity ?? 0);
+            $reserved = (int) ($product->hesabfa_reserved_stock ?? 0);
+            $manualReserved = (int) ($product->hesabfa_manual_reserved ?? 0);
+            $sellable = max(0, $physical - $reserved - $manualReserved);
+
+            if ($item->quantity > $sellable) {
+                $insufficient[] = "{$product->name}: موجودی {$sellable}، درخواست {$item->quantity}";
+            }
+        }
+
+        if (! empty($insufficient)) {
+            return [
+                'valid' => false,
+                'message' => 'موجودی برخی محصولات کافی نیست: '.implode(' | ', $insufficient),
+                'product' => implode(', ', $insufficient),
+            ];
+        }
+
+        return ['valid' => true];
     }
 }
