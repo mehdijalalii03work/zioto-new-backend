@@ -29,7 +29,6 @@ class EditOrder extends EditRecord
                 ->label('ارسال به حسابفا')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('warning')
-                ->visible(fn ($record) => ! $record->hesabfa_synced_at)
                 ->action(function ($record) {
                     $observer = app(HesabfaObserver::class);
                     $result = $observer->syncOrder($record, force: true);

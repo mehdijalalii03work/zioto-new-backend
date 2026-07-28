@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Orders\Pages;
 
 use App\Filament\Resources\Orders\OrderResource;
+use App\Observers\HesabfaObserver;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -299,6 +300,29 @@ class ViewOrder extends ViewRecord
                         ->send();
 
                     $this->refreshFormData(['status']);
+                }),
+
+            Action::make('syncToHesabfa')
+                ->label('ارسال به حسابفا')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->color('warning')
+                ->action(function ($record) {
+                    $observer = app(HesabfaObserver::class);
+                    $result = $observer->syncOrder($record, force: true);
+
+                    if ($result['success']) {
+                        Notification::make()
+                            ->title($result['message'])
+                            ->success()
+                            ->send();
+                    } else {
+                        Notification::make()
+                            ->title($result['message'])
+                            ->danger()
+                            ->send();
+                    }
+
+                    $this->refreshFormData(['hesabfa_contact_code', 'hesabfa_invoice_number', 'hesabfa_synced_at']);
                 }),
 
             Action::make('edit')
