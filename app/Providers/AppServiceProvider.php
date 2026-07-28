@@ -39,7 +39,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $interval = config('hesabfa.sync_interval', 60);
-        Schedule::command('hesabfa:sync-stock')->cron("*/{$interval} * * * *");
+        Schedule::command('hesabfa:sync-stock')->cron("*/{$interval} * * * *")->withoutOverlapping();
+        Schedule::command('hesabfa:recalculate-reserved')->dailyAt('03:00')->withoutOverlapping();
 
         RateLimiter::for('otp', function (Request $request) {
             if (app()->isLocal()) {
