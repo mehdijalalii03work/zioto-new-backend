@@ -12,7 +12,8 @@ class OrderShipping extends Model
 
     protected $fillable = [
         'order_id', 'shipping_method_id', 'shipping_method_name',
-        'shipping_cost', 'pickup_date', 'tracking_number', 'tracking_url',
+        'shipping_cost', 'tax_amount', 'tax_rate',
+        'pickup_date', 'tracking_number', 'tracking_url',
         'estimated_delivery_min', 'estimated_delivery_max', 'delivered_at',
     ];
 
@@ -20,6 +21,8 @@ class OrderShipping extends Model
     {
         return [
             'shipping_cost' => 'decimal:0',
+            'tax_amount' => 'decimal:0',
+            'tax_rate' => 'decimal:2',
             'pickup_date' => 'date',
             'delivered_at' => 'datetime',
         ];

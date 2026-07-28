@@ -380,15 +380,18 @@ class HesabfaObserver
             return null;
         }
 
+        $totalCost = (int) $order->shipping->shipping_cost;
+        $taxAmount = (int) ($order->shipping->tax_amount ?? 0);
+
         return [
             'rowNumber' => $rowNumber,
             'description' => 'هزینه حمل و نقل',
             'itemCode' => $shippingCode,
             'unit' => config('hesabfa.default_unit', 'عدد'),
             'quantity' => 1,
-            'unitPrice' => (int) $order->shipping->shipping_cost,
+            'unitPrice' => $totalCost - $taxAmount,
             'discount' => 0,
-            'tax' => 0,
+            'tax' => $taxAmount,
         ];
     }
 

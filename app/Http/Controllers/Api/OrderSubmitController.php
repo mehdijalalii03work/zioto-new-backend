@@ -96,7 +96,7 @@ class OrderSubmitController extends Controller
                 ];
             }
 
-            $shippingCost = $this->calculateShippingCost(
+            $shippingResult = $this->calculateShippingCost(
                 $validated['shipping_method_id'],
                 $cartItems,
                 $totalAmount,
@@ -104,6 +104,7 @@ class OrderSubmitController extends Controller
                 $address?->city_id
             );
 
+            $shippingCost = $shippingResult['total'];
             $totalAmount += $shippingCost;
 
             $gateway = $validated['gateway'] ?? 'parsian';
@@ -146,6 +147,8 @@ class OrderSubmitController extends Controller
                 'shipping_method_id' => $validated['shipping_method_id'],
                 'shipping_method_name' => $method?->name ?? '',
                 'shipping_cost' => $shippingCost,
+                'tax_amount' => $shippingResult['tax_amount'],
+                'tax_rate' => $shippingResult['tax_rate'],
             ]);
 
             return [
@@ -162,16 +165,16 @@ class OrderSubmitController extends Controller
         ], 201);
     }
 
-    private function calculateShippingCost(int $shippingMethodId, $cartItems, int $cartTotal, ?int $provinceId, ?int $cityId): int
+    private function calculateShippingCost(int $shippingMethodId, $cartItems, int $cartTotal, ?int $provinceId, ?int $cityId): array
     {
         $method = ShippingMethod::active()->with('rates')->find($shippingMethodId);
 
         if (! $method || $method->rates->isEmpty()) {
-            return 0;
+            return ['total' => 0, 'tax_amount' => 0, 'tax_rate' => 0];
         }
 
         if ($method->is_pickup) {
-            return 0;
+            return ['total' => 0, 'tax_amount' => 0, 'tax_rate' => 0];
         }
 
         $totalWeight = 0;
@@ -182,7 +185,7 @@ class OrderSubmitController extends Controller
         $rate = $this->findMatchingRate($method, $totalWeight, $cartTotal, $provinceId, $cityId);
 
         if (! $rate) {
-            return 0;
+            return ['total' => 0, 'tax_amount' => 0, 'tax_rate' => 0];
         }
 
         $shippingCost = (int) $rate->base_rate;
@@ -198,12 +201,17 @@ class OrderSubmitController extends Controller
             $freeShipping = true;
         }
 
+        $taxRate = (float) ($rate->tax_rate ?? 0);
         $taxAmount = 0;
-        if ($rate->tax_rate && $rate->tax_rate > 0 && ! $freeShipping) {
-            $taxAmount = (int) round($shippingCost * $rate->tax_rate / 100);
+        if ($taxRate > 0 && ! $freeShipping) {
+            $taxAmount = (int) round($shippingCost * $taxRate / 100);
         }
 
-        return $shippingCost + $taxAmount;
+        return [
+            'total' => $shippingCost + $taxAmount,
+            'tax_amount' => $taxAmount,
+            'tax_rate' => $taxRate,
+        ];
     }
 
     private function findMatchingRate(ShippingMethod $method, float $totalWeight, int $cartTotal, ?int $provinceId, ?int $cityId): ?ShippingRate
