@@ -130,6 +130,7 @@ class OrdersTable
                 TextColumn::make('created_at')
                     ->label('تاریخ ثبت')
                     ->dateTime()
+                    ->jalaliDateTime('H:i Y/m/d')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

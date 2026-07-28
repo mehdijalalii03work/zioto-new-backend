@@ -48,6 +48,7 @@ class ContactMessagesTable
                 TextColumn::make('created_at')
                     ->label('تاریخ ارسال')
                     ->dateTime()
+                    ->jalaliDateTime('H:i Y/m/d')
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')

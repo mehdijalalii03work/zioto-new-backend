@@ -85,12 +85,14 @@ class PaymentsTable
                 TextColumn::make('paid_at')
                     ->label('تاریخ پرداخت')
                     ->dateTime()
+                    ->jalaliDateTime('H:i Y/m/d')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('created_at')
                     ->label('تاریخ ثبت')
                     ->dateTime()
+                    ->jalaliDateTime('H:i Y/m/d')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

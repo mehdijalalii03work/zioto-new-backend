@@ -44,7 +44,8 @@ class ViewContactMessage extends ViewRecord
                 ->schema([
                     TextEntry::make('created_at')
                         ->label('تاریخ ارسال')
-                        ->dateTime(),
+                        ->dateTime()
+                        ->jalaliDateTime('H:i Y/m/d'),
                     TextEntry::make('is_read')
                         ->label('وضعیت خواندن')
                         ->formatStateUsing(fn (bool $state): string => $state ? 'خوانده شده' : 'خوانده نشده')

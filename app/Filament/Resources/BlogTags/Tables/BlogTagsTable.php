@@ -32,6 +32,7 @@ class BlogTagsTable
                 TextColumn::make('created_at')
                     ->label('تاریخ ایجاد')
                     ->dateTime()
+                    ->jalaliDateTime('H:i Y/m/d')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
