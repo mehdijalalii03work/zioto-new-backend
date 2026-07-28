@@ -44,10 +44,10 @@ class StockSyncService
         $excludedSkus = config('hesabfa.excluded_skus', []);
 
         return collect($quantities)
-            ->filter(fn ($item) => isset($item['ItemCode']) || isset($item['ProductCode']))
+            ->filter(fn ($item) => ! empty($item['ProductCode']) || ! empty($item['Code']))
             ->map(fn ($item) => [
-                'sku' => $item['ItemCode'] ?? $item['ProductCode'],
-                'quantity' => max(0, (int) ($item['Quantity'] ?? $item['Physical'] ?? 0)),
+                'sku' => ! empty($item['ProductCode']) ? $item['ProductCode'] : $item['Code'],
+                'quantity' => max(0, (int) ($item['Quantity'] ?? 0)),
             ])
             ->reject(fn ($item) => in_array($item['sku'], $excludedSkus))
             ->unique('sku');
