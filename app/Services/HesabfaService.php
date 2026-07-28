@@ -213,9 +213,20 @@ class HesabfaService
 
         $sanitized = $payload;
         unset($sanitized['apiKey'], $sanitized['loginToken']);
-        Log::channel('hesabfa')->debug('Hesabfa API request', [
-            'endpoint' => $endpoint,
+
+        $url = "{$this->baseUrl}{$endpoint}";
+        $requestBody = json_encode($payload, JSON_UNESCAPED_UNICODE);
+        $escapedBody = str_replace("'", "'\\''", $requestBody);
+
+        Log::channel('hesabfa')->info('Hesabfa API request', [
+            'method' => 'POST',
+            'url' => $url,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ],
             'payload' => $sanitized,
+            'curl' => "curl -X POST '{$url}' -H 'Content-Type: application/json' -d '{$escapedBody}'",
         ]);
 
         $lastError = null;
@@ -228,15 +239,15 @@ class HesabfaService
                         'Accept' => 'application/json',
                     ])
                     ->withBody(
-                        json_encode($payload, JSON_UNESCAPED_UNICODE),
+                        $requestBody,
                         'application/json'
                     )
-                    ->post("{$this->baseUrl}{$endpoint}");
+                    ->post($url);
 
                 if ($response->successful()) {
                     $data = $response->json();
 
-                    Log::channel('hesabfa')->debug('Hesabfa API response', [
+                    Log::channel('hesabfa')->info('Hesabfa API response', [
                         'endpoint' => $endpoint,
                         'status' => $response->status(),
                         'response' => $data,
