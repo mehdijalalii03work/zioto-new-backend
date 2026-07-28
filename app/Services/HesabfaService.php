@@ -76,7 +76,7 @@ class HesabfaService
 
     public function getItemByCode(string $itemCode): ?array
     {
-        $result = $this->call('/item/get', ['ItemCode' => $itemCode]);
+        $result = $this->call('/item/get', ['code' => $itemCode]);
 
         if ($result['success'] && ! empty($result['data']['Result'])) {
             return $result['data']['Result'];
