@@ -404,12 +404,14 @@ class HesabfaObserver
         }
 
         $baseAmount = $order->items->sum('subtotal') + ($order->shipping?->shipping_cost ?? 0);
-        $commission = InstallmentService::calculateFee((int) $baseAmount);
-        $taxOnCommission = (int) round($commission * 0.10);
+        $totalIncludingTax = InstallmentService::calculateFee((int) $baseAmount);
 
-        if ($commission <= 0) {
+        if ($totalIncludingTax <= 0) {
             return null;
         }
+
+        $unitPrice = (int) round($totalIncludingTax / 1.10);
+        $taxOnCommission = $totalIncludingTax - $unitPrice;
 
         return [
             'rowNumber' => $rowNumber,
@@ -417,7 +419,7 @@ class HesabfaObserver
             'itemCode' => $installmentFeeCode,
             'unit' => config('hesabfa.default_unit', 'عدد'),
             'quantity' => 1,
-            'unitPrice' => $commission,
+            'unitPrice' => $unitPrice,
             'discount' => 0,
             'tax' => $taxOnCommission,
         ];
