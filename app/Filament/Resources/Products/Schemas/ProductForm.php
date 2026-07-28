@@ -11,6 +11,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 
 class ProductForm
@@ -238,28 +239,19 @@ class ProductForm
                     ->icon('heroicon-o-arrow-path')
                     ->collapsible()
                     ->schema([
+                        View::make('filament.components.hesabfa-stock-cards')
+                            ->columnSpanFull(),
+
                         Grid::make(3)
+                            ->hidden()
                             ->schema([
                                 TextInput::make('hesabfa_physical_stock')
-                                    ->label('موجودی فیزیکی (حسابفا)')
-                                    ->numeric()
                                     ->disabled()
-                                    ->dehydrated()
-                                    ->helperText('از حسابفا دریافت می‌شود'),
+                                    ->dehydrated(),
 
                                 TextInput::make('hesabfa_reserved_stock')
-                                    ->label('موجودی رزرو شده')
-                                    ->numeric()
                                     ->disabled()
-                                    ->dehydrated()
-                                    ->helperText('سفارشات در حال پردازش'),
-
-                                TextInput::make('sellable_stock')
-                                    ->label('موجودی قابل فروش')
-                                    ->numeric()
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->helperText('فیزیکی - رزرو شده - رزرو دستی'),
+                                    ->dehydrated(),
                             ]),
                         Grid::make(3)
                             ->schema([

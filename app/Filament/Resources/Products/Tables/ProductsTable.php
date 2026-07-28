@@ -6,8 +6,8 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -102,6 +102,26 @@ class ProductsTable
                     ->label('موجودی')
                     ->numeric()
                     ->sortable(),
+
+                TextColumn::make('hesabfa_physical_stock')
+                    ->label('موجودی فیزیکی')
+                    ->numeric()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->color('success'),
+
+                TextColumn::make('hesabfa_reserved_stock')
+                    ->label('رزرو شده')
+                    ->numeric()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->color('warning'),
+
+                TextColumn::make('sellable_stock')
+                    ->label('قابل فروش')
+                    ->numeric()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->color(fn ($state): string => $state > 0 ? 'info' : 'danger'),
 
                 TextColumn::make('created_at')
                     ->label('تاریخ ایجاد')
