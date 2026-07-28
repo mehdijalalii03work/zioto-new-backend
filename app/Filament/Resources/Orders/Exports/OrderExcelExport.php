@@ -45,9 +45,7 @@ class OrderExcelExport
         $statusLabels = [
             'pending' => 'در انتظار بررسی',
             'confirmed' => 'تایید شده',
-            'processing' => 'در حال پردازش',
-            'shipped' => 'ارسال شده',
-            'delivered' => 'تحویل شده',
+            'completed' => 'تکمیل شده',
             'cancelled' => 'لغو شده',
         ];
         $status = $statusLabels[$order->status] ?? $order->status;

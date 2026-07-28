@@ -4,10 +4,12 @@ namespace App\Filament\Resources\Orders\Pages;
 
 use App\Filament\Resources\Orders\OrderResource;
 use Filament\Actions\Action;
-use Filament\Schemas\Components\Fieldset;
+use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -16,6 +18,7 @@ use Illuminate\Support\HtmlString;
 class ViewOrder extends ViewRecord
 {
     protected static string $resource = OrderResource::class;
+
     protected static ?string $title = 'مشاهده سفارش';
 
     public function infolist(Schema $schema): Schema
@@ -50,18 +53,14 @@ class ViewOrder extends ViewRecord
                                                     ->color(fn (string $state): string => match ($state) {
                                                         'pending' => 'warning',
                                                         'confirmed' => 'info',
-                                                        'processing' => 'info',
-                                                        'shipped' => 'primary',
-                                                        'delivered' => 'success',
+                                                        'completed' => 'success',
                                                         'cancelled' => 'danger',
                                                         default => 'gray',
                                                     })
                                                     ->formatStateUsing(fn (string $state): string => match ($state) {
                                                         'pending' => 'در انتظار بررسی',
                                                         'confirmed' => 'تایید شده',
-                                                        'processing' => 'در حال پردازش',
-                                                        'shipped' => 'ارسال شده',
-                                                        'delivered' => 'تحویل شده',
+                                                        'completed' => 'تکمیل شده',
                                                         'cancelled' => 'لغو شده',
                                                         default => $state,
                                                     }),
@@ -83,24 +82,24 @@ class ViewOrder extends ViewRecord
                                     ->schema([
                                         Grid::make(3)
                                             ->schema([
-                                            TextEntry::make('payments.gateway')
-                                                ->label('درگاه پرداخت')
-                                                ->placeholder('—')
-                                                ->badge()
-                                                ->color(fn ($state): string => match ($state) {
-                                                    'parsian' => 'info',
-                                                    'digipay' => 'primary',
-                                                    'kamanlend' => 'warning',
-                                                    'smartis' => 'success',
-                                                    default => 'gray',
-                                                })
-                                                ->formatStateUsing(fn ($state): string => match ($state) {
-                                                    'parsian' => 'پارسیان',
-                                                    'digipay' => 'دیجی‌پی',
-                                                    'kamanlend' => 'کمان‌لند',
-                                                    'smartis' => 'اسمارتیس',
-                                                    default => $state ?? '—',
-                                                }),
+                                                TextEntry::make('payments.gateway')
+                                                    ->label('درگاه پرداخت')
+                                                    ->placeholder('—')
+                                                    ->badge()
+                                                    ->color(fn ($state): string => match ($state) {
+                                                        'parsian' => 'info',
+                                                        'digipay' => 'primary',
+                                                        'kamanlend' => 'warning',
+                                                        'smartis' => 'success',
+                                                        default => 'gray',
+                                                    })
+                                                    ->formatStateUsing(fn ($state): string => match ($state) {
+                                                        'parsian' => 'پارسیان',
+                                                        'digipay' => 'دیجی‌پی',
+                                                        'kamanlend' => 'کمان‌لند',
+                                                        'smartis' => 'اسمارتیس',
+                                                        default => $state ?? '—',
+                                                    }),
 
                                                 TextEntry::make('payment_status')
                                                     ->label('وضعیت پرداخت')
@@ -121,22 +120,22 @@ class ViewOrder extends ViewRecord
 
                                                 TextEntry::make('total_amount')
                                                     ->label('مبلغ کل')
-                                                    ->formatStateUsing(fn ($state): string => number_format($state) . ' ریال'),
+                                                    ->formatStateUsing(fn ($state): string => number_format($state).' ریال'),
 
                                                 TextEntry::make('items_subtotal')
                                                     ->label('مجموع مبلغ اقلام')
                                                     ->state(fn ($record): string => number_format($record->items->sum('subtotal')))
-                                                    ->formatStateUsing(fn ($state): string => $state . ' ریال'),
+                                                    ->formatStateUsing(fn ($state): string => $state.' ریال'),
 
                                                 TextEntry::make('shipping.shipping_cost')
                                                     ->label('هزینه ارسال')
-                                                    ->formatStateUsing(fn ($state): string => $state ? number_format($state) . ' ریال' : '0')
+                                                    ->formatStateUsing(fn ($state): string => $state ? number_format($state).' ریال' : '0')
                                                     ->placeholder('-'),
 
                                                 TextEntry::make('installment_fee')
                                                     ->label('کارمزد اقساط')
                                                     ->state(fn ($record): ?string => data_get(json_decode($record->notes, true), 'installment_fee'))
-                                                    ->formatStateUsing(fn ($state): string => $state ? number_format($state) . ' ریال' : '—')
+                                                    ->formatStateUsing(fn ($state): string => $state ? number_format($state).' ریال' : '—')
                                                     ->placeholder('—'),
                                             ])->columnSpanFull(),
                                     ]),
@@ -151,7 +150,6 @@ class ViewOrder extends ViewRecord
                                                     ->state(fn ($record): string => filled($record->address?->receiver_name) && $record->address->receiver_name !== $record->user?->name ? 'شخص دیگر' : 'خریدار')
                                                     ->badge()
                                                     ->color(fn ($record): string => filled($record->address?->receiver_name) && $record->address->receiver_name !== $record->user?->name ? 'warning' : 'success'),
-
 
                                                 TextEntry::make('shipping.shippingMethod.name')
                                                     ->label('روش ارسال')
@@ -202,14 +200,14 @@ class ViewOrder extends ViewRecord
 
                                                         TextEntry::make('product_price')
                                                             ->label('قیمت واحد')
-                                                            ->formatStateUsing(fn ($state): string => number_format($state) . ' ریال'),
+                                                            ->formatStateUsing(fn ($state): string => number_format($state).' ریال'),
 
                                                         TextEntry::make('quantity')
                                                             ->label('تعداد'),
 
                                                         TextEntry::make('subtotal')
                                                             ->label('قیمت کل')
-                                                            ->formatStateUsing(fn ($state): string => number_format($state) . ' ریال'),
+                                                            ->formatStateUsing(fn ($state): string => number_format($state).' ریال'),
                                                     ]),
                                             ])
                                             ->columnSpanFull(),
@@ -232,19 +230,19 @@ class ViewOrder extends ViewRecord
 
                                         $data = json_decode($state, true);
                                         if (! is_array($data)) {
-                                            return new HtmlString('<span class="text-muted-foreground">' . e($state) . '</span>');
+                                            return new HtmlString('<span class="text-muted-foreground">'.e($state).'</span>');
                                         }
 
                                         $items = [];
-                                         if (isset($data['name'])) {
-                                             $items[] = '<strong>نام:</strong> ' . e($data['name']);
-                                         }
-                                         if (isset($data['phone'])) {
-                                             $items[] = '<strong>تلفن:</strong> ' . e($data['phone']);
-                                         }
-                                         if (isset($data['national_code'])) {
-                                             $items[] = '<strong>کد ملی:</strong> ' . e($data['national_code']);
-                                         }
+                                        if (isset($data['name'])) {
+                                            $items[] = '<strong>نام:</strong> '.e($data['name']);
+                                        }
+                                        if (isset($data['phone'])) {
+                                            $items[] = '<strong>تلفن:</strong> '.e($data['phone']);
+                                        }
+                                        if (isset($data['national_code'])) {
+                                            $items[] = '<strong>کد ملی:</strong> '.e($data['national_code']);
+                                        }
                                         // if (isset($data['installment_fee'])) {
                                         //     $items[] = '<strong>کارمزد اقساط:</strong> ' . number_format($data['installment_fee']) . ' ریال';
                                         // }
@@ -274,6 +272,35 @@ class ViewOrder extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('changeStatus')
+                ->label('تغییر وضعیت')
+                ->icon('heroicon-o-arrow-path')
+                ->color('warning')
+                ->modalHeading('تغییر وضعیت سفارش')
+                ->modalDescription('وضعیت جدید سفارش را انتخاب کنید.')
+                ->form([
+                    Select::make('status')
+                        ->label('وضعیت جدید')
+                        ->options([
+                            'pending' => 'در انتظار بررسی',
+                            'confirmed' => 'تایید شده',
+                            'completed' => 'تکمیل شده',
+                            'cancelled' => 'لغو شده',
+                        ])
+                        ->default(fn ($record) => $record->status)
+                        ->required(),
+                ])
+                ->action(function ($record, array $data) {
+                    $record->update(['status' => $data['status']]);
+
+                    Notification::make()
+                        ->title('وضعیت سفارش با موفقیت تغییر یافت')
+                        ->success()
+                        ->send();
+
+                    $this->refreshFormData(['status']);
+                }),
+
             Action::make('edit')
                 ->label('ویرایش')
                 ->icon('heroicon-o-pencil')

@@ -12,6 +12,8 @@ use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -53,18 +55,14 @@ class OrdersTable
                     ->color(fn (string $state): string => match ($state) {
                         'pending' => 'warning',
                         'confirmed' => 'info',
-                        'processing' => 'primary',
-                        'shipped' => 'info',
-                        'delivered' => 'success',
+                        'completed' => 'success',
                         'cancelled' => 'danger',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pending' => 'در انتظار بررسی',
                         'confirmed' => 'تایید شده',
-                        'processing' => 'در حال پردازش',
-                        'shipped' => 'ارسال شده',
-                        'delivered' => 'تحویل شده',
+                        'completed' => 'تکمیل شده',
                         'cancelled' => 'لغو شده',
                         default => $state,
                     }),
@@ -176,6 +174,34 @@ class OrdersTable
                         ->icon('heroicon-o-arrow-down-tray')
                         ->action(fn ($records) => app(OrderExcelExport::class)->export($records))
                         ->deselectRecordsAfterCompletion(),
+
+                    BulkAction::make('change_status')
+                        ->label('تغییر وضعیت')
+                        ->icon('heroicon-o-arrow-path')
+                        ->modalHeading('تغییر وضعیت سفارش‌ها')
+                        ->modalDescription('وضعیت جدید را برای سفارش‌های انتخاب شده مشخص کنید.')
+                        ->form([
+                            Select::make('status')
+                                ->label('وضعیت جدید')
+                                ->options([
+                                    'pending' => 'در انتظار بررسی',
+                                    'confirmed' => 'تایید شده',
+                                    'completed' => 'تکمیل شده',
+                                    'cancelled' => 'لغو شده',
+                                ])
+                                ->required(),
+                        ])
+                        ->action(function ($records, array $data) {
+                            $records->each(fn ($record) => $record->update(['status' => $data['status']]));
+
+                            Notification::make()
+                                ->title('وضعیت سفارش‌ها با موفقیت تغییر یافت')
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion()
+                        ->requiresConfirmation(),
+
                     DeleteBulkAction::make()
                         ->label('حذف انتخاب شده‌ها'),
 

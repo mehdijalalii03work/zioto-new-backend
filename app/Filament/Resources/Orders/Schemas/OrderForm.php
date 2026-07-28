@@ -45,9 +45,7 @@ class OrderForm
                                     ->options([
                                         'pending' => 'در انتظار بررسی',
                                         'confirmed' => 'تایید شده',
-                                        'processing' => 'در حال پردازش',
-                                        'shipped' => 'ارسال شده',
-                                        'delivered' => 'تحویل شده',
+                                        'completed' => 'تکمیل شده',
                                         'cancelled' => 'لغو شده',
                                     ])
                                     ->default('pending'),
@@ -145,7 +143,6 @@ class OrderForm
                 //             ]),
                 //     ])
                 //     ->columnSpanFull(),
-
 
                 // Section::make('محصولات سفارش')
                 //     ->description('اقلام موجود در این سفارش')
