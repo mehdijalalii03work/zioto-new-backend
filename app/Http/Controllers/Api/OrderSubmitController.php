@@ -111,7 +111,7 @@ class OrderSubmitController extends Controller
             $paymentMethod = InstallmentService::isInstallmentGateway($gateway) ? 'installment' : 'online';
             $installmentFee = 0;
 
-            if (InstallmentService::isInstallmentGateway($gateway)) {
+            if (InstallmentService::isFeeGateway($gateway)) {
                 $installmentFee = InstallmentService::calculateFee((int) $totalAmount);
                 $totalAmount += $installmentFee;
             }

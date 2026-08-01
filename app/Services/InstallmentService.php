@@ -4,13 +4,20 @@ namespace App\Services;
 
 class InstallmentService
 {
-    public const GATEWAYS = ['digipay', 'smartis', 'kamanlend'];
+    public const GATEWAYS = ['digipay', 'smartis', 'kamanlend', 'nopay'];
+
+    public const FEE_GATEWAYS = ['digipay', 'smartis', 'kamanlend'];
 
     public const FEE_PERCENT = 4;
 
     public static function isInstallmentGateway(string $gateway): bool
     {
         return in_array($gateway, self::GATEWAYS);
+    }
+
+    public static function isFeeGateway(string $gateway): bool
+    {
+        return in_array($gateway, self::FEE_GATEWAYS);
     }
 
     public static function calculateFee(int $baseAmount): int

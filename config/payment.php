@@ -2,6 +2,7 @@
 
 use App\Payment\Drivers\CustomDigipay;
 use App\Payment\Drivers\Kamanlend\Kamanlend;
+use App\Payment\Drivers\Nopay\Nopay;
 use App\Payment\Drivers\Smartis\Smartis;
 use Shetabit\Multipay\Drivers\Parsian\Parsian;
 
@@ -50,6 +51,18 @@ $customConfig = [
             'useIpg' => true,
             'callbackUrl' => '',
         ],
+        'nopay' => [
+            'apiBaseUrl' => env('NOPAY_API_URL', 'https://op-cpg-wrapper.bmicc.ir:44377/WEBAPIWrapper/ConsumerExternalWebapiWrapper'),
+            'username' => env('NOPAY_USERNAME', ''),
+            'password' => env('NOPAY_PASSWORD', ''),
+            'publicKey' => env('NOPAY_PUBLIC_KEY', ''),
+            'privateKey' => env('NOPAY_PRIVATE_KEY', ''),
+            'merchantNumber' => env('NOPAY_MERCHANT_NUMBER', ''),
+            'cellNumber' => env('NOPAY_CELL_NUMBER', ''),
+            'requestFormat' => env('NOPAY_REQUEST_FORMAT', 'flat'),
+            'verifySsl' => env('NOPAY_VERIFY_SSL', false),
+            'callbackUrl' => '',
+        ],
     ],
 
     'map' => [
@@ -57,6 +70,7 @@ $customConfig = [
         'digipay' => CustomDigipay::class,
         'kamanlend' => Kamanlend::class,
         'smartis' => Smartis::class,
+        'nopay' => Nopay::class,
     ],
 ];
 

@@ -92,6 +92,7 @@ class ViewOrder extends ViewRecord
                                                         'digipay' => 'primary',
                                                         'kamanlend' => 'warning',
                                                         'smartis' => 'success',
+                                                        'nopay' => 'danger',
                                                         default => 'gray',
                                                     })
                                                     ->formatStateUsing(fn ($state): string => match ($state) {
@@ -99,6 +100,7 @@ class ViewOrder extends ViewRecord
                                                         'digipay' => 'دیجی‌پی',
                                                         'kamanlend' => 'کمان‌لند',
                                                         'smartis' => 'اسمارتیس',
+                                                        'nopay' => 'نوپی',
                                                         default => $state ?? '—',
                                                     }),
 

@@ -99,6 +99,7 @@ class OrdersTable
                         'digipay' => 'primary',
                         'kamanlend' => 'warning',
                         'smartis' => 'success',
+                        'nopay' => 'danger',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn ($state): string => match ($state) {
@@ -106,6 +107,7 @@ class OrdersTable
                         'digipay' => 'دیجی‌پی',
                         'kamanlend' => 'کمان‌لند',
                         'smartis' => ' اسمارتیس',
+                        'nopay' => 'نوپی',
                         default => $state ?? '—',
                     }),
 
@@ -143,6 +145,7 @@ class OrdersTable
                         'digipay' => 'دیجی‌پی',
                         'kamanlend' => 'کمان‌لند',
                         'smartis' => 'اسمارتیس',
+                        'nopay' => 'نوپی',
                     ])
                     ->query(function ($query, array $data) {
                         if (blank($data['value'])) {

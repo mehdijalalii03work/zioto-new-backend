@@ -14,7 +14,7 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'gateway' => ['nullable', 'in:parsian,digipay,kamanlend,smartis'],
+            'gateway' => ['nullable', 'in:parsian,digipay,kamanlend,smartis,nopay'],
             'user_address_id' => ['nullable', 'integer', 'exists:user_addresses,id'],
             'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
         ];

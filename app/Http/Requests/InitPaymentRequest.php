@@ -15,7 +15,7 @@ class InitPaymentRequest extends FormRequest
     {
         return [
             'order_id' => ['required', 'integer', 'exists:orders,id'],
-            'gateway' => ['required', 'in:parsian,digipay,kamanlend,smartis'],
+            'gateway' => ['required', 'in:parsian,digipay,kamanlend,smartis,nopay'],
         ];
     }
 

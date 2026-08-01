@@ -49,10 +49,10 @@ class PaymentController extends Controller
 
         $baseTotal += $shippingCost;
 
-        $isInstallment = InstallmentService::isInstallmentGateway($validated['gateway']);
+        $isFeeGateway = InstallmentService::isFeeGateway($validated['gateway']);
         $feeAmount = 0;
 
-        if ($isInstallment) {
+        if ($isFeeGateway) {
             $feeAmount = InstallmentService::calculateFee((int) $baseTotal);
         }
 
