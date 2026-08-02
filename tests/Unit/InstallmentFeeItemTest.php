@@ -27,7 +27,6 @@ class InstallmentFeeItemTest extends TestCase
         $observer = new HesabfaObserver($this->createMock(HesabfaService::class));
 
         $method = new \ReflectionMethod(HesabfaObserver::class, 'shouldAddInstallmentFee');
-        $method->setAccessible(true);
 
         return $method->invoke($observer, $order);
     }

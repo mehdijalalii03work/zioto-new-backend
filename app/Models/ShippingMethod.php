@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Order\Models\OrderShipping;
 
 class ShippingMethod extends Model
 {
+    use HasFactory;
+
     public $incrementing = false;
 
     protected $keyType = 'int';

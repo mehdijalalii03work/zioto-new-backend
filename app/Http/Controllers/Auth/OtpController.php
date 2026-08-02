@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class OtpController extends Controller
 {
@@ -76,7 +77,8 @@ class OtpController extends Controller
 
         Cache::forget($key);
 
-        $user = User::where('phone', $phone)->first();
+        $platform = \App\Support\Platform::fromRequest($request);
+        $user = User::withoutTenantScope()->where('phone', $phone)->where('platform', $platform)->first();
 
         if ($user) {
             $apiToken = Str::random(64);
@@ -86,7 +88,7 @@ class OtpController extends Controller
                 'api_token_hash' => hash('sha256', $apiToken),
                 'token_created_at' => now(),
             ]);
-            Auth::login($user);
+            Auth::guard('api')->setUser($user);
 
             return response()->json([
                 'message' => 'با موفقیت وارد شدید',
@@ -96,7 +98,8 @@ class OtpController extends Controller
         }
 
         $token = Str::random(64);
-        Cache::put("shahkar_register_token:{$token}", $phone, self::SHAHKAR_TOKEN_TTL);
+        $platform = \App\Support\Platform::fromRequest($request);
+        Cache::put("shahkar_register_token:{$token}", ['phone' => $phone, 'platform' => $platform], self::SHAHKAR_TOKEN_TTL);
 
         return response()->json([
             'message' => 'کد تایید شد',
@@ -113,7 +116,8 @@ class OtpController extends Controller
         $nationalCode = $request->input('national_code');
         $birthDate = $request->input('birth_date');
 
-        $phone = Cache::pull("shahkar_register_token:{$token}");
+        $registerData = Cache::pull("shahkar_register_token:{$token}");
+        $phone = is_array($registerData) ? ($registerData['phone'] ?? null) : $registerData;
 
         if (! $phone) {
             return response()->json([
@@ -122,7 +126,13 @@ class OtpController extends Controller
             ], 422);
         }
 
-        $existingUser = User::where('national_code', $nationalCode)->first();
+        // The platform is bound to the registration token so a user can
+        // register on main and nopay independently with the same phone.
+        $platform = is_array($registerData) ? ($registerData['platform'] ?? 'main') : \App\Support\Platform::fromRequest($request);
+        $existingUser = User::withoutTenantScope()
+            ->where('national_code', $nationalCode)
+            ->where('platform', $platform)
+            ->first();
         if ($existingUser) {
             return response()->json([
                 'message' => 'این کد ملی قبلاً ثبت شده است',
@@ -160,12 +170,13 @@ class OtpController extends Controller
             'national_code' => $nationalCode,
             'shahkar_verified' => true,
             'birth_date' => $birthDate,
+            'platform' => $platform,
             'api_token' => $apiToken,
             'api_token_hash' => hash('sha256', $apiToken),
             'token_created_at' => now(),
         ]);
 
-        Auth::login($user);
+        Auth::guard('api')->setUser($user);
 
         return response()->json([
             'message' => 'احراز هویت با موفقیت انجام شد',
@@ -176,6 +187,8 @@ class OtpController extends Controller
 
     public function logout(): JsonResponse
     {
+        // Token-based (Bearer) auth: logging out means revoking the token.
+        // There is no session/cookie to invalidate in this stateless API.
         $user = Auth::user();
 
         if ($user) {
@@ -185,11 +198,6 @@ class OtpController extends Controller
                 'token_created_at' => null,
             ]);
         }
-
-        Auth::logout();
-
-        request()->session()->invalidate();
-        request()->session()->regenerateToken();
 
         return response()->json([
             'message' => 'با موفقیت خارج شدید',

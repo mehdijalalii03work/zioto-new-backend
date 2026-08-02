@@ -32,7 +32,10 @@ class AddressController extends Controller
             ], 422);
         }
 
-        $address = $request->user()->addresses()->create($request->validated());
+        $data = array_merge($request->validated(), [
+            'platform' => \App\Support\Platform::fromRequest($request),
+        ]);
+        $address = $request->user()->addresses()->create($data);
 
         if ($request->boolean('is_default')) {
             $request->user()->addresses()

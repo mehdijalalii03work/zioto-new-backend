@@ -157,7 +157,6 @@ class PaymentDriversTest extends TestCase
         $driver = new Kamanlend($invoice, $settings);
 
         $reflection = new \ReflectionMethod(Kamanlend::class, 'buildDefaultSaleItems');
-        $reflection->setAccessible(true);
 
         $items = $reflection->invoke($driver);
 

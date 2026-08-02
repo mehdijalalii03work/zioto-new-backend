@@ -56,7 +56,7 @@ class ImportOrders extends Command
 
         $wp->table('wc_orders')->exists();
         $totalOrders = $wp->table('wc_orders')->count();
-        $existingOrders = Order::count();
+        $existingOrders = Order::withoutTenantScope()->count();
         $lastOrderNumber = (int) DB::table('orders')->max(DB::raw('CAST(order_number AS UNSIGNED)')) ?? 21000;
 
         $this->line("WordPress orders: $totalOrders");
@@ -78,7 +78,7 @@ class ImportOrders extends Command
                     $laravelUserId = $this->getLaravelUserId($wp, $wpOrder->customer_id);
 
                     if (! $laravelUserId && ! empty($wpOrder->billing_email)) {
-                        $user = User::where('email', $wpOrder->billing_email)->first();
+                        $user = User::withoutTenantScope()->where('email', $wpOrder->billing_email)->first();
                         $laravelUserId = $user?->id;
                     }
 
@@ -101,6 +101,7 @@ class ImportOrders extends Command
 
                     $order = new Order;
                     $order->timestamps = false;
+                    $order->platform = 'main';
                     $order->order_number = (string) $currentNumber;
                     $order->user_id = $laravelUserId;
                     $order->status = $status;

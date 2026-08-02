@@ -43,7 +43,7 @@ class ImportPayments extends Command
                     $wpOrderId = $map->wp_order_id;
                     $laravelOrderId = $map->laravel_order_id;
 
-                    if (Payment::where('order_id', $laravelOrderId)->exists()) {
+                    if (Payment::withoutTenantScope()->where('order_id', $laravelOrderId)->exists()) {
                         $skipped++;
 
                         continue;
@@ -90,6 +90,7 @@ class ImportPayments extends Command
                         $payment->timestamps = false;
                         $payment->user_id = $laravelUserId;
                         $payment->order_id = $laravelOrderId;
+                        $payment->platform = 'main';
                         $payment->transaction_id = $transactionId;
                         $payment->amount = $this->normalizeAmount($wpOrder->total_amount);
                         $payment->payment_method = $wpOrder->payment_method === 'WC_Pec_Gateway' ? 'online' : 'installment';
@@ -123,7 +124,7 @@ class ImportPayments extends Command
 
     protected function getLaravelUserId(WpDatabase $wp, object $wpOrder, int $laravelOrderId): ?int
     {
-        $order = Order::find($laravelOrderId);
+        $order = Order::withoutTenantScope()->find($laravelOrderId);
 
         if ($order && $order->user_id) {
             return $order->user_id;

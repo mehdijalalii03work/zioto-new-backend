@@ -31,7 +31,7 @@ class ShippingCalculationTest extends TestCase
     {
         $user = User::factory()->create();
         $province = Province::factory()->create();
-        $city = City::factory()->forProvince($province)->create();
+        $city = City::factory()->create(['province_id' => $province->id]);
         UserAddress::factory()->create([
             'user_id' => $user->id,
             'province_id' => $province->id,
@@ -53,7 +53,7 @@ class ShippingCalculationTest extends TestCase
     {
         $user = User::factory()->create();
         $province = Province::factory()->create();
-        $city = City::factory()->forProvince($province)->create();
+        $city = City::factory()->create(['province_id' => $province->id]);
         UserAddress::factory()->create([
             'user_id' => $user->id,
             'province_id' => $province->id,

@@ -95,7 +95,11 @@ class ProfileController extends Controller
             ], 422);
         }
 
-        $existingUser = User::where('phone', $newPhone)->where('id', '!=', $user->id)->first();
+        $existingUser = User::withoutTenantScope()
+            ->where('phone', $newPhone)
+            ->where('platform', $user->platform)
+            ->where('id', '!=', $user->id)
+            ->first();
         if ($existingUser) {
             return response()->json([
                 'message' => 'این شماره تلفن قبلاً ثبت شده است',

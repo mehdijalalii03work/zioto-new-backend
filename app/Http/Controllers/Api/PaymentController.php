@@ -125,6 +125,7 @@ class PaymentController extends Controller
                     Payment::create([
                         'user_id' => $order->user_id,
                         'order_id' => $order->id,
+                        'platform' => $order->platform,
                         'transaction_id' => $transactionId,
                         'amount' => $order->total_amount,
                         'payment_method' => $order->payment_method,
@@ -179,7 +180,9 @@ class PaymentController extends Controller
             'post' => $request->post(),
         ]);
 
-        $order = Order::findOrFail($orderId);
+        // Callback is a public gateway redirect (no X-Platform header):
+        // must resolve the order regardless of platform.
+        $order = Order::withoutTenantScope()->findOrFail($orderId);
         $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
 
         $callbackTransactionId = $request->input('Token') ?? $request->input('token')
@@ -188,8 +191,12 @@ class PaymentController extends Controller
         $resolvedPayment = null;
 
         if ($callbackTransactionId) {
-            $resolvedPayment = Payment::where('transaction_id', $callbackTransactionId)
+            // Callback is a public route (no X-Platform header): scope by the
+            // order's platform instead of the request header.
+            $resolvedPayment = Payment::withoutTenantScope()
+                ->where('transaction_id', $callbackTransactionId)
                 ->where('order_id', $order->id)
+                ->where('platform', $order->platform)
                 ->first();
 
             if ($resolvedPayment && ! in_array($resolvedPayment->status, ['pending', 'processing'])) {
@@ -211,11 +218,13 @@ class PaymentController extends Controller
             $payment = DB::transaction(function () use ($order, $gateway, $resolvedPayment) {
 
                 if ($resolvedPayment) {
-                    $payment = Payment::where('id', $resolvedPayment->id)
+                    $payment = Payment::withoutTenantScope()
+                        ->where('id', $resolvedPayment->id)
                         ->lockForUpdate()
                         ->first();
                 } else {
-                    $payment = Payment::where('order_id', $order->id)
+                    $payment = Payment::withoutTenantScope()
+                        ->where('order_id', $order->id)
                         ->where('gateway', $gateway)
                         ->whereIn('status', ['pending', 'processing'])
                         ->latest('id')

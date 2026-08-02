@@ -14,6 +14,7 @@ class OrderFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
+            'platform' => 'main',
             'total_amount' => fake()->numberBetween(10000, 5000000),
             'status' => 'pending',
             'payment_status' => 'pending',

@@ -33,7 +33,7 @@ class CartController extends Controller
         $quantity = (int) ($validated['quantity'] ?? 1);
 
         Cart::updateOrCreate(
-            ['user_id' => $userId, 'product_id' => $productId],
+            ['user_id' => $userId, 'product_id' => $productId, 'platform' => \App\Support\Platform::fromRequest($request)],
             ['quantity' => $quantity]
         );
 

@@ -45,6 +45,7 @@ class WishlistController extends Controller
         Wishlist::create([
             'user_id' => $user->id,
             'product_id' => $validated['product_id'],
+            'platform' => \App\Support\Platform::fromRequest($request),
         ]);
 
         return response()->json([
@@ -93,6 +94,7 @@ class WishlistController extends Controller
         Wishlist::create([
             'user_id' => $user->id,
             'product_id' => $validated['product_id'],
+            'platform' => \App\Support\Platform::fromRequest($request),
         ]);
 
         return response()->json([

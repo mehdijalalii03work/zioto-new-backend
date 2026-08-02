@@ -7,6 +7,8 @@ use App\Models\OrderNote;
 use App\Models\OrderShipping;
 use App\Models\User;
 use App\Models\UserAddress;
+use App\Support\HasTenantScope;
+use App\Support\Platform;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,7 +21,7 @@ use Modules\Payment\Models\Payment;
 
 class Order extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasTenantScope, SoftDeletes;
 
     protected static function newFactory(): OrderFactory
     {
@@ -29,13 +31,37 @@ class Order extends Model
     protected static function booted(): void
     {
         static::creating(function (Order $order) {
-            $maxNumber = DB::table('orders')->max(DB::raw('CAST(order_number AS UNSIGNED)')) ?? 20999;
-            $order->order_number = str_pad($maxNumber + 1, 5, '0', STR_PAD_LEFT);
+            $platform = $order->platform ?: Platform::fromRequest();
+            $order->platform = $platform;
+
+            // Only auto-generate the number when none was provided explicitly
+            // (e.g. WP migration, tests set their own).
+            if (! empty($order->order_number)) {
+                return;
+            }
+
+            // Per-platform order numbering: nopay orders get an "N" prefix
+            // so numbers never collide between tenants.
+            $query = DB::table('orders')->where('platform', $platform);
+
+            if ($platform === Platform::NOPAY) {
+                // Strip the "N-" prefix before casting to int, otherwise
+                // CAST('N-00001' AS UNSIGNED) always yields 0.
+                $query->where('order_number', 'like', 'N-%');
+                $maxNumber = $query->max(DB::raw('CAST(SUBSTRING(order_number, 3) AS UNSIGNED)')) ?? 20999;
+            } else {
+                $maxNumber = $query->max(DB::raw('CAST(order_number AS UNSIGNED)')) ?? 20999;
+            }
+
+            $order->order_number = $platform === Platform::NOPAY
+                ? 'N-'.str_pad($maxNumber + 1, 5, '0', STR_PAD_LEFT)
+                : str_pad($maxNumber + 1, 5, '0', STR_PAD_LEFT);
         });
     }
 
     protected $fillable = [
         'user_id',
+        'platform',
         'order_number',
         'status',
         'total_amount',

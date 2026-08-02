@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\HasTenantScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,10 +10,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class UserAddress extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasTenantScope, SoftDeletes;
 
     protected $fillable = [
         'user_id',
+        'platform',
         'label',
         'province_id',
         'city_id',

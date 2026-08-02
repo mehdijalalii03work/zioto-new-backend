@@ -16,7 +16,9 @@ return [
     */
 
     'defaults' => [
-        'guard' => env('AUTH_GUARD', 'web'),
+        // This app is a stateless JSON API: token auth is the default.
+        // Filament (admin panel) explicitly uses the 'web' guard.
+        'guard' => env('AUTH_GUARD', 'api'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
     ],
 
@@ -41,6 +43,14 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+        ],
+
+        'api' => [
+            'driver' => 'token',
+            'provider' => 'users',
+            'input_key' => 'api_token',
+            'storage_key' => 'api_token_hash',
+            'hash' => true,
         ],
     ],
 

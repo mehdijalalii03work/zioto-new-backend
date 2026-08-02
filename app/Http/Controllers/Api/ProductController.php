@@ -43,7 +43,10 @@ class ProductController extends Controller
 
         if ($token) {
             $tokenHash = hash('sha256', $token);
-            $user = User::where('api_token_hash', $tokenHash)->first();
+            $user = User::withoutTenantScope()
+                ->where('api_token_hash', $tokenHash)
+                ->where('platform', \App\Support\Platform::fromRequest())
+                ->first();
             if ($user) {
                 $wishlistIds = $user->wishlists()->pluck('products.id')->toArray();
             }
@@ -79,7 +82,10 @@ class ProductController extends Controller
 
         if ($token) {
             $tokenHash = hash('sha256', $token);
-            $user = User::where('api_token_hash', $tokenHash)->first();
+            $user = User::withoutTenantScope()
+                ->where('api_token_hash', $tokenHash)
+                ->where('platform', \App\Support\Platform::fromRequest())
+                ->first();
             if ($user) {
                 $data['is_wishlist'] = $user->wishlists()
                     ->where('products.id', $product->id)

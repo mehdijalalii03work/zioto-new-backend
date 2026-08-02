@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Modules\Order\Models\Order;
 
 class OrderResource extends Resource
@@ -28,6 +29,14 @@ class OrderResource extends Resource
     protected static string|\UnitEnum|null $navigationGroup = 'فروش';
 
     protected static ?int $navigationSort = 5;
+
+    /**
+     * Admin panel must see orders from ALL platforms (main + nopay).
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->withoutTenantScope();
+    }
 
     public static function getModelLabel(): string
     {

@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ShippingRate extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'shipping_method_id', 'rate_type', 'province_id', 'city_id',
         'min_weight', 'max_weight', 'min_cart_total', 'max_cart_total',

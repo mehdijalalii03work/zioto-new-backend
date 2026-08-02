@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\HasTenantScope;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -17,12 +18,12 @@ use Illuminate\Notifications\Notifiable;
 use Modules\Product\Models\Product;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'first_name', 'last_name', 'email', 'password', 'phone', 'phone_verified_at', 'national_code', 'shahkar_verified', 'birth_date', 'api_token', 'api_token_hash', 'token_created_at'])]
+#[Fillable(['name', 'first_name', 'last_name', 'email', 'password', 'phone', 'phone_verified_at', 'national_code', 'shahkar_verified', 'birth_date', 'api_token', 'api_token_hash', 'token_created_at', 'platform'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable, SoftDeletes;
+    use HasFactory, HasRoles, HasTenantScope, Notifiable, SoftDeletes;
 
     public function canAccessPanel(Panel $panel): bool
     {

@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Modules\Payment\Models\Payment;
 
 class PaymentResource extends Resource
@@ -27,6 +28,14 @@ class PaymentResource extends Resource
     protected static string|\UnitEnum|null $navigationGroup = 'فروش';
 
     protected static ?int $navigationSort = 6;
+
+    /**
+     * Admin panel must see payments from ALL platforms (main + nopay).
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->withoutTenantScope();
+    }
 
     public static function getModelLabel(): string
     {

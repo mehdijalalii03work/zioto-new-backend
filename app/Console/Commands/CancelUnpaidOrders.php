@@ -13,7 +13,9 @@ class CancelUnpaidOrders extends Command
 
     public function handle(): int
     {
-        $orders = Order::where('status', 'pending')
+        // Scheduled job: must cover orders from ALL platforms.
+        $orders = Order::withoutTenantScope()
+            ->where('status', 'pending')
             ->where(function ($query) {
                 $query->where('payment_status', 'pending')
                     ->orWhere('payment_status', 'failed');

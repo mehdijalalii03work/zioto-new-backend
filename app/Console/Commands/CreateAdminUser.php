@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Support\Platform;
 use Illuminate\Console\Command;
 use Spatie\Permission\Models\Role;
 
@@ -17,7 +18,7 @@ class CreateAdminUser extends Command
         $name = $this->ask('نام کاربر');
         $email = $this->ask('ایمیل کاربر');
 
-        if (User::where('email', $email)->exists()) {
+        if (User::withoutTenantScope()->where('email', $email)->exists()) {
             $this->error("کاربری با ایمیل {$email} از قبل وجود دارد.");
 
             return static::FAILURE;
@@ -57,6 +58,7 @@ class CreateAdminUser extends Command
             'name' => $name,
             'email' => $email,
             'password' => $password,
+            'platform' => Platform::MAIN,
         ]);
 
         $user->assignRole($roleChoice);

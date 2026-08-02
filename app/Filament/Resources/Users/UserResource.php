@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserResource extends Resource
 {
@@ -28,6 +29,14 @@ class UserResource extends Resource
     protected static string|\UnitEnum|null $navigationGroup = 'مدیریت';
 
     protected static ?int $navigationSort = 10;
+
+    /**
+     * Admin panel must see users from ALL platforms (main + nopay).
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->withoutTenantScope();
+    }
 
     public static function getModelLabel(): string
     {

@@ -3,6 +3,7 @@
 namespace Modules\Payment\Models;
 
 use App\Models\User;
+use App\Support\HasTenantScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,11 +12,12 @@ use Modules\Order\Models\Order;
 
 class Payment extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasTenantScope, SoftDeletes;
 
     protected $fillable = [
         'user_id',
         'order_id',
+        'platform',
         'transaction_id',
         'amount',
         'payment_method',

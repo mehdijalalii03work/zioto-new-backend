@@ -24,7 +24,7 @@ class ImportUsers extends Command
         }
 
         $totalInWp = $wp->table('users')->count();
-        $existingInLaravel = User::count();
+        $existingInLaravel = User::withoutTenantScope()->count();
 
         $this->line("WordPress users: $totalInWp");
         $this->line("Existing Laravel users: $existingInLaravel");
@@ -52,7 +52,7 @@ class ImportUsers extends Command
                         continue;
                     }
 
-                    $existingUser = User::where('phone', $phone)->first();
+                    $existingUser = User::withoutTenantScope()->where('phone', $phone)->first();
 
                     if ($existingUser) {
                         $this->saveMapping($wp, $wpUser->ID, $existingUser->id);
@@ -98,7 +98,7 @@ class ImportUsers extends Command
         $this->info("  Mapped (already exists): $mapped");
         $this->info("  Errors: $errors");
 
-        $totalInLaravel = User::count();
+        $totalInLaravel = User::withoutTenantScope()->count();
         $this->line("Total Laravel users now: $totalInLaravel");
 
         return Command::SUCCESS;
@@ -123,12 +123,13 @@ class ImportUsers extends Command
             'email' => ! empty($wpUser->user_email) ? $wpUser->user_email : null,
             'phone' => $phone,
             'password' => bcrypt(Str::random(32)),
+            'platform' => 'main',
             'created_at' => $wpUser->user_registered,
             'updated_at' => $wpUser->user_registered,
         ];
 
         if (! empty($nationalCode)) {
-            $existing = User::where('national_code', $nationalCode)->where('phone', '!=', $phone)->exists();
+            $existing = User::withoutTenantScope()->where('national_code', $nationalCode)->where('phone', '!=', $phone)->exists();
             if (! $existing) {
                 $data['national_code'] = $nationalCode;
                 $data['shahkar_verified'] = $shahkarVerified === '1';
@@ -136,7 +137,7 @@ class ImportUsers extends Command
         }
 
         if (! empty($data['email'])) {
-            $existing = User::where('email', $data['email'])->where('phone', '!=', $phone)->exists();
+            $existing = User::withoutTenantScope()->where('email', $data['email'])->where('phone', '!=', $phone)->exists();
             if ($existing) {
                 $data['email'] = null;
             }
@@ -153,7 +154,7 @@ class ImportUsers extends Command
             return [$user, false];
         } catch (QueryException $e) {
             if (str_contains($e->getMessage(), 'Duplicate entry')) {
-                $existing = User::where('phone', $phone)->first();
+                $existing = User::withoutTenantScope()->where('phone', $phone)->first();
 
                 if ($existing) {
                     $this->saveMapping($wp, $wpUser->ID, $existing->id);
