@@ -119,6 +119,112 @@ class TenantAuthFlowTest extends TestCase
     }
 
     #[RunInSeparateProcess]
+    public function test_shahkar_verification_is_reused_across_platforms_without_api_call(): void
+    {
+        // A user already shahkar-verified on 'main'
+        User::withoutTenantScope()->create([
+            'name' => 'علی اصلی',
+            'first_name' => 'علی',
+            'last_name' => 'اصلی',
+            'email' => null,
+            'password' => bcrypt('secret'),
+            'phone' => '09120000020',
+            'phone_verified_at' => now(),
+            'national_code' => '0011223344',
+            'shahkar_verified' => true,
+            'platform' => 'main',
+        ]);
+
+        $this->mockSms();
+
+        // Register flow on nopay with the SAME phone + national code
+        $this->withHeaders(['X-Platform' => 'nopay'])
+            ->postJson('/api/auth/send-otp', ['phone' => '09120000020'])
+            ->assertOk();
+
+        $code = Cache::get('otp:09120000020');
+
+        $response = $this->withHeaders(['X-Platform' => 'nopay'])
+            ->postJson('/api/auth/verify-otp', ['phone' => '09120000020', 'code' => $code]);
+
+        $response->assertOk();
+        $response->assertJson(['requires_registration' => true]);
+
+        // CRITICAL: the shahkar API must NOT be called (cost saving).
+        // If it were called, the mock would fail the test with "no expectation".
+        $this->mock(ShahkarService::class, function ($mock) {
+            $mock->shouldNotReceive('verify');
+        });
+
+        $reg = $this->withHeaders(['X-Platform' => 'nopay'])
+            ->postJson('/api/auth/shahkar-verify', [
+                'token' => $response->json('token'),
+                'first_name' => 'علی',
+                'last_name' => 'نوپی',
+                'national_code' => '0011223344',
+                'birth_date' => '1370-01-15',
+            ]);
+
+        $reg->assertOk();
+        $reg->assertJsonStructure(['token', 'user']);
+
+        // The new nopay account is created and marked verified
+        $nopayUser = User::withoutTenantScope()
+            ->where('phone', '09120000020')
+            ->where('platform', 'nopay')
+            ->first();
+        $this->assertNotNull($nopayUser);
+        $this->assertTrue((bool) $nopayUser->shahkar_verified);
+    }
+
+    public function test_shahkar_api_is_called_when_phone_differs_across_platforms(): void
+    {
+        // A user verified on 'main' with a DIFFERENT phone
+        User::withoutTenantScope()->create([
+            'name' => 'مریم اصلی',
+            'first_name' => 'مریم',
+            'last_name' => 'اصلی',
+            'email' => null,
+            'password' => bcrypt('secret'),
+            'phone' => '09120000021',
+            'phone_verified_at' => now(),
+            'national_code' => '0099887766',
+            'shahkar_verified' => true,
+            'platform' => 'main',
+        ]);
+
+        $this->mockSms();
+
+        // Same national code but DIFFERENT phone on nopay
+        $this->withHeaders(['X-Platform' => 'nopay'])
+            ->postJson('/api/auth/send-otp', ['phone' => '09120000022'])
+            ->assertOk();
+
+        $code = Cache::get('otp:09120000022');
+
+        $response = $this->withHeaders(['X-Platform' => 'nopay'])
+            ->postJson('/api/auth/verify-otp', ['phone' => '09120000022', 'code' => $code]);
+
+        $response->assertOk();
+
+        // The shahkar API MUST be called because the phone differs
+        $this->mock(ShahkarService::class, function ($mock) {
+            $mock->shouldReceive('verify')->andReturn(['success' => true, 'matched' => true]);
+        });
+
+        $reg = $this->withHeaders(['X-Platform' => 'nopay'])
+            ->postJson('/api/auth/shahkar-verify', [
+                'token' => $response->json('token'),
+                'first_name' => 'مریم',
+                'last_name' => 'نوپی',
+                'national_code' => '0099887766',
+                'birth_date' => '1375-05-20',
+            ]);
+
+        $reg->assertOk();
+        $reg->assertJsonStructure(['token', 'user']);
+    }
+
     public function test_callback_resolves_payment_by_order_platform(): void
     {
         // Build a nopay order + pending payment directly (bypass gateway).

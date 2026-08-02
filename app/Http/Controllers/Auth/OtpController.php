@@ -141,20 +141,33 @@ class OtpController extends Controller
         }
 
         $normalizedMobile = $this->normalizeMobile($phone);
-        $result = $this->shahkar->verify($nationalCode, $normalizedMobile);
 
-        if (! $result['success']) {
-            return response()->json([
-                'message' => $result['message'] ?? 'خطا در احراز هویت',
-                'error_code' => 'SHAHKAR_FAILED',
-            ], 422);
-        }
+        // Cost saving: if this exact phone + national code was already
+        // shahkar-verified on ANOTHER platform, reuse that verification
+        // instead of calling the shahkar API again (each call costs money).
+        $verifiedOnOtherPlatform = User::withoutTenantScope()
+            ->where('national_code', $nationalCode)
+            ->where('phone', $normalizedMobile)
+            ->where('platform', '!=', $platform)
+            ->where('shahkar_verified', true)
+            ->exists();
 
-        if (! ($result['matched'] ?? false)) {
-            return response()->json([
-                'message' => 'کد ملی و شماره موبایل مطابقت ندارند',
-                'error_code' => 'NATIONAL_CODE_MISMATCH',
-            ], 422);
+        if (! $verifiedOnOtherPlatform) {
+            $result = $this->shahkar->verify($nationalCode, $normalizedMobile);
+
+            if (! $result['success']) {
+                return response()->json([
+                    'message' => $result['message'] ?? 'خطا در احراز هویت',
+                    'error_code' => 'SHAHKAR_FAILED',
+                ], 422);
+            }
+
+            if (! ($result['matched'] ?? false)) {
+                return response()->json([
+                    'message' => 'کد ملی و شماره موبایل مطابقت ندارند',
+                    'error_code' => 'NATIONAL_CODE_MISMATCH',
+                ], 422);
+            }
         }
 
         $apiToken = Str::random(64);
