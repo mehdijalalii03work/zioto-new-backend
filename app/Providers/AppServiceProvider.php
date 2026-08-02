@@ -7,7 +7,9 @@ use App\Models\User;
 use App\Observers\HesabfaObserver;
 use App\Observers\ProductImageObserver;
 use App\Observers\StockReservationObserver;
+use App\Support\TenantScope;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -26,6 +28,13 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Eloquent builders can call ->withoutTenantScope() directly
+        // (e.g. Filament's getEloquentQuery() returns a Builder).
+        Builder::macro('withoutTenantScope', function (): Builder {
+            /** @var Builder $this */
+            return $this->withoutGlobalScope(TenantScope::class);
+        });
+
         Order::observe(HesabfaObserver::class);
         Order::observe(StockReservationObserver::class);
         ProductImage::observe(ProductImageObserver::class);
