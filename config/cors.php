@@ -11,6 +11,10 @@ return [
         'https://sawiss.com',
         'https://pay.sawiss.com',
         'https://backend.sawiss.com',
+        // stage
+        'http://194.5.188.212:3001',
+        'http://194.5.188.212:8001',
+        // local
         'http://localhost:3000',
         'http://localhost:8000',
     ],
