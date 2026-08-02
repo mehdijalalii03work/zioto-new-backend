@@ -91,6 +91,21 @@ class OrdersTable
                         default => $state,
                     }),
 
+                TextColumn::make('platform')
+                    ->label('پلتفرم')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'main' => 'info',
+                        'nopay' => 'success',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'main' => 'زیوتو',
+                        'nopay' => 'نوپی',
+                        default => $state ?? '—',
+                    })
+                    ->toggleable(),
+
                 TextColumn::make('payments.gateway')
                     ->label('درگاه')
                     ->badge()
@@ -137,6 +152,13 @@ class OrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('platform')
+                    ->label('پلتفرم')
+                    ->placeholder('همه')
+                    ->options([
+                        'main' => 'زیوتو',
+                        'nopay' => 'نوپی',
+                    ]),
                 SelectFilter::make('gateway')
                     ->label('درگاه پرداخت')
                     ->placeholder('همه')

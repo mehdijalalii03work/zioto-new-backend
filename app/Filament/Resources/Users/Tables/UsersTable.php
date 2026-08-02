@@ -13,6 +13,7 @@ use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 
@@ -63,6 +64,22 @@ class UsersTable
                     ->sortable()
                     ->toggleable(),
 
+                TextColumn::make('platform')
+                    ->label('پلتفرم')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'main' => 'info',
+                        'nopay' => 'success',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'main' => 'زیوتو',
+                        'nopay' => 'نوپی',
+                        default => $state ?? '—',
+                    })
+                    ->sortable()
+                    ->toggleable(),
+
                 TextColumn::make('roles.name')
                     ->label('نقش')
                     ->sortable()
@@ -75,8 +92,14 @@ class UsersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                TrashedFilter::make(),
-            ])
+            SelectFilter::make('platform')
+                ->label('پلتفرم')
+                ->options([
+                    'main' => 'زیوتو',
+                    'nopay' => 'نوپی',
+                ]),
+            TrashedFilter::make(),
+        ])
             ->defaultPaginationPageOption(25)
             ->recordActions([
                 ViewAction::make()

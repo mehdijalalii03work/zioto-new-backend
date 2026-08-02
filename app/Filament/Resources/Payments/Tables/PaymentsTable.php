@@ -42,6 +42,21 @@ class PaymentsTable
                     ->sortable()
                     ->formatStateUsing(fn ($state): string => number_format($state / 10)),
 
+                TextColumn::make('platform')
+                    ->label('پلتفرم')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'main' => 'info',
+                        'nopay' => 'success',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'main' => 'زیوتو',
+                        'nopay' => 'نوپی',
+                        default => $state ?? '—',
+                    })
+                    ->toggleable(),
+
                 TextColumn::make('payment_method')
                     ->label('روش پرداخت')
                     ->badge()
@@ -106,6 +121,13 @@ class PaymentsTable
                         'successful' => 'موفق',
                         'failed' => 'ناموفق',
                         'refunded' => 'مسترد شده',
+                    ]),
+
+                SelectFilter::make('platform')
+                    ->label('پلتفرم')
+                    ->options([
+                        'main' => 'زیوتو',
+                        'nopay' => 'نوپی',
                     ]),
 
                 SelectFilter::make('payment_method')
