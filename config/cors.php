@@ -9,7 +9,6 @@ return [
         env('FRONTEND_URL', 'http://localhost:3000'),
         env('APP_URL'),
         'https://sawiss.com',
-        'https://new.sawiss.com',
         'https://pay.sawiss.com',
         'https://backend.sawiss.com',
         'http://localhost:3000',
