@@ -32,6 +32,7 @@ return [
         'X-XSRF-TOKEN',
         'Cache-Control',
         'Pragma',
+        'X-Platform',
     ],
 
     'exposed_headers' => [],
