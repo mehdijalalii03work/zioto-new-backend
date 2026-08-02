@@ -57,6 +57,7 @@ class PaymentForm
                                         'online' => 'آنلاین',
                                         'card_to_card' => 'کارت به کارت',
                                         'installment' => 'اقساطی',
+                                        'installment_nofee' => 'اقساطی بدون کارمزد',
                                     ]),
                             ]),
                     ])

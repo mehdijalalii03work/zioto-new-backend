@@ -55,6 +55,7 @@ class OrderForm
                                     ->options([
                                         'online' => 'آنلاین',
                                         'installment' => 'قسطی',
+                                        'installment_nofee' => 'قسطی بدون کارمزد',
                                     ]),
 
                                 Select::make('payment_status')

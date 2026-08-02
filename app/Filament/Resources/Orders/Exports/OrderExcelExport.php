@@ -50,7 +50,11 @@ class OrderExcelExport
         ];
         $status = $statusLabels[$order->status] ?? $order->status;
 
-        $gatewayLabels = ['online' => 'پرداخت آنلاین', 'installment' => 'اقساط'];
+        $gatewayLabels = [
+            'online' => 'پرداخت آنلاین',
+            'installment' => 'اقساط',
+            'installment_nofee' => 'اقساط بدون کارمزد',
+        ];
         $gateway = $gatewayLabels[$order->payment_method] ?? $order->payment_method;
 
         $dateStr = $order->created_at ? $this->toJalali($order->created_at->format('Y-m-d H:i:s')) : '';

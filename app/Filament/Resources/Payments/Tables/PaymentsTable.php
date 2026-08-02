@@ -49,12 +49,14 @@ class PaymentsTable
                         'online' => 'info',
                         'card_to_card' => 'warning',
                         'installment' => 'primary',
+                        'installment_nofee' => 'primary',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'online' => 'آنلاین',
                         'card_to_card' => 'کارت به کارت',
                         'installment' => 'اقساطی',
+                        'installment_nofee' => 'اقساطی بدون کارمزد',
                         default => $state,
                     }),
 
@@ -112,6 +114,7 @@ class PaymentsTable
                         'online' => 'آنلاین',
                         'card_to_card' => 'کارت به کارت',
                         'installment' => 'اقساطی',
+                        'installment_nofee' => 'اقساطی بدون کارمزد',
                     ]),
 
                 TrashedFilter::make(),

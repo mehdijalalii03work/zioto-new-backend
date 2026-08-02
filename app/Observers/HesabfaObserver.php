@@ -241,7 +241,8 @@ class HesabfaObserver
             }
         }
 
-        if ($order->payment_method === 'installment') {
+        // 'installment_nofee' (e.g. nopay) has no fee row, so no fee item code is required
+        if ($this->shouldAddInstallmentFee($order)) {
             $feeCode = config('hesabfa.installment_fee_item_code');
             if (empty($feeCode)) {
                 return ['success' => false, 'message' => 'کد کالای کارمزد خرید اقساطی در تنظیمات وارد نشده است'];
@@ -395,9 +396,18 @@ class HesabfaObserver
         ];
     }
 
+    /**
+     * Only 'installment' (fee-charging gateways like digipay/smartis/kamanlend)
+     * gets a fee row. 'installment_nofee' (e.g. nopay) must NOT get one.
+     */
+    private function shouldAddInstallmentFee(Order $order): bool
+    {
+        return $order->payment_method === 'installment';
+    }
+
     private function buildInstallmentFeeItem(Order $order, int $rowNumber): ?array
     {
-        if ($order->payment_method !== 'installment') {
+        if (! $this->shouldAddInstallmentFee($order)) {
             return null;
         }
 

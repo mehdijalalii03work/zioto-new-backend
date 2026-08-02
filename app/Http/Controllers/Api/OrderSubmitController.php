@@ -108,7 +108,9 @@ class OrderSubmitController extends Controller
             $totalAmount += $shippingCost;
 
             $gateway = $validated['gateway'] ?? 'parsian';
-            $paymentMethod = InstallmentService::isInstallmentGateway($gateway) ? 'installment' : 'online';
+            $paymentMethod = InstallmentService::isInstallmentGateway($gateway)
+                ? (InstallmentService::isFeeGateway($gateway) ? 'installment' : 'installment_nofee')
+                : 'online';
             $installmentFee = 0;
 
             if (InstallmentService::isFeeGateway($gateway)) {
