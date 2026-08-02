@@ -225,6 +225,7 @@ class TenantAuthFlowTest extends TestCase
         $reg->assertJsonStructure(['token', 'user']);
     }
 
+    #[RunInSeparateProcess]
     public function test_callback_resolves_payment_by_order_platform(): void
     {
         // Build a nopay order + pending payment directly (bypass gateway).
