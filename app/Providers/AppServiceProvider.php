@@ -52,23 +52,21 @@ class AppServiceProvider extends ServiceProvider
         Schedule::command('hesabfa:recalculate-reserved')->dailyAt('03:00')->withoutOverlapping();
 
         RateLimiter::for('otp', function (Request $request) {
-            if (app()->isLocal()) {
-                return Limit::none();
-            }
-
+            // In production, key by phone so one user's OTP requests don't
+            // exhaust a shared key (all users behind Nginx share one IP).
             $phone = $request->input('phone');
 
-            return Limit::perHour(5)->by($phone ?? $request->ip())->response(function () {
+            return Limit::perHour(5)->by($phone ?: $request->ip())->response(function () {
                 return response()->json(['message' => 'تعداد درخواست‌ها بیش از حد مجاز است، لطفاً بعداً تلاش کنید'], 429);
             });
         });
 
         RateLimiter::for('shahkar', function (Request $request) {
-            if (app()->isLocal()) {
-                return Limit::none();
-            }
+            // Key by the national code being verified (sent in the body),
+            // falling back to IP. Prevents a shared Nginx IP blocking everyone.
+            $nationalCode = $request->input('national_code');
 
-            return Limit::perHour(5)->by($request->ip())->response(function () {
+            return Limit::perHour(5)->by($nationalCode ?: $request->ip())->response(function () {
                 return response()->json(['message' => 'تعداد درخواست‌ها بیش از حد مجاز است، لطفاً بعداً تلاش کنید'], 429);
             });
         });
