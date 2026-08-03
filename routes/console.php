@@ -15,3 +15,7 @@ Schedule::command('orders:cancel-unpaid')
 Schedule::command('pulse:check')
     ->everyMinute()
     ->withoutOverlapping(5);
+
+Schedule::command('backup:run')
+    ->dailyAt('03:00')
+    ->withoutOverlapping();
