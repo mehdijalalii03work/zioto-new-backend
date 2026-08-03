@@ -88,7 +88,13 @@ class PaymentController extends Controller
 
         $nationalCode = $order->user?->national_code ?? '';
         $phone = $order->address?->receiver_phone ?? $order->user?->phone ?? '';
-        $callbackUrl = route('payment.callback', ['orderId' => $order->id, 'gateway' => $validated['gateway']]);
+
+        // Nopay gateway requires the return URL to match the merchant panel's
+        // registered URL1 (Silent Response) exactly — no orderId/gateway suffix.
+        $callbackUrl = $validated['gateway'] === 'nopay'
+            ? config('payment.drivers.nopay.callbackUrl') ?: route('payment.callback', ['orderId' => $order->id, 'gateway' => 'nopay'])
+            : route('payment.callback', ['orderId' => $order->id, 'gateway' => $validated['gateway']]);
+
         $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
         $redirectToFrontend = $frontendUrl.'/confirm?order_id='.$order->id;
 

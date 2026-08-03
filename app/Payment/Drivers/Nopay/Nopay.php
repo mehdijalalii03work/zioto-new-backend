@@ -62,12 +62,19 @@ class Nopay extends Driver
     {
         $encryptedPassword = $this->encryptPassword($this->settings->password);
 
+        // The return URL must match EXACTLY what the merchant panel has
+        // registered (error 282 otherwise). The registered URL1 (Silent
+        // Response) is the bare callback endpoint — no orderId/gateway suffix.
+        $returnUrl = ! empty($this->settings->callbackUrl)
+            ? $this->settings->callbackUrl
+            : ($this->settings->nopayCallbackUrl ?? '');
+
         $payload = [
             'serviceUserName' => $this->settings->username,
             'servicePassword' => $encryptedPassword,
             'cellNumber' => $this->settings->cellNumber,
             'amount' => (int) $this->invoice->getAmount(),
-            'returnURL' => $this->settings->callbackUrl,
+            'returnURL' => $returnUrl,
             'merchantNumber' => $this->settings->merchantNumber,
         ];
 

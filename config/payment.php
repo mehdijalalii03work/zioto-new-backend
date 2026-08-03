@@ -61,7 +61,9 @@ $customConfig = [
             'cellNumber' => env('NOPAY_CELL_NUMBER', ''),
             'requestFormat' => env('NOPAY_REQUEST_FORMAT', 'flat'),
             'verifySsl' => env('NOPAY_VERIFY_SSL', false),
-            'callbackUrl' => '',
+            // If the gateway rejects the return URL (error 282), set the
+            // exact URL registered in the merchant panel here.
+            'callbackUrl' => env('NOPAY_CALLBACK_URL', ''),
         ],
     ],
 
