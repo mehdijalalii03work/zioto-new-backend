@@ -130,7 +130,7 @@ class OrderSubmitController extends Controller
 
             $order = Order::create([
                 'user_id' => $user->id,
-                'platform' => \App\Support\Platform::fromRequest($request),
+                'platform' => \App\Support\Platform::fromRequest(),
                 'status' => 'pending',
                 'total_amount' => $totalAmount,
                 'payment_method' => $paymentMethod,
