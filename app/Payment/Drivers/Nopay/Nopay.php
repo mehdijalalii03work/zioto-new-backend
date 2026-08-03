@@ -221,8 +221,12 @@ class Nopay extends Driver
      * Case-insensitive lookup helper for gateway responses whose JSON key casing
      * is not guaranteed (e.g. Result/result, Notification/notification).
      */
-    private function arrayGet(array $data, string $key, mixed $default = null): mixed
+    private function arrayGet(mixed $data, string $key, mixed $default = null): mixed
     {
+        if (! is_array($data)) {
+            return $default;
+        }
+
         if (array_key_exists($key, $data)) {
             return $data[$key];
         }
