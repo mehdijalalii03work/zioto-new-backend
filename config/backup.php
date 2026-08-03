@@ -26,7 +26,7 @@ return [
                  * The list of directories and files that will be included in the backup.
                  */
                 'include' => [
-                    base_path(),
+                    base_path('storage'),
                     // storage_path(),  // Include if you use zero downtime deployments and don't follow symlinks
                 ],
 
