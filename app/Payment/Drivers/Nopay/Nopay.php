@@ -177,11 +177,18 @@ class Nopay extends Driver
 
     private function apiRequest(string $path, array $payload, ?string $serviceName = null): array
     {
-        $url = rtrim($this->settings->apiBaseUrl, '/').'/'.ltrim($path, '/');
+        $format = $this->settings->requestFormat ?? 'flat';
 
-        // The gateway's sample curl wraps the payload in InputValue/ServiceName,
-        // while the official PDF documentation sends a flat body.
-        $requestBody = ($this->settings->requestFormat ?? 'flat') === 'wrapper' && $serviceName
+        // The gateway's sample curl wraps the payload in InputValue/ServiceName
+        // and posts to the BASE URL only (no path suffix). The function name
+        // lives inside the body as ServiceName.
+        // The PDF docs instead append the path to the URL with a flat body.
+        $isWrapper = $format === 'wrapper' && $serviceName;
+        $url = $isWrapper
+            ? rtrim($this->settings->apiBaseUrl, '/')
+            : rtrim($this->settings->apiBaseUrl, '/').'/'.ltrim($path, '/');
+
+        $requestBody = $isWrapper
             ? ['InputValue' => $payload, 'ServiceName' => $serviceName]
             : $payload;
 
