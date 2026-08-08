@@ -11,6 +11,7 @@ use App\Models\OrderShipping;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
 use App\Services\InstallmentService;
+use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -63,13 +64,20 @@ class OrderSubmitController extends Controller
         $validated = $request->validated();
 
         $cartItems = Cart::where('user_id', $user->id)
-            ->with('product:id,name,price')
+            ->with('product:id,name,price,is_nopay')
             ->get();
 
         if ($cartItems->isEmpty()) {
             return response()->json([
                 'message' => 'سبد خرید شما خالی است',
                 'error_code' => 'CART_EMPTY',
+            ], 422);
+        }
+
+        if (Platform::isNopay($request) && $cartItems->contains(fn (Cart $item) => ! $item->product->is_nopay)) {
+            return response()->json([
+                'message' => 'برخی محصولات سبد خرید شما برای پرداخت اقساطی نوپی در دسترس نیستند',
+                'error_code' => 'PRODUCT_NOT_ELIGIBLE_FOR_NOPAY',
             ], 422);
         }
 
@@ -130,7 +138,7 @@ class OrderSubmitController extends Controller
 
             $order = Order::create([
                 'user_id' => $user->id,
-                'platform' => \App\Support\Platform::fromRequest(),
+                'platform' => Platform::fromRequest(),
                 'status' => 'pending',
                 'total_amount' => $totalAmount,
                 'payment_method' => $paymentMethod,

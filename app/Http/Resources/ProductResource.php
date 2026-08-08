@@ -43,6 +43,7 @@ class ProductResource extends JsonResource
             'badge' => null,
             'stock' => $this->stock_quantity > 0,
             'contact_only' => (bool) $this->contact_only,
+            'is_nopay' => (bool) $this->is_nopay,
             'desc' => strip_tags($this->description ?? ''),
             'full_desc' => $this->description ?? '',
             'image' => $primaryImage ? asset('storage/'.$primaryImage->image_path) : null,

@@ -7,8 +7,10 @@ use App\Http\Requests\StoreCartRequest;
 use App\Http\Requests\UpdateCartRequest;
 use App\Http\Resources\CartResource;
 use App\Models\Cart;
+use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Modules\Product\Models\Product;
 
 class CartController extends Controller
 {
@@ -32,8 +34,15 @@ class CartController extends Controller
         $productId = $validated['product_id'];
         $quantity = (int) ($validated['quantity'] ?? 1);
 
+        if (Platform::isNopay($request) && ! Product::nopayEligible()->whereKey($productId)->exists()) {
+            return response()->json([
+                'message' => 'این محصول برای خرید اقساطی نوپی در دسترس نیست',
+                'error_code' => 'PRODUCT_NOT_ELIGIBLE_FOR_NOPAY',
+            ], 422);
+        }
+
         Cart::updateOrCreate(
-            ['user_id' => $userId, 'product_id' => $productId, 'platform' => \App\Support\Platform::fromRequest($request)],
+            ['user_id' => $userId, 'product_id' => $productId, 'platform' => Platform::fromRequest($request)],
             ['quantity' => $quantity]
         );
 

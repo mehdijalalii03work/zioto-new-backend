@@ -86,6 +86,17 @@ class PaymentController extends Controller
             return response()->json(['message' => 'درخواست پرداخت قبلاً ثبت شده است', 'error_code' => 'PAYMENT_ALREADY_INITIATED'], 422);
         }
 
+        if ($validated['gateway'] === 'nopay') {
+            $order->load('items.product:id,is_nopay');
+
+            if ($order->items->contains(fn ($item) => ! $item->product?->is_nopay)) {
+                return response()->json([
+                    'message' => 'برخی محصولات سفارش برای پرداخت اقساطی نوپی در دسترس نیستند',
+                    'error_code' => 'PRODUCT_NOT_ELIGIBLE_FOR_NOPAY',
+                ], 422);
+            }
+        }
+
         $nationalCode = $order->user?->national_code ?? '';
         $phone = $order->address?->receiver_phone ?? $order->user?->phone ?? '';
 

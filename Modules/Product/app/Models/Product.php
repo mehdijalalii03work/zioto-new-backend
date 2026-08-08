@@ -20,6 +20,10 @@ class Product extends Model implements HasMedia
 {
     use HasFactory, InteractsWithMedia;
 
+    protected $attributes = [
+        'is_nopay' => false,
+    ];
+
     protected $fillable = [
         'category_id',
         'brand_id',
@@ -49,6 +53,7 @@ class Product extends Model implements HasMedia
         'hesabfa_exclude_from_sync',
         'hesabfa_stock_locked',
         'hesabfa_stock_synced_at',
+        'is_nopay',
     ];
 
     protected function casts(): array
@@ -70,6 +75,7 @@ class Product extends Model implements HasMedia
             'hesabfa_stock_locked' => 'boolean',
             'hesabfa_stock_synced_at' => 'datetime',
             'contact_only' => 'boolean',
+            'is_nopay' => 'boolean',
         ];
     }
 
@@ -161,6 +167,11 @@ class Product extends Model implements HasMedia
     public function scopePubliclyListed($query)
     {
         return $query->published()->publicVisible();
+    }
+
+    public function scopeNopayEligible($query)
+    {
+        return $query->where('is_nopay', true);
     }
 
     public function registerMediaCollections(): void
