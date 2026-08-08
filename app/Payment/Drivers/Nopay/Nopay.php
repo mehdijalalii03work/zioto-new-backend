@@ -72,7 +72,7 @@ class Nopay extends Driver
         $payload = [
             'serviceUserName' => $this->settings->username,
             'servicePassword' => $encryptedPassword,
-            'cellNumber' => $this->settings->cellNumber,
+            'cellNumber' => $this->settings->cellNumber ?: ($this->invoice->getDetails()['phone'] ?? ''),
             'amount' => (int) $this->invoice->getAmount(),
             'returnURL' => $returnUrl,
             'merchantNumber' => $this->settings->merchantNumber,

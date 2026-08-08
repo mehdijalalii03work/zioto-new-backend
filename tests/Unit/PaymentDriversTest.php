@@ -339,6 +339,41 @@ class PaymentDriversTest extends TestCase
         $this->assertArrayNotHasKey('serviceUserName', $sentBody);
     }
 
+    public function test_nopay_purchase_falls_back_to_invoice_phone_when_cell_number_empty(): void
+    {
+        $settings = array_merge($this->config['drivers']['nopay'], [
+            'apiBaseUrl' => 'https://op-cpg-wrapper.bmicc.ir:44377/WEBAPIWrapper/ConsumerExternalWebapiWrapper',
+            'username' => 'sawiss',
+            'password' => 'Ss@123456',
+            'publicKey' => 'WtX3qPVc1lrHX/+ug9iILQ==',
+            'privateKey' => 'd48mRc+Szge4lZoDr86Q5Q==',
+            'merchantNumber' => '2200053',
+            'cellNumber' => '',
+            'callbackUrl' => 'https://example.com/callback',
+        ]);
+
+        $invoice = (new Invoice)->amount(100000)->detail(['phone' => '09351112233']);
+
+        $response = new Response(200, [], json_encode([
+            'Result' => [
+                'entity' => [
+                    'token' => 'TOKEN-PHONE',
+                    'redirectURL' => 'https://gateway/pay',
+                ],
+                'notification' => ['errors' => [], 'hasErrors' => false],
+            ],
+            'Notification' => ['errors' => [], 'hasErrors' => false],
+        ]));
+
+        [$driver, $handler] = $this->nopayDriver($settings, $invoice, $response);
+
+        $driver->purchase();
+
+        $sentBody = json_decode($handler->getLastRequest()->getBody()->getContents(), true);
+
+        $this->assertSame('09351112233', $sentBody['cellNumber']);
+    }
+
     public function test_nopay_purchase_throws_on_notification_errors(): void
     {
         $settings = array_merge($this->config['drivers']['nopay'], [
