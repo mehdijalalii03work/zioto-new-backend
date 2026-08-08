@@ -298,4 +298,48 @@ class PaymentControllerCallbackTest extends TestCase
         $response->assertRedirect();
         $this->assertStringContainsString('/checkout', $response->headers->get('Location'));
     }
+
+    #[RunInSeparateProcess]
+    public function test_bare_callback_resolves_payment_by_tv_token_and_marks_paid(): void
+    {
+        [$order, $payment] = $this->makeOrderWithPendingPayment('nopay');
+
+        $receipt = Mockery::mock(Receipt::class);
+        $receipt->shouldReceive('getReferenceId')->andReturn('REF-NOPAY-1');
+        $receipt->shouldReceive('getDetails')->andReturn([]);
+
+        $mock = Mockery::mock('overload:'.ShetabitPayment::class);
+        $mock->shouldReceive('via')->andReturnSelf();
+        $mock->shouldReceive('amount')->andReturnSelf();
+        $mock->shouldReceive('transactionId')->andReturnSelf();
+        $mock->shouldReceive('verify')->andReturn($receipt);
+
+        $response = $this->get("/api/payment/callback?tv={$payment->transaction_id}");
+
+        $response->assertRedirect();
+        $this->assertStringContainsString('/confirm?order_id='.$order->id, $response->headers->get('Location'));
+
+        $payment->refresh();
+        $order->refresh();
+
+        $this->assertSame('paid', $payment->status);
+        $this->assertSame('paid', $order->payment_status);
+        $this->assertSame('confirmed', $order->status);
+    }
+
+    public function test_bare_callback_with_unknown_token_redirects_to_checkout(): void
+    {
+        $response = $this->get('/api/payment/callback?tv=unknown-token');
+
+        $response->assertRedirect();
+        $this->assertStringContainsString('/checkout', $response->headers->get('Location'));
+    }
+
+    public function test_bare_callback_without_token_redirects_to_checkout(): void
+    {
+        $response = $this->get('/api/payment/callback');
+
+        $response->assertRedirect();
+        $this->assertStringContainsString('/checkout', $response->headers->get('Location'));
+    }
 }

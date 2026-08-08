@@ -107,6 +107,7 @@ Route::post('/payment/calculate-fee', [PaymentController::class, 'calculateFee']
 
 Route::prefix('payment')->group(function () {
     Route::post('/init', [PaymentController::class, 'init']);
+    Route::match(['get', 'post'], '/callback', [PaymentController::class, 'callbackByToken'])->name('payment.callback.bare');
     Route::match(['get', 'post'], '/callback/{orderId}/{gateway}', [PaymentController::class, 'callback'])->name('payment.callback');
     Route::get('/status/{orderId}', [PaymentController::class, 'status'])->middleware('auth.token');
 });

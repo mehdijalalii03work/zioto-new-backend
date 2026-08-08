@@ -176,6 +176,37 @@ class PaymentController extends Controller
         }
     }
 
+    public function callbackByToken(Request $request): RedirectResponse
+    {
+        $token = $request->input('tv') ?? $request->input('Token') ?? $request->input('token') ?? null;
+
+        Log::channel('payment')->info('Payment callback (bare) received', [
+            'method' => $request->method(),
+            'query' => $request->query(),
+            'post' => $request->post(),
+        ]);
+
+        if (! $token) {
+            return redirect(config('app.frontend_url', 'http://localhost:3000').'/checkout');
+        }
+
+        $payment = Payment::withoutTenantScope()
+            ->where('transaction_id', $token)
+            ->whereIn('status', ['pending', 'processing'])
+            ->latest('id')
+            ->first();
+
+        if (! $payment) {
+            Log::channel('payment')->warning('Payment callback (bare) with unknown token', [
+                'token' => $token,
+            ]);
+
+            return redirect(config('app.frontend_url', 'http://localhost:3000').'/checkout');
+        }
+
+        return $this->callback($request, (string) $payment->order_id, $payment->gateway);
+    }
+
     public function callback(Request $request, string $orderId, string $gateway): RedirectResponse
     {
         Log::channel('payment')->info('Payment callback received', [
@@ -192,7 +223,7 @@ class PaymentController extends Controller
         $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
 
         $callbackTransactionId = $request->input('Token') ?? $request->input('token')
-            ?? $request->input('uuid') ?? null;
+            ?? $request->input('uuid') ?? $request->input('tv') ?? null;
 
         $resolvedPayment = null;
 
