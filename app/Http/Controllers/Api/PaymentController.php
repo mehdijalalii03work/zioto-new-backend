@@ -95,7 +95,7 @@ class PaymentController extends Controller
             ? config('payment.drivers.nopay.callbackUrl') ?: route('payment.callback', ['orderId' => $order->id, 'gateway' => 'nopay'])
             : route('payment.callback', ['orderId' => $order->id, 'gateway' => $validated['gateway']]);
 
-        $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
+        $frontendUrl = $this->frontendUrlFor($validated['gateway']);
         $redirectToFrontend = $frontendUrl.'/confirm?order_id='.$order->id;
 
         $invoice = (new Invoice)->amount($order->total_amount)->detail([
@@ -220,7 +220,7 @@ class PaymentController extends Controller
         // Callback is a public gateway redirect (no X-Platform header):
         // must resolve the order regardless of platform.
         $order = Order::withoutTenantScope()->findOrFail($orderId);
-        $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
+        $frontendUrl = $this->frontendUrlFor($gateway);
 
         $callbackTransactionId = $request->input('Token') ?? $request->input('token')
             ?? $request->input('uuid') ?? $request->input('tv') ?? null;
@@ -630,5 +630,12 @@ class PaymentController extends Controller
         }
 
         return ['valid' => true];
+    }
+
+    private function frontendUrlFor(string $gateway): string
+    {
+        return $gateway === 'nopay'
+            ? config('app.nopay_frontend_url', 'https://pay.sawiss.com')
+            : config('app.frontend_url', 'http://localhost:3000');
     }
 }

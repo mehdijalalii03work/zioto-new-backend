@@ -125,4 +125,6 @@ return [
 
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
 
+    'nopay_frontend_url' => env('NOPAY_FRONTEND_URL', 'https://pay.sawiss.com'),
+
 ];

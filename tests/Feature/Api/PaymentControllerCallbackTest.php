@@ -317,7 +317,7 @@ class PaymentControllerCallbackTest extends TestCase
         $response = $this->get("/api/payment/callback?tv={$payment->transaction_id}");
 
         $response->assertRedirect();
-        $this->assertStringContainsString('/confirm?order_id='.$order->id, $response->headers->get('Location'));
+        $this->assertStringContainsString('https://pay.sawiss.com/confirm?order_id='.$order->id, $response->headers->get('Location'));
 
         $payment->refresh();
         $order->refresh();
