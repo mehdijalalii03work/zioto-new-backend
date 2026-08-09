@@ -180,7 +180,7 @@ class OrderExcelExport
         $sheet->setTitle('گزارش');
         $sheet->setRightToLeft(true);
 
-        $senderName = ' فرستنده : شرکت تجارت الکترونیکی فناوران ساویس مرجان';
+        $senderName = ' فرستنده : شرکت صنعتی بازرگانی فن‌آوران بین الملل ساویس';
         $senderAddress = ' " تهران - خ کریم خان زند تقاطع حافظ مجتمع الماس کریم خان طبقه اول اداری واحد109 اداری " ';
         $senderInfo = ' تلفن: 09924457068-86038543  -  کدپستی: 1598738119  ';
 
@@ -347,8 +347,8 @@ class OrderExcelExport
             $c = $sheet->getCell("E$r10");
             $c->setValue("=ROUND(INDEX('خروجی اکسل سایت'!A:X,G$r10,15)/10000000,0)");
             $c->getStyle()->applyFromArray([
-                'font' => ['name' => 'B Titr', 'size' => 20, 'bold' => true],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'FFFF00']],
+                'font' => ['name' => 'B Titr', 'size' => 20, 'bold' => true, 'color' => ['rgb' => 'FF0000']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => 'FFFFFF']],
                 'alignment' => ['horizontal' => 'center', 'vertical' => 'center'],
             ]);
 
