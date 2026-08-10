@@ -13,7 +13,7 @@ class ShippingRate extends Model
     protected $fillable = [
         'shipping_method_id', 'rate_type', 'province_id', 'city_id',
         'min_weight', 'max_weight', 'min_cart_total', 'max_cart_total',
-        'base_rate', 'per_kg_rate', 'free_shipping_min', 'tax_rate',
+        'base_rate', 'per_kg_rate', 'free_shipping_min', 'free_shipping_max', 'tax_rate',
         'estimated_days_min', 'estimated_days_max',
     ];
 
@@ -27,6 +27,7 @@ class ShippingRate extends Model
             'base_rate' => 'decimal:0',
             'per_kg_rate' => 'decimal:0',
             'free_shipping_min' => 'decimal:0',
+            'free_shipping_max' => 'decimal:0',
         ];
     }
 

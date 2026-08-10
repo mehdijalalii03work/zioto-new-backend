@@ -131,8 +131,9 @@ class ShippingMethodForm
                                             ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) preg_replace('/[^\d]/', '', (string) $state) : null)
                                             ->nullable(),
 
-                                        TextInput::make('free_shipping_min')
-                                            ->label('آستانه ارسال رایگان (ریال)')
+                                        TextInput::make('free_shipping_max')
+                                            ->label('حداکثر مبلغ ارسال رایگان (ریال)')
+                                            ->helperText('سبد خرید کمتر یا مساوی این مقدار → رایگان')
                                             ->mask(RawJs::make('$money($input)'))
                                             ->stripCharacters(',')
                                             ->numeric()
@@ -140,10 +141,12 @@ class ShippingMethodForm
                                             ->nullable(),
 
                                         TextInput::make('free_shipping_min')
-                                            ->label('آستانه ارسال رایگان (ریال)')
+                                            ->label('حداقل مبلغ ارسال رایگان (ریال)')
+                                            ->helperText('سبد خرید بیشتر یا مساوی این مقدار → رایگان')
+                                            ->mask(RawJs::make('$money($input)'))
+                                            ->stripCharacters(',')
                                             ->numeric()
-                                            ->formatStateUsing(fn ($state) => filled($state) ? number_format((int) $state) : '')
-                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) str_replace(',', '', $state) : null)
+                                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (int) preg_replace('/[^\d]/', '', (string) $state) : null)
                                             ->nullable(),
 
                                         TextInput::make('tax_rate')

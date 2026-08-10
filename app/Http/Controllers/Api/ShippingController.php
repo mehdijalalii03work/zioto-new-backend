@@ -143,7 +143,10 @@ class ShippingController extends Controller
         }
 
         $freeShipping = false;
-        if ($rate->free_shipping_min && $cartTotal >= $rate->free_shipping_min) {
+        if ($rate->free_shipping_max && $cartTotal <= $rate->free_shipping_max) {
+            $shippingCost = 0;
+            $freeShipping = true;
+        } elseif ($rate->free_shipping_min && $cartTotal >= $rate->free_shipping_min) {
             $shippingCost = 0;
             $freeShipping = true;
         }

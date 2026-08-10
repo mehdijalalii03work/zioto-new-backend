@@ -159,6 +159,50 @@ class ShippingCalculationTest extends TestCase
             ->assertJsonPath('free_shipping', true);
     }
 
+    public function test_calculate_free_shipping_max(): void
+    {
+        $method = ShippingMethod::factory()->create(['is_active' => true]);
+        ShippingRate::factory()->create([
+            'shipping_method_id' => $method->id,
+            'rate_type' => 'cart_total',
+            'min_cart_total' => 0,
+            'max_cart_total' => 100000000,
+            'base_rate' => 80000,
+            'free_shipping_max' => 4000000,
+        ]);
+
+        $response = $this->postJson('/api/shipping/calculate', [
+            'shipping_method_id' => $method->id,
+            'cart_total' => 4000000,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('shipping_cost', 0)
+            ->assertJsonPath('free_shipping', true);
+    }
+
+    public function test_calculate_free_shipping_max_not_applied_when_over(): void
+    {
+        $method = ShippingMethod::factory()->create(['is_active' => true]);
+        ShippingRate::factory()->create([
+            'shipping_method_id' => $method->id,
+            'rate_type' => 'cart_total',
+            'min_cart_total' => 0,
+            'max_cart_total' => 100000000,
+            'base_rate' => 80000,
+            'free_shipping_max' => 4000000,
+        ]);
+
+        $response = $this->postJson('/api/shipping/calculate', [
+            'shipping_method_id' => $method->id,
+            'cart_total' => 5000000,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('shipping_cost', 80000)
+            ->assertJsonPath('free_shipping', false);
+    }
+
     public function test_calculate_post_precious_has_no_insurance(): void
     {
         $method = ShippingMethod::factory()->create(['is_active' => true, 'code' => 'post_precious']);
