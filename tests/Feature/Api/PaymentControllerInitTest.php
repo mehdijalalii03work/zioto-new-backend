@@ -2,14 +2,25 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\User;
+use App\Models\UserAddress;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
+use Shetabit\Multipay\Payment as ShetabitPayment;
 use Tests\TestCase;
 
 class PaymentControllerInitTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
+    }
 
     public function test_init_rejects_already_paid_order(): void
     {
@@ -122,5 +133,70 @@ class PaymentControllerInitTest extends TestCase
         ]);
 
         $this->assertNotEquals(422, $response->getStatusCode(), 'Init should allow retry after failed payment');
+    }
+
+    #[RunInSeparateProcess]
+    public function test_init_uses_buyer_phone_not_recipient_phone(): void
+    {
+        $buyerPhone = '09121234567';
+        $recipientPhone = '09999999999';
+
+        $user = User::factory()->create(['phone' => $buyerPhone]);
+
+        $address = UserAddress::factory()->create([
+            'user_id' => $user->id,
+            'receiver_phone' => $recipientPhone,
+        ]);
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'user_address_id' => $address->id,
+            'status' => 'pending',
+            'payment_status' => 'pending',
+            'total_amount' => 100000,
+        ]);
+
+        $capturedInvoice = null;
+
+        $mock = Mockery::mock('overload:'.ShetabitPayment::class);
+        $mock->shouldReceive('via')->andReturnSelf();
+        $mock->shouldReceive('callbackUrl')->andReturnSelf();
+        $mock->shouldReceive('purchase')->andReturnUsing(function ($invoice, $callback) use (&$capturedInvoice) {
+            $capturedInvoice = $invoice;
+            $callback(null, 'test-txn-'.uniqid());
+
+            return new class
+            {
+                public function pay()
+                {
+                    return new class
+                    {
+                        public function getAction()
+                        {
+                            return 'https://example.com/pay';
+                        }
+                    };
+                }
+            };
+        });
+
+        $response = $this->postJson('/api/payment/init', [
+            'order_id' => $order->id,
+            'gateway' => 'parsian',
+        ]);
+
+        $response->assertOk();
+
+        $this->assertNotNull($capturedInvoice, 'Invoice should have been captured');
+        $this->assertEquals(
+            $buyerPhone,
+            $capturedInvoice->getDetail('phone'),
+            'Payment should use buyer phone, not recipient phone'
+        );
+        $this->assertNotEquals(
+            $recipientPhone,
+            $capturedInvoice->getDetail('phone'),
+            'Payment should NOT use recipient phone'
+        );
     }
 }

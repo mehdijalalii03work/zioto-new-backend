@@ -85,7 +85,7 @@ class OrderSubmitController extends Controller
             $address = empty($validated['user_address_id']) ? null : $user->addresses()->with(['province', 'city'])->find($validated['user_address_id']);
 
             $buyerName = $address?->receiver_name ?: $user->name;
-            $buyerPhone = $address?->receiver_phone ?: $user->phone;
+            $buyerPhone = $user->phone;
             $nationalId = $user->national_code;
 
             $totalAmount = 0;
