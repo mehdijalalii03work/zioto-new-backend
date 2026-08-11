@@ -451,10 +451,34 @@ class HesabfaObserver
             'currency' => 'IRR',
             'currencyRate' => 1,
             'contactTitle' => $order->user?->name ?? '',
-            'note' => "سفارش {$order->id}",
+            'note' => $this->buildInvoiceNote($order),
             'invoiceItems' => $items,
             'Freight' => 0,
         ];
+    }
+
+    private function buildInvoiceNote(Order $order): string
+    {
+        $note = "سفارش {$order->id}";
+
+        if (! $order->shipping || $order->shipping->shipping_cost <= 0) {
+            $shippingMethodName = $order->shipping?->shipping_method_name ?? '';
+            $note .= "\nنحوه ارسال: رایگان";
+            if ($shippingMethodName) {
+                $note .= " - {$shippingMethodName}";
+            }
+        }
+
+        $receiverName = $order->address?->receiver_name;
+        if ($receiverName) {
+            $note .= "\nتحویل گیرنده: {$receiverName}";
+            $nationalCode = $order->address?->receiver_national_code;
+            if ($nationalCode) {
+                $note .= "\nکد ملی تحویل گیرنده: {$nationalCode}";
+            }
+        }
+
+        return $note;
     }
 
     private function saveAndConfirmInvoice(Order $order, array $invoiceData, string $reference): array
