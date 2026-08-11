@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 class PriceBoardService
 {
-    private const API_URL = 'http://185.7.212.193:3000/api/prices-with-change';
+    private const API_URL = 'https://tokeniko.com/api/prices-with-change';
 
     private const CACHE_KEY = 'priceboard:prices';
 
