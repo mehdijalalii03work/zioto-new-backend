@@ -180,6 +180,15 @@ class OrderExcelExport
         $sheet->setTitle('گزارش');
         $sheet->setRightToLeft(true);
 
+        $sheet->getPageSetup()->setScale(44);
+        $sheet->getPageSetup()->setFitToPage(false);
+        $sheet->getPageMargins()->setTop(0);
+        $sheet->getPageMargins()->setRight(0);
+        $sheet->getPageMargins()->setBottom(0);
+        $sheet->getPageMargins()->setLeft(0);
+        $sheet->getPageMargins()->setHeader(0);
+        $sheet->getPageMargins()->setFooter(0);
+
         $senderName = ' فرستنده : شرکت صنعتی بازرگانی فن‌آوران بین الملل ساویس';
         $senderAddress = ' " تهران - خ کریم خان زند تقاطع حافظ مجتمع الماس کریم خان طبقه اول اداری واحد109 اداری " ';
         $senderInfo = ' تلفن: 09924457068-86038543  -  کدپستی: 1598738119  ';
