@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -15,6 +16,9 @@ class UserForm
     public static function sections(): array
     {
         return [
+            Hidden::make('name')
+                ->dehydrateStateUsing(fn (callable $get): string => trim(($get('first_name') ?? '').' '.($get('last_name') ?? ''))),
+
             Section::make('اطلاعات هویتی')
                 ->description('نام، نام خانوادگی و تاریخ تولد')
                 ->icon('heroicon-o-user')
