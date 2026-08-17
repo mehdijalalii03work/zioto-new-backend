@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Products;
 
+use App\Enums\Permission;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -15,6 +16,11 @@ class ManageProductPricing extends Page
     protected static ?string $title = 'مدیریت قیمت‌گذاری';
 
     protected string $view = 'filament.pages.manage-product-pricing';
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermissionTo(Permission::ProductEdit->value) ?? false;
+    }
 
     public ?array $data = [];
 

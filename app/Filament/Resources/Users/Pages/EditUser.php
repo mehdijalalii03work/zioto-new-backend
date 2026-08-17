@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
+use App\Enums\Role;
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\City;
+use App\Models\User;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -16,6 +18,8 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Models\Role as RoleModel;
 
 class EditUser extends EditRecord
 {
@@ -112,4 +116,54 @@ class EditUser extends EditRecord
 
         return $data;
     }
+
+    private function guardAgainstRemovingAdminRole(): void
+    {
+        if (! array_key_exists('roles', $this->data)) {
+            return;
+        }
+
+        $adminRoleId = RoleModel::where('name', Role::Admin->value)->value('id');
+
+        $originalHasAdminRole = in_array((int) $adminRoleId, $this->originalRoleIds, true);
+
+        if (! $originalHasAdminRole) {
+            return;
+        }
+
+        $newRoleIds = array_map('intval', (array) ($this->data['roles'] ?? []));
+        $newHasAdminRole = in_array((int) $adminRoleId, $newRoleIds, true);
+
+        if ($newHasAdminRole) {
+            return;
+        }
+
+        $isSelf = $this->record->is(auth()->user());
+        $isLastAdmin = User::query()
+            ->withoutTenantScope()
+            ->role(Role::Admin->value)
+            ->whereKeyNot($this->record->getKey())
+            ->doesntExist();
+
+        if ($isSelf || $isLastAdmin) {
+            throw ValidationException::withMessages([
+                'data.roles' => 'حذف نقش ادمین از این کاربر مجاز نیست.',
+            ]);
+        }
+    }
+
+    protected function beforeValidate(): void
+    {
+        $this->originalRoleIds = $this->record
+            ->roles()
+            ->pluck('roles.id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+
+        $this->guardAgainstRemovingAdminRole();
+    }
+
+    /** @var list<int> */
+    protected array $originalRoleIds = [];
 }

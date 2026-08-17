@@ -126,7 +126,9 @@ class UserForm
                         ->multiple()
                         ->searchable()
                         ->preload()
-                        ->required(),
+                        ->required()
+                        ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false)
+                        ->dehydrated(fn (): bool => auth()->user()?->isAdmin() ?? false),
                 ])
                 ->columnSpanFull(),
         ];

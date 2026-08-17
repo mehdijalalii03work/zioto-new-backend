@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Orders\Pages;
 
+use App\Enums\Permission;
 use App\Filament\Resources\Orders\OrderResource;
 use App\Observers\HesabfaObserver;
 use Filament\Actions\Action;
@@ -279,6 +280,7 @@ class ViewOrder extends ViewRecord
                 ->label('تغییر وضعیت')
                 ->icon('heroicon-o-arrow-path')
                 ->color('warning')
+                ->authorize(Permission::OrderEdit->value)
                 ->modalHeading('تغییر وضعیت سفارش')
                 ->modalDescription('وضعیت جدید سفارش را انتخاب کنید.')
                 ->form([
@@ -308,6 +310,7 @@ class ViewOrder extends ViewRecord
                 ->label('ارسال به حسابفا')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('warning')
+                ->authorize(Permission::HesabfaSync->value)
                 ->action(function ($record) {
                     $observer = app(HesabfaObserver::class);
                     $result = $observer->syncOrder($record, force: true);
@@ -330,6 +333,7 @@ class ViewOrder extends ViewRecord
             Action::make('edit')
                 ->label('ویرایش')
                 ->icon('heroicon-o-pencil')
+                ->authorize(Permission::OrderEdit->value)
                 ->url(fn ($record): string => $record ? $this->getResource()::getUrl('edit', ['record' => $record]) : '#'),
         ];
     }

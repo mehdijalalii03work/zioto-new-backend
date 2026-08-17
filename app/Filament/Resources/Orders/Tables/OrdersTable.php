@@ -198,12 +198,14 @@ class OrdersTable
                     BulkAction::make('export_excel')
                         ->label('دانلود خروجی اکسل')
                         ->icon('heroicon-o-arrow-down-tray')
+                        ->authorize('order.view')
                         ->action(fn ($records) => app(OrderExcelExport::class)->export($records))
                         ->deselectRecordsAfterCompletion(),
 
                     BulkAction::make('change_status')
                         ->label('تغییر وضعیت')
                         ->icon('heroicon-o-arrow-path')
+                        ->authorize('order.edit')
                         ->modalHeading('تغییر وضعیت سفارش‌ها')
                         ->modalDescription('وضعیت جدید را برای سفارش‌های انتخاب شده مشخص کنید.')
                         ->form([

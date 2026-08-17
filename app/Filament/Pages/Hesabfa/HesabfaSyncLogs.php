@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Hesabfa;
 
+use App\Enums\Permission;
 use App\Models\HesabfaSyncLog;
 use Filament\Pages\Page;
 use Livewire\Attributes\Url;
@@ -9,6 +10,11 @@ use Livewire\Attributes\Url;
 class HesabfaSyncLogs extends Page
 {
     protected string $view = 'filament.pages.hesabfa-sync-logs';
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermissionTo(Permission::HesabfaView->value) ?? false;
+    }
 
     #[Url]
     public int $page = 1;

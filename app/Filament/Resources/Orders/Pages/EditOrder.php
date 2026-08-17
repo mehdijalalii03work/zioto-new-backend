@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Orders\Pages;
 
+use App\Enums\Permission;
 use App\Filament\Resources\Orders\OrderResource;
 use App\Observers\HesabfaObserver;
 use Filament\Actions\Action;
@@ -29,6 +30,7 @@ class EditOrder extends EditRecord
                 ->label('ارسال به حسابفا')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('warning')
+                ->authorize(Permission::HesabfaSync->value)
                 ->action(function ($record) {
                     $observer = app(HesabfaObserver::class);
                     $result = $observer->syncOrder($record, force: true);

@@ -92,14 +92,14 @@ class UsersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-            SelectFilter::make('platform')
-                ->label('پلتفرم')
-                ->options([
-                    'main' => 'زیوتو',
-                    'nopay' => 'نوپی',
-                ]),
-            TrashedFilter::make(),
-        ])
+                SelectFilter::make('platform')
+                    ->label('پلتفرم')
+                    ->options([
+                        'main' => 'زیوتو',
+                        'nopay' => 'نوپی',
+                    ]),
+                TrashedFilter::make(),
+            ])
             ->defaultPaginationPageOption(25)
             ->recordActions([
                 ViewAction::make()
@@ -120,11 +120,14 @@ class UsersTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->label('حذف انتخاب شده‌ها'),
+                        ->label('حذف انتخاب شده‌ها')
+                        ->authorizeIndividualRecords(),
                     RestoreBulkAction::make()
-                        ->label('بازیابی انتخاب شده‌ها'),
+                        ->label('بازیابی انتخاب شده‌ها')
+                        ->authorizeIndividualRecords(),
                     ForceDeleteBulkAction::make()
-                        ->label('حذف دائمی انتخاب شده‌ها'),
+                        ->label('حذف دائمی انتخاب شده‌ها')
+                        ->authorizeIndividualRecords(),
                 ]),
             ]);
     }

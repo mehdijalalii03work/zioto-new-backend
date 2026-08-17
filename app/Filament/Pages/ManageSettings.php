@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\Permission;
 use App\Models\Setting;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -29,6 +30,11 @@ class ManageSettings extends Page
     protected static ?int $navigationSort = 7;
 
     protected string $view = 'filament.pages.manage-settings';
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermissionTo(Permission::SettingView->value) ?? false;
+    }
 
     public array $data = [];
 

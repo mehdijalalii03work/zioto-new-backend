@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
 use App\Support\HasTenantScope;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
@@ -25,9 +26,33 @@ class User extends Authenticatable implements FilamentUser
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, HasTenantScope, Notifiable, SoftDeletes;
 
+    protected $guard_name = 'web';
+
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->hasRole(['admin', 'manager', 'operator']);
+        return $this->isStaff();
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole(Role::Admin->value);
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->hasRole(Role::staffValues());
+    }
+
+    public function isLastAdmin(): bool
+    {
+        if (! $this->isAdmin()) {
+            return false;
+        }
+
+        return User::query()
+            ->withoutTenantScope()
+            ->role(Role::Admin->value)
+            ->count() === 1;
     }
 
     protected function casts(): array

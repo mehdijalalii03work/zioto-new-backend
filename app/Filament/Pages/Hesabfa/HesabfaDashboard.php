@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Hesabfa;
 
+use App\Enums\Permission;
 use App\Models\HesabfaSyncLog;
 use App\Services\HesabfaService;
 use App\Services\StockSyncService;
@@ -12,6 +13,11 @@ use Modules\Order\Models\Order;
 class HesabfaDashboard extends Page
 {
     protected string $view = 'filament.pages.hesabfa-dashboard';
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermissionTo(Permission::HesabfaView->value) ?? false;
+    }
 
     public static function getNavigationIcon(): string|\BackedEnum|null
     {
@@ -83,6 +89,8 @@ class HesabfaDashboard extends Page
 
     public function syncStock(): void
     {
+        abort_unless(auth()->user()?->hasPermissionTo(Permission::HesabfaSync->value), 403);
+
         $stockSync = app(StockSyncService::class);
         $result = $stockSync->syncAllStock();
 
