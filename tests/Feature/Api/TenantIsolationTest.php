@@ -4,7 +4,10 @@ namespace Tests\Feature\Api;
 
 use App\Http\Middleware\AuthenticateApiToken;
 use App\Models\Cart;
+use App\Models\City;
+use App\Models\Province;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
@@ -173,8 +176,8 @@ class TenantIsolationTest extends TestCase
         $mainUser = $this->makeUser('main', '09120000008');
         $nopayUser = $this->makeUser('nopay', '09120000009');
 
-        $province = \App\Models\Province::create(['id' => 1, 'name' => 'تهران', 'slug' => 'tehran']);
-        $city = \App\Models\City::create(['id' => 1, 'province_id' => 1, 'name' => 'تهران', 'slug' => 'tehran']);
+        $province = Province::create(['id' => 1, 'name' => 'تهران', 'slug' => 'tehran']);
+        $city = City::create(['id' => 1, 'province_id' => 1, 'name' => 'تهران', 'slug' => 'tehran']);
 
         $mainAddress = $mainUser->addresses()->create([
             'label' => 'خانه',
@@ -255,6 +258,43 @@ class TenantIsolationTest extends TestCase
         $response->assertOk();
         $this->assertSame(1, Order::count());
         $this->assertSame('00001', Order::first()->order_number);
+    }
+
+    public function test_admin_serving_ignores_tenant_scope_on_relationships(): void
+    {
+        $mainUser = $this->makeUser('main', '09120000016');
+        $nopayUser = $this->makeUser('nopay', '09120000017');
+
+        $nopayOrder = Order::withoutTenantScope()->create([
+            'user_id' => $nopayUser->id,
+            'platform' => 'nopay',
+            'order_number' => 'N-00099',
+            'status' => 'pending',
+            'total_amount' => 100000,
+            'payment_method' => 'installment_nofee',
+            'payment_status' => 'pending',
+        ]);
+
+        // No X-Platform header + normal request → scope defaults to 'main',
+        // so the nopay user must NOT be visible through the relationship.
+        $this->getJson('/api/products')->assertOk();
+        $this->assertNull($nopayOrder->user);
+
+        // While the Filament admin panel is being served, the scope is
+        // disabled so relationship eager-loads (user.name in tables) work.
+        Filament::setServingStatus(true);
+
+        try {
+            $freshOrder = Order::withoutTenantScope()->find($nopayOrder->id);
+            $this->assertNotNull($freshOrder->user);
+            $this->assertSame('کاربر nopay', $freshOrder->user->name);
+            $this->assertSame(2, User::count());
+        } finally {
+            Filament::setServingStatus(false);
+        }
+
+        // Back outside admin, isolation applies again.
+        $this->assertSame(1, User::withoutTenantScope()->where('platform', 'main')->count());
     }
 
     public function test_payment_scope_by_platform(): void

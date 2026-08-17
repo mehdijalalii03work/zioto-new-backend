@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
@@ -17,6 +18,12 @@ class TenantScope implements Scope
 {
     public function apply(Builder $builder, Model $model): void
     {
+        // Admin panel must see all platforms (main + nopay), including
+        // related records loaded through relationships.
+        if (Filament::isServing()) {
+            return;
+        }
+
         $platform = Platform::fromRequest();
 
         // No platform (e.g. console) → keep everything visible.
