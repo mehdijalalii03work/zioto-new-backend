@@ -21,15 +21,15 @@
                 <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-white/10">
                     <table class="w-full text-sm">
                         <thead>
-                            <tr class="border-b border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5">
-                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">تاریخ فاکتور</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">تعداد فاکتور</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">مبلغ خالص (ریال)</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-amber-600 dark:text-amber-400">تعداد طلا</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-amber-600 dark:text-amber-400">ریال طلا</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">تعداد نقره</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">ریال نقره</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">تعداد کل</th>
+                            <tr class="border-b-2 border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5">
+                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تاریخ فاکتور</th>
+                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تعداد فاکتور</th>
+                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">مبلغ خالص (ریال)</th>
+                                <th class="px-5 py-3 text-center text-sm font-semibold text-amber-600 dark:text-amber-400">تعداد طلا</th>
+                                <th class="px-5 py-3 text-center text-sm font-semibold text-amber-600 dark:text-amber-400">ریال طلا</th>
+                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تعداد نقره</th>
+                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">ریال نقره</th>
+                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تعداد کل</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-white/10">
@@ -73,15 +73,15 @@
                             @endforeach
                         </tbody>
                         <tfoot>
-                            <tr class="border-t border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5 font-semibold">
-                                <td class="px-4 py-3 text-center text-xs text-gray-900 dark:text-white">جمع کل</td>
-                                <td class="px-4 py-3 text-center text-xs text-gray-900 dark:text-white">{{ number_format($report->sum('invoice_count')) }}</td>
-                                <td class="px-4 py-3 text-center text-xs font-mono text-gray-900 dark:text-white">{{ number_format($report->sum('net_amount')) }}</td>
-                                <td class="px-4 py-3 text-center text-xs text-amber-700 dark:text-amber-400">{{ number_format($report->sum('gold_count')) }}</td>
-                                <td class="px-4 py-3 text-center text-xs font-mono text-amber-700 dark:text-amber-400">{{ number_format($report->sum('gold_amount')) }}</td>
-                                <td class="px-4 py-3 text-center text-xs text-gray-900 dark:text-white">{{ number_format($report->sum('silver_count')) }}</td>
-                                <td class="px-4 py-3 text-center text-xs font-mono text-gray-900 dark:text-white">{{ number_format($report->sum('silver_amount')) }}</td>
-                                <td class="px-4 py-3 text-center text-xs font-bold text-green-600 dark:text-green-400">{{ number_format($report->sum('total_count')) }}</td>
+                            <tr class="border-t-2 border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5 font-semibold">
+                                <td class="px-5 py-3 text-center text-sm text-gray-900 dark:text-white">جمع کل</td>
+                                <td class="px-5 py-3 text-center text-sm text-gray-900 dark:text-white">{{ number_format($report->sum('invoice_count')) }}</td>
+                                <td class="px-5 py-3 text-center text-sm font-mono text-gray-900 dark:text-white">{{ number_format($report->sum('net_amount')) }}</td>
+                                <td class="px-5 py-3 text-center text-sm text-amber-700 dark:text-amber-400">{{ number_format($report->sum('gold_count')) }}</td>
+                                <td class="px-5 py-3 text-center text-sm font-mono text-amber-700 dark:text-amber-400">{{ number_format($report->sum('gold_amount')) }}</td>
+                                <td class="px-5 py-3 text-center text-sm text-gray-900 dark:text-white">{{ number_format($report->sum('silver_count')) }}</td>
+                                <td class="px-5 py-3 text-center text-sm font-mono text-gray-900 dark:text-white">{{ number_format($report->sum('silver_amount')) }}</td>
+                                <td class="px-5 py-3 text-center text-sm font-bold text-green-600 dark:text-green-400">{{ number_format($report->sum('total_count')) }}</td>
                             </tr>
                         </tfoot>
                     </table>

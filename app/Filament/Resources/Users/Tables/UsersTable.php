@@ -92,6 +92,11 @@ class UsersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('roles')
+                    ->label('نقش')
+                    ->relationship('roles', 'name')
+                    ->searchable()
+                    ->multiple(),
                 SelectFilter::make('platform')
                     ->label('پلتفرم')
                     ->options([
@@ -100,6 +105,7 @@ class UsersTable
                     ]),
                 TrashedFilter::make(),
             ])
+            ->defaultSort('created_at', 'desc')
             ->defaultPaginationPageOption(25)
             ->recordActions([
                 ViewAction::make()

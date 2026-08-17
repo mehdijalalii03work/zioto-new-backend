@@ -147,6 +147,7 @@ class TotalInvoiceReport extends Page
                     'total_count' => (int) $allItems->sum('quantity'),
                 ];
             })
+            ->sortByDesc('date')
             ->values();
     }
 

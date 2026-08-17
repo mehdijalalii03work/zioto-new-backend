@@ -158,6 +158,7 @@ class WeightSalesReport extends Page
                     'silver_rial' => (float) $silverItems->sum('subtotal'),
                 ];
             })
+            ->sortByDesc('date')
             ->values();
     }
 
