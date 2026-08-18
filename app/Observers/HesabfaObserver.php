@@ -333,7 +333,7 @@ class HesabfaObserver
                 $taxRate = (float) Setting::getValue('tax_silver', 10);
                 if ($taxRate > 0) {
                     $unitPrice = (int) round($price / (1 + $taxRate / 100));
-                    $tax = $price - $unitPrice;
+                    $tax = ($price - $unitPrice) * $orderItem->quantity;
                 }
             }
 
