@@ -164,24 +164,24 @@ class TotalInvoiceReport extends Page
 
     private function resolveDateRange(): array
     {
-        $now = Carbon::now();
+        $now = Jalalian::now();
 
         return match ($this->dateRange) {
             'today' => [
-                $now->copy()->startOfDay()->format('Y-m-d'),
-                $now->copy()->endOfDay()->format('Y-m-d'),
+                $now->toCarbon()->startOfDay()->format('Y-m-d'),
+                $now->toCarbon()->endOfDay()->format('Y-m-d'),
             ],
             'week' => [
-                $now->copy()->startOfWeek()->format('Y-m-d'),
-                $now->copy()->endOfWeek()->format('Y-m-d'),
+                $now->getFirstDayOfWeek()->toCarbon()->format('Y-m-d'),
+                $now->getEndDayOfWeek()->toCarbon()->format('Y-m-d'),
             ],
             'month' => [
-                $now->copy()->startOfMonth()->format('Y-m-d'),
-                $now->copy()->endOfMonth()->format('Y-m-d'),
+                $now->getFirstDayOfMonth()->toCarbon()->format('Y-m-d'),
+                $now->getEndDayOfMonth()->toCarbon()->format('Y-m-d'),
             ],
             'year' => [
-                $now->copy()->startOfYear()->format('Y-m-d'),
-                $now->copy()->endOfYear()->format('Y-m-d'),
+                $now->getFirstDayOfYear()->toCarbon()->format('Y-m-d'),
+                $now->getEndDayOfYear()->toCarbon()->format('Y-m-d'),
             ],
             'custom' => [
                 filled($this->dateFrom) ? $this->parseDate($this->dateFrom) : null,
