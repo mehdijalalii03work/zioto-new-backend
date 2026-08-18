@@ -52,6 +52,18 @@ class AuthorizationTest extends TestCase
         $this->assertCount(count(Permission::cases()), $admin->permissions);
     }
 
+    public function test_financial_and_content_roles_can_access_panel(): void
+    {
+        RoleModel::create(['name' => Role::Financial->value, 'guard_name' => 'web']);
+        RoleModel::create(['name' => Role::Content->value, 'guard_name' => 'web']);
+
+        $financial = User::factory()->create()->assignRole(Role::Financial->value);
+        $content = User::factory()->create()->assignRole(Role::Content->value);
+
+        $this->assertTrue($financial->canAccessPanel(Filament::getCurrentPanel()));
+        $this->assertTrue($content->canAccessPanel(Filament::getCurrentPanel()));
+    }
+
     public function test_operator_cannot_access_product_listing(): void
     {
         $operator = $this->staffUser(Role::Operator);

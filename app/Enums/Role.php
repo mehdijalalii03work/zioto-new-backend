@@ -10,6 +10,10 @@ enum Role: string
 
     case Operator = 'operator';
 
+    case Financial = 'financial';
+
+    case Content = 'content';
+
     /** @return list<string> */
     public static function staffValues(): array
     {
