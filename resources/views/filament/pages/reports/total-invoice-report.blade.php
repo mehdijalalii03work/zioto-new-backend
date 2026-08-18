@@ -25,9 +25,9 @@
                                 <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تاریخ فاکتور</th>
                                 <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تعداد فاکتور</th>
                                 <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">مبلغ خالص (ریال)</th>
-                                <th class="px-5 py-3 text-center text-sm font-semibold text-amber-600 dark:text-amber-400">تعداد طلا</th>
+                                <th class="px-5 py-3 text-center text-sm font-semibold text-amber-600 dark:text-amber-400">تعداد فاکتور طلا</th>
                                 <th class="px-5 py-3 text-center text-sm font-semibold text-amber-600 dark:text-amber-400">ریال طلا</th>
-                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تعداد نقره</th>
+                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تعداد فاکتور نقره</th>
                                 <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">ریال نقره</th>
                                 <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تعداد کل</th>
                             </tr>

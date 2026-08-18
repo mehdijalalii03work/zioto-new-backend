@@ -128,6 +128,18 @@ class TotalInvoiceReport extends Page
             ->map(static function ($orders, $date) {
                 $allItems = $orders->flatMap->items;
 
+                $goldCount = $orders->filter(
+                    static fn ($order) => $order->items->contains(
+                        static fn ($item) => $item->product && $item->product->metal_type?->value === 'gold',
+                    ),
+                )->count();
+
+                $silverCount = $orders->filter(
+                    static fn ($order) => $order->items->contains(
+                        static fn ($item) => $item->product && $item->product->metal_type?->value === 'silver',
+                    ),
+                )->count();
+
                 $goldItems = $allItems->filter(
                     static fn ($item) => $item->product && $item->product->metal_type?->value === 'gold',
                 );
@@ -140,9 +152,9 @@ class TotalInvoiceReport extends Page
                     'date' => $date,
                     'invoice_count' => $orders->count(),
                     'net_amount' => $orders->sum('total_amount'),
-                    'gold_count' => (int) $goldItems->sum('quantity'),
+                    'gold_count' => $goldCount,
                     'gold_amount' => (float) $goldItems->sum('subtotal'),
-                    'silver_count' => (int) $silverItems->sum('quantity'),
+                    'silver_count' => $silverCount,
                     'silver_amount' => (float) $silverItems->sum('subtotal'),
                     'total_count' => (int) $allItems->sum('quantity'),
                 ];
