@@ -29,7 +29,6 @@
                                 <th class="px-5 py-3 text-center text-sm font-semibold text-amber-600 dark:text-amber-400">ریال طلا</th>
                                 <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تعداد فاکتور نقره</th>
                                 <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">ریال نقره</th>
-                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تعداد کل</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-white/10">
@@ -64,11 +63,6 @@
                                     <td class="px-4 py-3 text-center">
                                         <span class="font-mono text-xs text-gray-900 dark:text-white">{{ number_format($row['silver_amount']) }}</span>
                                     </td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span class="inline-flex items-center rounded-full bg-green-500 px-3 py-1 text-xs font-bold text-white">
-                                            {{ number_format($row['total_count']) }}
-                                        </span>
-                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -81,7 +75,6 @@
                                 <td class="px-5 py-3 text-center text-sm font-mono text-amber-700 dark:text-amber-400">{{ number_format($report->sum('gold_amount')) }}</td>
                                 <td class="px-5 py-3 text-center text-sm text-gray-900 dark:text-white">{{ number_format($report->sum('silver_count')) }}</td>
                                 <td class="px-5 py-3 text-center text-sm font-mono text-gray-900 dark:text-white">{{ number_format($report->sum('silver_amount')) }}</td>
-                                <td class="px-5 py-3 text-center text-sm font-bold text-green-600 dark:text-green-400">{{ number_format($report->sum('total_count')) }}</td>
                             </tr>
                         </tfoot>
                     </table>

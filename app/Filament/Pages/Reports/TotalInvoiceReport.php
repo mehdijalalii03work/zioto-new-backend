@@ -156,7 +156,6 @@ class TotalInvoiceReport extends Page
                     'gold_amount' => (float) $goldItems->sum('subtotal'),
                     'silver_count' => $silverCount,
                     'silver_amount' => (float) $silverItems->sum('subtotal'),
-                    'total_count' => (int) $allItems->sum('quantity'),
                 ];
             })
             ->sortByDesc('date')
