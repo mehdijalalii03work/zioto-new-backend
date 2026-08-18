@@ -51,6 +51,7 @@ class OrderSubmitController extends Controller
 
         $notes = $order->orderNotes()
             ->where('is_customer_note', true)
+            ->where('type', '!=', 'hesabfa')
             ->get();
 
         return response()->json([
