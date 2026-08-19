@@ -27,4 +27,18 @@ return [
     'markup_below_threshold' => (int) env('TAPSI_MARKUP_BELOW_50M', 2),
     'markup_above_threshold' => (int) env('TAPSI_MARKUP_ABOVE_50M', 1),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Batching
+    |--------------------------------------------------------------------------
+    |
+    | Tapsi Shop only accepts a limited number of products per request, so the
+    | product list is split into chunks. A small delay between chunks keeps the
+    | upstream API from being overwhelmed.
+    |
+    */
+
+    'chunk_size' => (int) env('TAPSI_CHUNK_SIZE', 30),
+    'delay_between_chunks' => (int) env('TAPSI_CHUNK_DELAY', 1),
+
 ];

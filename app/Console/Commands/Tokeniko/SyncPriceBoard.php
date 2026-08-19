@@ -6,8 +6,7 @@ use App\Events\PriceBoardUpdated;
 use App\Events\ProductsUpdated;
 use App\Models\Setting;
 use App\Services\PriceBoardService;
-use App\Services\TapsiShopService;
-use App\Services\TokenikoShopService;
+use App\Services\TokenikoDirectSyncService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -22,13 +21,12 @@ class SyncPriceBoard extends Command
 {
     public function handle(
         PriceBoardService $priceBoard,
-        TokenikoShopService $tokenikoShop,
-        TapsiShopService $tapsiShop,
+        TokenikoDirectSyncService $sync,
     ): int {
         $mode = config('pricing.mode', 'dynamic');
 
         if ($mode === 'direct') {
-            return $this->syncDirect($priceBoard, $tokenikoShop, $tapsiShop);
+            return $this->syncDirect($priceBoard, $sync);
         }
 
         $this->info('Syncing price board...');
@@ -145,93 +143,43 @@ class SyncPriceBoard extends Command
         ];
     }
 
-    private function syncDirect(PriceBoardService $priceBoard, TokenikoShopService $tokenikoShop, TapsiShopService $tapsiShop): int
+    private function syncDirect(PriceBoardService $priceBoard, TokenikoDirectSyncService $sync): int
     {
         $this->info('Direct mode: syncing from Tokeniko shop API...');
 
-        $prices = $tokenikoShop->fetchAndStore();
+        $priceBoard->fetchAndStore();
 
-        if (empty($prices)) {
+        $result = $sync->sync();
+
+        if ($result['status'] === 'skipped') {
+            $this->warn('Previous sync job is still active. Skipping.');
+
+            return self::SUCCESS;
+        }
+
+        if ($result['status'] === 'failure') {
             $this->warn('No prices received from Tokeniko API.');
 
             return self::FAILURE;
         }
 
-        $priceBoard->fetchAndStore();
-
-        $emergencyActive = Setting::getValue('tapsi_emergency_status', 'open') === 'closed';
-
-        if ($emergencyActive) {
-            $this->warn('EMERGENCY LOCK ACTIVE — all Tapsi stock will be 0.');
+        if ($result['emergency_active']) {
+            $this->warn('EMERGENCY LOCK ACTIVE — all Tapsi stock sent as 0.');
         }
 
-        $products = Product::whereNotNull('tokeniko_sku')
-            ->where('tokeniko_sku', '!=', '')
-            ->get();
+        $this->info('Updated '.$result['updated'].' products in DB.');
 
-        $updates = [];
-        $tapsiProducts = [];
-
-        foreach ($products as $product) {
-            $sku = mb_strtolower(trim($product->tokeniko_sku));
-
-            if (! isset($prices[$sku])) {
-                continue;
-            }
-
-            $newPrice = (float) $prices[$sku];
-            $currentPrice = (float) $product->price;
-
-            if ($currentPrice !== $newPrice) {
-                $updates[$product->id] = ['price' => $newPrice];
-                $this->line("  {$product->name}: {$currentPrice} -> {$newPrice}");
-            }
-
-            if (! empty($product->tapsi_product_id)) {
-                $tapsiPrice = $tapsiShop->calculateTapsiPrice($newPrice);
-                $availableStock = $emergencyActive ? 0 : ($product->sellable_stock ?? $product->stock_quantity ?? 0);
-
-                $tapsiProducts[] = [
-                    'id' => $product->tapsi_product_id,
-                    'price' => $tapsiPrice,
-                    'specialprice' => $tapsiPrice,
-                    'stock' => (int) $availableStock,
-                    'referenceCode' => 'laravel_sync_'.$product->id.'_'.time(),
-                ];
-            }
+        if ($result['tapsi_sent'] > 0) {
+            $outcome = $result['tapsi_success'] ? 'success' : 'failed';
+            $this->info("Sent {$result['tapsi_sent']} products to Tapsi Shop ({$outcome}).");
+        } elseif (! config('tapsi.enabled')) {
+            $this->warn('Tapsi sync disabled — skipped sending to Tapsi.');
         }
-
-        if (! empty($updates)) {
-            DB::transaction(function () use ($updates) {
-                foreach ($updates as $id => $data) {
-                    Product::where('id', $id)->update($data);
-                }
-            });
-        }
-
-        if (! empty($tapsiProducts) && config('tapsi.enabled')) {
-            $tapsiShop->sendBatch($tapsiProducts);
-        }
-
-        if (! empty($updates)) {
-            $redis = Cache::getStore()->getRedis();
-            $keys = $redis->keys('api:products:*');
-            if ($keys) {
-                $redis->del($keys);
-            }
-        }
-
-        $this->info('Updated '.count($updates).' products in DB.');
-
-        if (! empty($tapsiProducts) && ! config('tapsi.enabled')) {
-            $this->warn('Tapsi sync disabled — skipped sending '.count($tapsiProducts).' products.');
-        }
-
-        $this->broadcastProducts();
 
         Log::info('[PriceBoard] Direct sync completed', [
-            'products_updated' => count($updates),
-            'tapsi_sent' => count($tapsiProducts),
+            'products_updated' => $result['updated'],
+            'tapsi_sent' => $result['tapsi_sent'],
+            'tapsi_success' => $result['tapsi_success'],
         ]);
 
         return self::SUCCESS;
