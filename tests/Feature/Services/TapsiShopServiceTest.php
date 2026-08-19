@@ -29,16 +29,16 @@ class TapsiShopServiceTest extends TestCase
         $this->service = new TapsiShopService;
     }
 
-    public function test_calculate_tapsi_price_applies_markup_and_converts_to_rial(): void
+    public function test_calculate_tapsi_price_applies_markup(): void
     {
         $belowThreshold = $this->service->calculateTapsiPrice(10_000_000);
-        $this->assertSame(102_000_000, $belowThreshold);
+        $this->assertSame(10_200_000, $belowThreshold);
 
         $aboveThreshold = $this->service->calculateTapsiPrice(60_000_000);
-        $this->assertSame(606_000_000, $aboveThreshold);
+        $this->assertSame(60_600_000, $aboveThreshold);
 
         $atThreshold = $this->service->calculateTapsiPrice(50_000_000);
-        $this->assertSame(505_000_000, $atThreshold);
+        $this->assertSame(50_500_000, $atThreshold);
     }
 
     public function test_send_batch_splits_products_into_chunks(): void

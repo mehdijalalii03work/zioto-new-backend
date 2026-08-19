@@ -108,7 +108,7 @@ class TapsiShopService
 
         $markup = $priceInToman < $threshold ? $belowMarkup : $aboveMarkup;
 
-        return (int) (round($priceInToman * (1 + $markup / 100)) * 10);
+        return (int) round($priceInToman * (1 + $markup / 100));
     }
 
     private function getToken(): string
