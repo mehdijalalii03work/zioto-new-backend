@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Services;
 
+use App\Models\Setting;
 use App\Services\TapsiShopService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -144,5 +145,59 @@ class TapsiShopServiceTest extends TestCase
 
         $this->assertFalse($result);
         $this->assertCount(0, Http::recorded());
+    }
+
+    public function test_database_token_takes_precedence_over_env_token(): void
+    {
+        Setting::create([
+            'key' => 'tapsi_shop_outgoing_auth_token',
+            'value' => 'db-token',
+            'type' => 'string',
+            'category' => 'tapsi',
+            'label' => 'Tapsi Shop Outgoing Auth Token',
+        ]);
+
+        config(['tapsi.auth_token' => 'env-token']);
+
+        $requests = [];
+        Http::fake(function (Request $request) use (&$requests) {
+            $requests[] = $request;
+
+            return Http::response(['success' => true], 200);
+        });
+
+        $result = $this->service->sendBatch([[
+            'id' => 'SKU-1',
+            'price' => 1000,
+            'specialprice' => 1000,
+            'stock' => 1,
+            'referenceCode' => 'ref-1',
+        ]]);
+
+        $this->assertTrue($result);
+        $this->assertSame(['db-token'], $requests[0]->header('TapsiShop.Hub.Authorization'));
+    }
+
+    public function test_env_token_is_used_when_database_token_is_empty(): void
+    {
+        config(['tapsi.auth_token' => 'env-token']);
+
+        $requests = [];
+        Http::fake(function (Request $request) use (&$requests) {
+            $requests[] = $request;
+
+            return Http::response(['success' => true], 200);
+        });
+
+        $result = $this->service->sendBatch([[
+            'id' => 'SKU-1',
+            'price' => 1000,
+            'specialprice' => 1000,
+            'stock' => 1,
+            'referenceCode' => 'ref-1',
+        ]]);
+
+        $this->assertTrue($result);
+        $this->assertSame(['env-token'], $requests[0]->header('TapsiShop.Hub.Authorization'));
     }
 }

@@ -113,15 +113,13 @@ class TapsiShopService
 
     private function getToken(): string
     {
-        $token = config('tapsi.auth_token', '');
-
-        if (! empty($token)) {
-            return trim(str_ireplace('Bearer ', '', $token));
-        }
-
         $stored = Setting::getValue('tapsi_shop_outgoing_auth_token', '');
 
-        return trim(str_ireplace('Bearer ', '', $stored));
+        if (! empty($stored)) {
+            return trim(str_ireplace('Bearer ', '', $stored));
+        }
+
+        return trim(str_ireplace('Bearer ', '', config('tapsi.auth_token', '')));
     }
 
     private function refreshToken(string $expiredToken): string

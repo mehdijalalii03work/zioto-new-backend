@@ -129,7 +129,7 @@ class ManageSettings extends Page
                                             TextInput::make('tapsi_auth_token')
                                                 ->label('توکن احراز هویت')
                                                 ->maxLength(255)
-                                                ->placeholder('اختیاری - اگر خالی باشد از تنظیمات دیتابیس خوانده می‌شود'),
+                                                ->placeholder('اختیاری - توکن ذخیره شده در دیتابیس اولویت دارد'),
                                             TextInput::make('tapsi_auth_name')
                                                 ->label('نام توکن')
                                                 ->maxLength(255)
