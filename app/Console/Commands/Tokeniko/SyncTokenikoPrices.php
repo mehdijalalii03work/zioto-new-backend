@@ -8,8 +8,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('tokeniko:sync-direct {--force : Send all products to Tapsi Shop regardless of price change}')]
-#[Description('Fetch prices from Tokeniko shop API, update DB, send changed prices to Tapsi Shop')]
+#[Signature('tokeniko:sync-direct')]
+#[Description('Fetch prices from Tokeniko shop API, update DB, send prices and stock to Tapsi Shop')]
 class SyncTokenikoPrices extends Command
 {
     public function handle(
@@ -20,7 +20,7 @@ class SyncTokenikoPrices extends Command
 
         $priceBoard->fetchAndStore();
 
-        $result = $sync->sync(force: (bool) $this->option('force'));
+        $result = $sync->sync();
 
         if ($result['status'] === 'skipped') {
             $this->warn('Previous sync job is still active. Skipping.');

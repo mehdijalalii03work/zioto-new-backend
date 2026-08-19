@@ -64,7 +64,7 @@ class TokenikoDirectSyncTest extends TestCase
         ]);
     }
 
-    public function test_sync_updates_db_and_sends_only_changed_products_to_tapsi(): void
+    public function test_sync_updates_db_and_sends_all_products_to_tapsi(): void
     {
         $changed = $this->product('zioto-gold-bar-1gram-995', 'ZGB5-0001-0', 250_000_000, physical: 5, reserved: 1);
         $unchanged = $this->product('zioto-silver-bar-5gram', 'ZSB9-0005-0', 26_950_000, physical: 5, reserved: 0);
@@ -79,7 +79,7 @@ class TokenikoDirectSyncTest extends TestCase
 
         $this->assertSame('success', $result['status']);
         $this->assertSame(1, $result['updated']);
-        $this->assertSame(1, $result['tapsi_sent']);
+        $this->assertSame(2, $result['tapsi_sent']);
         $this->assertTrue($result['tapsi_success']);
 
         $this->assertDatabaseHas('products', ['id' => $changed->id, 'price' => 300_000_000]);
@@ -87,13 +87,18 @@ class TokenikoDirectSyncTest extends TestCase
 
         $this->assertCount(1, $tapsiRequests);
         $payload = $tapsiRequests[0]->data()['products'];
-        $this->assertCount(1, $payload);
-        $this->assertSame('ZGB5-0001-0', $payload[0]['id']);
-        $this->assertSame(303_000_000, $payload[0]['price']);
-        $this->assertSame(4, $payload[0]['stock']);
+        $this->assertCount(2, $payload);
+
+        $changedPayload = collect($payload)->firstWhere('id', 'ZGB5-0001-0');
+        $this->assertSame(303_000_000, $changedPayload['price']);
+        $this->assertSame(4, $changedPayload['stock']);
+
+        $unchangedPayload = collect($payload)->firstWhere('id', 'ZSB9-0005-0');
+        $this->assertSame(27_489_000, $unchangedPayload['price']);
+        $this->assertSame(5, $unchangedPayload['stock']);
     }
 
-    public function test_sync_does_not_send_to_tapsi_when_prices_unchanged(): void
+    public function test_sync_sends_products_to_tapsi_even_when_prices_unchanged(): void
     {
         $this->product('zioto-gold-bar-1gram-995', 'ZGB5-0001-0', 300_000_000, physical: 5, reserved: 1);
 
@@ -104,28 +109,9 @@ class TokenikoDirectSyncTest extends TestCase
 
         $this->assertSame('success', $result['status']);
         $this->assertSame(0, $result['updated']);
-        $this->assertSame(0, $result['tapsi_sent']);
-        $this->assertCount(0, $tapsiRequests);
-    }
-
-    public function test_sync_force_sends_all_products_even_when_prices_unchanged(): void
-    {
-        $this->product('zioto-gold-bar-1gram-995', 'ZGB5-0001-0', 300_000_000, physical: 5, reserved: 1);
-        $this->product('zioto-silver-bar-5gram', 'ZSB9-0005-0', 26_950_000, physical: 3, reserved: 0);
-
-        $tapsiRequests = [];
-        $this->fakeTokeniko([
-            'zioto-gold-bar-1gram-995' => 300_000_000,
-            'zioto-silver-bar-5gram' => 26_950_000,
-        ], $tapsiRequests);
-
-        $result = $this->service->sync(force: true);
-
-        $this->assertSame('success', $result['status']);
-        $this->assertSame(0, $result['updated']);
-        $this->assertSame(2, $result['tapsi_sent']);
+        $this->assertSame(1, $result['tapsi_sent']);
         $this->assertCount(1, $tapsiRequests);
-        $this->assertCount(2, $tapsiRequests[0]->data()['products']);
+        $this->assertSame(303_000_000, $tapsiRequests[0]->data()['products'][0]['price']);
     }
 
     public function test_sync_sends_zero_stock_for_all_products_when_emergency_active(): void

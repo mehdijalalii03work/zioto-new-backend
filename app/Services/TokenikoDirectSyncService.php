@@ -16,7 +16,7 @@ class TokenikoDirectSyncService
         private readonly TapsiShopService $tapsiShop,
     ) {}
 
-    public function sync(bool $force = false): array
+    public function sync(): array
     {
         $lock = Cache::lock('tokeniko:direct-sync', 300);
 
@@ -27,13 +27,13 @@ class TokenikoDirectSyncService
         }
 
         try {
-            return $this->run($force);
+            return $this->run();
         } finally {
             $lock->release();
         }
     }
 
-    private function run(bool $force = false): array
+    private function run(): array
     {
         $prices = $this->tokenikoShop->fetchAndStore();
 
@@ -67,7 +67,7 @@ class TokenikoDirectSyncService
                 $updates[$product->id] = ['price' => $newPrice];
             }
 
-            if (! empty($product->tapsi_product_id) && ($priceChanged || $emergencyActive || $force)) {
+            if (! empty($product->tapsi_product_id)) {
                 $tapsiPrice = $this->tapsiShop->calculateTapsiPrice($newPrice);
                 $availableStock = $emergencyActive ? 0 : ($product->sellable_stock ?? $product->stock_quantity ?? 0);
 
