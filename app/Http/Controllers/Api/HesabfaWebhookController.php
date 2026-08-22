@@ -102,7 +102,11 @@ class HesabfaWebhookController extends Controller
             'timestamp' => now()->toIso8601String(),
             'ip' => $request->ip(),
             'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'headers' => $request->headers->all(),
+            'query' => $request->query(),
             'body' => $request->all(),
+            'raw_body' => $request->getContent(),
         ];
 
         file_put_contents($logFile, json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)."\n---\n", FILE_APPEND);
