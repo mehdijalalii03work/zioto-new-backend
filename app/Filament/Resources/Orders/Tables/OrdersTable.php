@@ -34,7 +34,18 @@ class OrdersTable
                 TextColumn::make('user.name')
                     ->label('مشتری')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->state(function ($record): string {
+                        if ($record->user?->name) {
+                            return $record->user->name;
+                        }
+
+                        if ($record->platform === 'tapsi') {
+                            return 'مشتری تپسی';
+                        }
+
+                        return '—';
+                    }),
 
                 TextColumn::make('address.receiver_name')
                     ->label('تحویل گیرنده')
@@ -68,10 +79,10 @@ class OrdersTable
                     }),
 
                 TextColumn::make('total_amount')
-                    ->label('مبلغ کل (تومان)')
+                    ->label('مبلغ کل (ریال)')
                     ->numeric()
                     ->sortable()
-                    ->formatStateUsing(fn ($state): string => number_format($state / 10)),
+                    ->formatStateUsing(fn ($state): string => number_format($state)),
 
                 TextColumn::make('payment_status')
                     ->label('وضعیت پرداخت')
@@ -97,11 +108,13 @@ class OrdersTable
                     ->color(fn (string $state): string => match ($state) {
                         'main' => 'info',
                         'nopay' => 'success',
+                        'tapsi' => 'warning',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'main' => 'زیوتو',
                         'nopay' => 'نوپی',
+                        'tapsi' => 'تپسی شاپ',
                         default => $state ?? '—',
                     })
                     ->toggleable(),
@@ -117,12 +130,20 @@ class OrdersTable
                         'nopay' => 'danger',
                         default => 'gray',
                     })
+                    ->state(function ($record): ?string {
+                        if ($record->platform === 'tapsi') {
+                            return 'tapsi';
+                        }
+
+                        return $record->payments->first()?->gateway;
+                    })
                     ->formatStateUsing(fn ($state): string => match ($state) {
                         'parsian' => 'پارسیان',
                         'digipay' => 'دیجی‌پی',
                         'kamanlend' => 'کمان‌لند',
                         'smartis' => ' اسمارتیس',
                         'nopay' => 'نوپی',
+                        'tapsi' => 'تپسی شاپ',
                         default => $state ?? '—',
                     }),
 
@@ -144,6 +165,35 @@ class OrdersTable
                     ->formatStateUsing(fn ($state) => $state ? "فاکتور #{$state}" : 'ارسال نشده')
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                TextColumn::make('tapsi_order_id')
+                    ->label('شناسه تپسی')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->formatStateUsing(fn ($state) => $state ?: '—'),
+
+                TextColumn::make('tapsi_shipment_bundle')
+                    ->label('مرسوله تپسی')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->formatStateUsing(fn ($state) => $state ?: '—'),
+
+                TextColumn::make('tapsi_delivery_method')
+                    ->label('روش ارسال تپسی')
+                    ->badge()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'vendor' => 'info',
+                        'platform' => 'primary',
+                        'pickup' => 'success',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'vendor' => 'فروشنده',
+                        'platform' => 'پلتفرم',
+                        'pickup' => 'حضوری',
+                        default => '—',
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('created_at')
                     ->label('تاریخ ثبت')
                     ->dateTime()
@@ -158,6 +208,7 @@ class OrdersTable
                     ->options([
                         'main' => 'زیوتو',
                         'nopay' => 'نوپی',
+                        'tapsi' => 'تپسی شاپ',
                     ]),
                 SelectFilter::make('gateway')
                     ->label('درگاه پرداخت')

@@ -72,6 +72,12 @@ class Order extends Model
         'shipping_address_snapshot',
         'notes',
         'cancel_reason',
+        'tapsi_order_id',
+        'tapsi_order_number',
+        'tapsi_shipment_bundle',
+        'tapsi_delivery_method',
+        'tapsi_service_fee',
+        'tapsi_voucher_fee',
     ];
 
     protected function casts(): array

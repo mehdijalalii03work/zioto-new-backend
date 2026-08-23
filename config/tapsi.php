@@ -41,4 +41,16 @@ return [
     'chunk_size' => (int) env('TAPSI_CHUNK_SIZE', 30),
     'delay_between_chunks' => (int) env('TAPSI_CHUNK_DELAY', 1),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Order Import Rate Limiting
+    |--------------------------------------------------------------------------
+    |
+    | Tapsi Shop limits order detail requests to 1 per 10 seconds.
+    | Set to 0 in testing to speed up tests.
+    |
+    */
+
+    'order_detail_delay' => (int) env('TAPSI_ORDER_DETAIL_DELAY', 11),
+
 ];

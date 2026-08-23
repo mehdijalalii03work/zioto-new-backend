@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Orders\Pages;
 use App\Enums\Permission;
 use App\Filament\Resources\Orders\OrderResource;
 use App\Observers\HesabfaObserver;
+use App\Support\Platform;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -47,7 +48,15 @@ class ViewOrder extends ViewRecord
                                                     ->badge(),
 
                                                 TextEntry::make('user.name')
-                                                    ->label('مشتری'),
+                                                    ->label('مشتری')
+                                                    ->placeholder('—')
+                                                    ->state(function ($record): ?string {
+                                                        if ($record->user?->name) {
+                                                            return $record->user->name;
+                                                        }
+
+                                                        return null;
+                                                    }),
 
                                                 TextEntry::make('status')
                                                     ->label('وضعیت')
@@ -267,6 +276,46 @@ class ViewOrder extends ViewRecord
                                         TextEntry::make('hesabfa_synced_at')
                                             ->label('تاریخ همگام‌سازی حسابفا')
                                             ->placeholder('—'),
+                                    ]),
+
+                                Grid::make(1)
+                                    ->visible(fn ($record): bool => $record->platform === Platform::TAPSI)
+                                    ->schema([
+                                        TextEntry::make('tapsi_order_id')
+                                            ->label('شناسه سفارش تپسی')
+                                            ->placeholder('—'),
+
+                                        TextEntry::make('tapsi_order_number')
+                                            ->label('شماره سفارش تپسی')
+                                            ->placeholder('—'),
+
+                                        TextEntry::make('tapsi_shipment_bundle')
+                                            ->label('شماره مرسوله')
+                                            ->placeholder('—'),
+
+                                        TextEntry::make('tapsi_delivery_method')
+                                            ->label('روش ارسال')
+                                            ->badge()
+                                            ->color(fn (?string $state): string => match ($state) {
+                                                'vendor' => 'info',
+                                                'platform' => 'primary',
+                                                'pickup' => 'success',
+                                                default => 'gray',
+                                            })
+                                            ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                                'vendor' => 'فروشنده',
+                                                'platform' => 'پلتفرم',
+                                                'pickup' => 'حضوری',
+                                                default => '—',
+                                            }),
+
+                                        TextEntry::make('tapsi_service_fee')
+                                            ->label('کارمزد سرویس')
+                                            ->formatStateUsing(fn ($state): string => $state ? number_format($state).' تومان' : '—'),
+
+                                        TextEntry::make('tapsi_voucher_fee')
+                                            ->label('تخفیف واوچر')
+                                            ->formatStateUsing(fn ($state): string => $state ? number_format($state).' تومان' : '—'),
                                     ]),
                             ]),
                     ]),

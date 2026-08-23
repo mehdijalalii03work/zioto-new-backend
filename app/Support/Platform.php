@@ -20,7 +20,9 @@ class Platform
 
     public const NOPAY = 'nopay';
 
-    public const ALL = [self::MAIN, self::NOPAY];
+    public const TAPSI = 'tapsi';
+
+    public const ALL = [self::MAIN, self::NOPAY, self::TAPSI];
 
     public static function fromRequest(?Request $request = null): string
     {

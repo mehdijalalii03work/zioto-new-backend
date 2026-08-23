@@ -17,7 +17,7 @@ class TenantOrderNumberingTest extends TestCase
     {
         $this->assertSame('main', Platform::MAIN);
         $this->assertSame('nopay', Platform::NOPAY);
-        $this->assertSame(['main', 'nopay'], Platform::ALL);
+        $this->assertSame(['main', 'nopay', 'tapsi'], Platform::ALL);
     }
 
     public function test_order_number_generation_uses_n_prefix_for_nopay(): void

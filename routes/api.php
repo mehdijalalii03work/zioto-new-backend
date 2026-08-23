@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\PriceBoardController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ShippingController;
+use App\Http\Controllers\Api\TapsiWebhookController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Auth\OtpController;
 use App\Models\Setting;
@@ -74,6 +75,11 @@ Route::middleware('auth.token')->prefix('wishlist')->group(function () {
 Route::prefix('hesabfa')->group(function () {
     Route::post('/webhook', [HesabfaWebhookController::class, 'handle'])->name('hesabfa.webhook')->middleware('throttle:60,1');
     Route::get('/webhook', [HesabfaWebhookController::class, 'test']);
+});
+
+Route::prefix('tapsi')->group(function () {
+    Route::post('/webhook', [TapsiWebhookController::class, 'handle'])->name('tapsi.webhook')->middleware('throttle:60,1');
+    Route::get('/webhook', [TapsiWebhookController::class, 'test']);
 });
 
 Route::get('/price-board', [PriceBoardController::class, 'index']);
