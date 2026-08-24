@@ -141,7 +141,6 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => 30,
             'replace_placeholders' => true,
-            'permission' => 0664,
         ],
 
     ],
