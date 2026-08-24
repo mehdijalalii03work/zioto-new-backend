@@ -168,6 +168,7 @@ class TapsiWebhookController extends Controller
 
         $user = User::withoutTenantScope()
             ->where('phone', $phone)
+            ->where('platform', Platform::TAPSI)
             ->first();
 
         if ($user) {
