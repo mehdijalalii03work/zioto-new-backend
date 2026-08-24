@@ -7,6 +7,7 @@ use App\Models\HesabfaSyncLog;
 use App\Models\Setting;
 use App\Services\HesabfaService;
 use App\Services\InstallmentService;
+use App\Support\Platform;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Order\Models\Order;
@@ -202,6 +203,11 @@ class HesabfaObserver
             $contactData['City'] = $order->address->city?->name ?? '';
             $contactData['Address'] = $order->address->full_address;
             $contactData['PostalCode'] = $order->address->postal_code ?? '';
+        } elseif ($snapshot = json_decode($order->shipping_address_snapshot, true)) {
+            $contactData['State'] = data_get($snapshot, 'province', '');
+            $contactData['City'] = data_get($snapshot, 'city', '');
+            $contactData['Address'] = data_get($snapshot, 'address', '');
+            $contactData['PostalCode'] = data_get($snapshot, 'postal_code', '');
         }
 
         return $contactData;
@@ -447,7 +453,7 @@ class HesabfaObserver
             'contactCode' => $contactCode,
             'invoiceType' => 0,
             'status' => config('hesabfa.draft_invoice', true) ? 0 : 1,
-            'project' => config('hesabfa.default_project', 'سایت ZIOTO'),
+            'project' => $order->platform === Platform::TAPSI ? 'تپسی شاپ' : config('hesabfa.default_project', 'سایت ZIOTO'),
             'currency' => 'IRR',
             'currencyRate' => 1,
             'contactTitle' => $order->user?->name ?? '',
@@ -469,10 +475,10 @@ class HesabfaObserver
             }
         }
 
-        $receiverName = $order->address?->receiver_name;
+        $receiverName = $order->address?->receiver_name ?? data_get(json_decode($order->shipping_address_snapshot, true), 'full_name');
         if ($receiverName) {
             $note .= "\nتحویل گیرنده: {$receiverName}";
-            $nationalCode = $order->address?->receiver_national_code;
+            $nationalCode = $order->address?->receiver_national_code ?? data_get(json_decode($order->notes, true), 'customer_national_code');
             if ($nationalCode) {
                 $note .= "\nکد ملی تحویل گیرنده: {$nationalCode}";
             }
