@@ -160,9 +160,17 @@ class ViewOrder extends ViewRecord
                                             ->schema([
                                                 TextEntry::make('deliverTo')
                                                     ->label('تحویل به')
-                                                    ->state(fn ($record): string => filled($record->address?->receiver_name) && $record->address->receiver_name !== $record->user?->name ? 'شخص دیگر' : 'خریدار')
+                                                    ->state(function ($record): string {
+                                                        $receiverName = $record->address?->receiver_name ?? data_get($record->shipping_address_snapshot, 'full_name');
+
+                                                        return filled($receiverName) && $receiverName !== $record->user?->name ? 'شخص دیگر' : 'خریدار';
+                                                    })
                                                     ->badge()
-                                                    ->color(fn ($record): string => filled($record->address?->receiver_name) && $record->address->receiver_name !== $record->user?->name ? 'warning' : 'success'),
+                                                    ->color(function ($record): string {
+                                                        $receiverName = $record->address?->receiver_name ?? data_get($record->shipping_address_snapshot, 'full_name');
+
+                                                        return filled($receiverName) && $receiverName !== $record->user?->name ? 'warning' : 'success';
+                                                    }),
 
                                                 TextEntry::make('shipping.shippingMethod.name')
                                                     ->label('روش ارسال')
@@ -171,31 +179,49 @@ class ViewOrder extends ViewRecord
                                                 TextEntry::make('address.receiver_name')
                                                     ->label('نام گیرنده')
                                                     ->placeholder('—')
-                                                    ->visible(fn ($record): bool => filled($record->address?->receiver_name) && $record->address->receiver_name !== $record->user?->name),
+                                                    ->state(fn ($record): ?string => $record->address?->receiver_name ?? data_get($record->shipping_address_snapshot, 'full_name'))
+                                                    ->visible(function ($record): bool {
+                                                        $receiverName = $record->address?->receiver_name ?? data_get($record->shipping_address_snapshot, 'full_name');
+
+                                                        return filled($receiverName) && $receiverName !== $record->user?->name;
+                                                    }),
 
                                                 TextEntry::make('address.receiver_phone')
                                                     ->label('تلفن گیرنده')
                                                     ->placeholder('—')
-                                                    ->visible(fn ($record): bool => filled($record->address?->receiver_name) && $record->address->receiver_name !== $record->user?->name),
+                                                    ->state(fn ($record): ?string => $record->address?->receiver_phone ?? data_get($record->shipping_address_snapshot, 'phone'))
+                                                    ->visible(function ($record): bool {
+                                                        $receiverName = $record->address?->receiver_name ?? data_get($record->shipping_address_snapshot, 'full_name');
+
+                                                        return filled($receiverName) && $receiverName !== $record->user?->name;
+                                                    }),
 
                                                 TextEntry::make('address.province.name')
                                                     ->label('استان')
-                                                    ->placeholder('—'),
+                                                    ->placeholder('—')
+                                                    ->state(fn ($record): ?string => $record->address?->province?->name ?? data_get($record->shipping_address_snapshot, 'province')),
 
                                                 TextEntry::make('address.postal_code')
                                                     ->label('کد پستی')
-                                                    ->placeholder('—'),
+                                                    ->placeholder('—')
+                                                    ->state(fn ($record): ?string => $record->address?->postal_code ?? data_get($record->shipping_address_snapshot, 'postal_code')),
 
                                                 TextEntry::make('address.receiver_national_code')
                                                     ->label('کد ملی')
                                                     ->placeholder('—')
-                                                    ->visible(fn ($record): bool => filled($record->address?->receiver_name) && $record->address->receiver_name !== $record->user?->name),
+                                                    ->state(fn ($record): ?string => $record->address?->receiver_national_code ?? data_get($record->notes, 'customer_national_code'))
+                                                    ->visible(function ($record): bool {
+                                                        $receiverName = $record->address?->receiver_name ?? data_get($record->shipping_address_snapshot, 'full_name');
+
+                                                        return filled($receiverName) && $receiverName !== $record->user?->name;
+                                                    }),
 
                                             ])->columnSpanFull(),
 
                                         TextEntry::make('address.full_address')
                                             ->label('آدرس کامل')
                                             ->placeholder('—')
+                                            ->state(fn ($record): ?string => $record->address?->full_address ?? data_get($record->shipping_address_snapshot, 'address'))
                                             ->columnSpanFull(),
 
                                     ])->columnSpanFull(),
