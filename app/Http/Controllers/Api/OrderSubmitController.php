@@ -82,6 +82,16 @@ class OrderSubmitController extends Controller
             ], 422);
         }
 
+        $existingOrder = $this->findExistingSimilarOrder($user, $cartItems, $validated);
+
+        if ($existingOrder) {
+            return response()->json([
+                'message' => 'سفارش مشابه قبلی شما برگردانده شد',
+                'order' => new OrderResource($existingOrder->load(['shipping', 'items'])),
+                'is_existing' => true,
+            ]);
+        }
+
         $result = DB::transaction(function () use ($validated, $user, $cartItems) {
             $address = empty($validated['user_address_id']) ? null : $user->addresses()->with(['province', 'city'])->find($validated['user_address_id']);
 
@@ -89,43 +99,8 @@ class OrderSubmitController extends Controller
             $buyerPhone = $user->phone;
             $nationalId = $user->national_code;
 
-            $totalAmount = 0;
-            $orderItems = [];
-
-            foreach ($cartItems as $cartItem) {
-                $product = $cartItem->product;
-                $subtotal = $product->price * $cartItem->quantity;
-                $totalAmount += $subtotal;
-                $orderItems[] = [
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'product_price' => $product->price,
-                    'quantity' => $cartItem->quantity,
-                    'subtotal' => $subtotal,
-                ];
-            }
-
-            $shippingResult = $this->calculateShippingCost(
-                $validated['shipping_method_id'],
-                $cartItems,
-                $totalAmount,
-                $address?->province_id,
-                $address?->city_id
-            );
-
-            $shippingCost = $shippingResult['total'];
-            $totalAmount += $shippingCost;
-
             $gateway = $validated['gateway'] ?? 'parsian';
-            $paymentMethod = InstallmentService::isInstallmentGateway($gateway)
-                ? (InstallmentService::isFeeGateway($gateway) ? 'installment' : 'installment_nofee')
-                : 'online';
-            $installmentFee = 0;
-
-            if (InstallmentService::isFeeGateway($gateway)) {
-                $installmentFee = InstallmentService::calculateFee((int) $totalAmount);
-                $totalAmount += $installmentFee;
-            }
+            $orderData = $this->calculateOrderData($cartItems, $validated, $address);
 
             $notesData = [
                 'name' => $buyerName,
@@ -133,22 +108,22 @@ class OrderSubmitController extends Controller
                 'national_code' => $nationalId,
             ];
 
-            if ($installmentFee > 0) {
-                $notesData['installment_fee'] = $installmentFee;
+            if ($orderData['installment_fee'] > 0) {
+                $notesData['installment_fee'] = $orderData['installment_fee'];
             }
 
             $order = Order::create([
                 'user_id' => $user->id,
                 'platform' => Platform::fromRequest(),
                 'status' => 'pending',
-                'total_amount' => $totalAmount,
-                'payment_method' => $paymentMethod,
+                'total_amount' => $orderData['total_amount'],
+                'payment_method' => $orderData['payment_method'],
                 'payment_status' => 'pending',
                 'user_address_id' => $validated['user_address_id'] ?? null,
                 'notes' => json_encode($notesData),
             ]);
 
-            foreach ($orderItems as $orderItem) {
+            foreach ($orderData['items'] as $orderItem) {
                 $order->items()->create($orderItem);
             }
 
@@ -158,16 +133,16 @@ class OrderSubmitController extends Controller
                 'order_id' => $order->id,
                 'shipping_method_id' => $validated['shipping_method_id'],
                 'shipping_method_name' => $method?->name ?? '',
-                'shipping_cost' => $shippingCost,
-                'tax_amount' => $shippingResult['tax_amount'],
-                'tax_rate' => $shippingResult['tax_rate'],
+                'shipping_cost' => $orderData['shipping_cost'],
+                'tax_amount' => $orderData['tax_amount'],
+                'tax_rate' => $orderData['tax_rate'],
             ]);
 
             return [
                 'order' => $order->load(['shipping', 'items']),
                 'method' => $method,
-                'installmentFee' => $installmentFee,
-                'shippingCost' => $shippingCost,
+                'installmentFee' => $orderData['installment_fee'],
+                'shippingCost' => $orderData['shipping_cost'],
             ];
         });
 
@@ -175,6 +150,98 @@ class OrderSubmitController extends Controller
             'message' => 'سفارش با موفقیت ثبت شد',
             'order' => new OrderResource($result['order']),
         ], 201);
+    }
+
+    private function calculateOrderData($cartItems, array $validated, ?object $address = null): array
+    {
+        $baseAmount = 0;
+        $orderItems = [];
+
+        foreach ($cartItems as $cartItem) {
+            $product = $cartItem->product;
+            $subtotal = $product->price * $cartItem->quantity;
+            $baseAmount += $subtotal;
+            $orderItems[] = [
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'product_price' => $product->price,
+                'quantity' => $cartItem->quantity,
+                'subtotal' => $subtotal,
+            ];
+        }
+
+        $shippingResult = $this->calculateShippingCost(
+            $validated['shipping_method_id'],
+            $cartItems,
+            $baseAmount,
+            $address?->province_id,
+            $address?->city_id
+        );
+
+        $gateway = $validated['gateway'] ?? 'parsian';
+        $paymentMethod = InstallmentService::isInstallmentGateway($gateway)
+            ? (InstallmentService::isFeeGateway($gateway) ? 'installment' : 'installment_nofee')
+            : 'online';
+
+        $totalAmount = $baseAmount + $shippingResult['total'];
+        $installmentFee = 0;
+
+        if (InstallmentService::isFeeGateway($gateway)) {
+            $installmentFee = InstallmentService::calculateFee((int) $totalAmount);
+            $totalAmount += $installmentFee;
+        }
+
+        return [
+            'items' => $orderItems,
+            'total_amount' => $totalAmount,
+            'payment_method' => $paymentMethod,
+            'installment_fee' => $installmentFee,
+            'shipping_cost' => $shippingResult['total'],
+            'tax_amount' => $shippingResult['tax_amount'],
+            'tax_rate' => $shippingResult['tax_rate'],
+        ];
+    }
+
+    private function findExistingSimilarOrder($user, $cartItems, array $validated): ?Order
+    {
+        $cartItemData = collect($cartItems)->map(fn (Cart $item) => [
+            'product_id' => $item->product_id,
+            'quantity' => $item->quantity,
+            'product_price' => $item->product->price,
+        ])->sortBy('product_id')->values()->toArray();
+
+        $pendingOrders = Order::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->whereIn('payment_status', ['pending', 'failed'])
+            ->where('created_at', '>=', now()->subMinutes(20))
+            ->with(['items' => function ($query) {
+                $query->select('id', 'order_id', 'product_id', 'quantity', 'product_price');
+            }])
+            ->get();
+
+        foreach ($pendingOrders as $order) {
+            $orderItemData = $order->items
+                ->map(fn ($item) => [
+                    'product_id' => $item->product_id,
+                    'quantity' => $item->quantity,
+                    'product_price' => $item->product_price,
+                ])
+                ->sortBy('product_id')
+                ->values()
+                ->toArray();
+
+            if ($cartItemData === $orderItemData) {
+                $orderData = $this->calculateOrderData($cartItems, $validated);
+                $order->update([
+                    'total_amount' => $orderData['total_amount'],
+                    'payment_method' => $orderData['payment_method'],
+                ]);
+
+                return $order;
+            }
+        }
+
+        return null;
     }
 
     private function calculateShippingCost(int $shippingMethodId, $cartItems, int $cartTotal, ?int $provinceId, ?int $cityId): array
