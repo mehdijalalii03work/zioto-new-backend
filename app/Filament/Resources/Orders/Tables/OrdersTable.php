@@ -227,6 +227,24 @@ class OrdersTable
 
                         return $query->whereHas('payments', fn ($q) => $q->where('gateway', $data['value']));
                     }),
+                SelectFilter::make('tapsi_orders')
+                    ->label('فقط سفارشات تپسی')
+                    ->placeholder('همه')
+                    ->options([
+                        'pending' => 'تپسی - در انتظار بررسی',
+                        'all' => 'همه سفارشات تپسی',
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (blank($data['value'])) {
+                            return $query;
+                        }
+
+                        if ($data['value'] === 'pending') {
+                            return $query->where('platform', 'tapsi')->where('status', 'pending');
+                        }
+
+                        return $query->where('platform', 'tapsi');
+                    }),
                 TrashedFilter::make(),
             ])
             ->defaultPaginationPageOption(25)

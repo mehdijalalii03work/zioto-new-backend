@@ -25,8 +25,9 @@ class ListOrders extends ListRecords
     public function getTabs(): array
     {
         return [
-            'all' => Tab::make('همه سفارشات')
-                ->badge(fn () => Order::count()),
+            'all' => Tab::make('سفارشات فعال')
+                ->query(fn ($query) => $query->where('status', '!=', 'cancelled'))
+                ->badge(fn () => Order::where('status', '!=', 'cancelled')->count()),
             'pending' => Tab::make('در انتظار بررسی')
                 ->query(fn ($query) => $query->where('status', 'pending'))
                 ->badge(fn () => Order::where('status', 'pending')->count()),
