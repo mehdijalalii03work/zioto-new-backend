@@ -23,7 +23,7 @@ return [
     |
     */
 
-    'markup_threshold' => 50_000_000,
+    'markup_threshold' => (int) env('TAPSI_MARKUP_THRESHOLD', 500_000_000),
     'markup_below_threshold' => (int) env('TAPSI_MARKUP_BELOW_50M', 2),
     'markup_above_threshold' => (int) env('TAPSI_MARKUP_ABOVE_50M', 1),
 

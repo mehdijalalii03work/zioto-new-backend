@@ -90,7 +90,7 @@ class TokenikoDirectSyncTest extends TestCase
         $this->assertCount(2, $payload);
 
         $changedPayload = collect($payload)->firstWhere('id', 'ZGB5-0001-0');
-        $this->assertSame(303_000_000, $changedPayload['price']);
+        $this->assertSame(306_000_000, $changedPayload['price']);
         $this->assertSame(4, $changedPayload['stock']);
 
         $unchangedPayload = collect($payload)->firstWhere('id', 'ZSB9-0005-0');
@@ -111,7 +111,7 @@ class TokenikoDirectSyncTest extends TestCase
         $this->assertSame(0, $result['updated']);
         $this->assertSame(1, $result['tapsi_sent']);
         $this->assertCount(1, $tapsiRequests);
-        $this->assertSame(303_000_000, $tapsiRequests[0]->data()['products'][0]['price']);
+        $this->assertSame(306_000_000, $tapsiRequests[0]->data()['products'][0]['price']);
     }
 
     public function test_sync_sends_zero_stock_for_all_products_when_emergency_active(): void
