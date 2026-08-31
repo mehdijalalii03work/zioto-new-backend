@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PriceBoardController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\RigeController;
 use App\Http\Controllers\Api\ShippingController;
 use App\Http\Controllers\Api\TapsiWebhookController;
 use App\Http\Controllers\Api\WishlistController;
@@ -116,4 +117,10 @@ Route::prefix('payment')->group(function () {
     Route::match(['get', 'post'], '/callback', [PaymentController::class, 'callbackByToken'])->name('payment.callback.bare');
     Route::match(['get', 'post'], '/callback/{orderId}/{gateway}', [PaymentController::class, 'callback'])->name('payment.callback');
     Route::get('/status/{orderId}', [PaymentController::class, 'status'])->middleware('auth.token');
+});
+
+Route::prefix('rige')->group(function () {
+    Route::get('/products', [RigeController::class, 'products'])->middleware('throttle:60,1');
+    Route::get('/categories', [RigeController::class, 'categories'])->middleware('throttle:60,1');
+    Route::get('/variants/{identifier}', [RigeController::class, 'variants'])->middleware('throttle:60,1');
 });
