@@ -67,7 +67,7 @@ class TapsiShopService
         $response = Http::withHeaders([
             'Accept' => 'text/plain',
             'Content-Type' => 'application/json',
-            'TapsiShop.Hub.Authorization' => $this->token,
+            'Tapsi-Shop-Hub-Authorization' => $this->token,
         ])->timeout(25)->put($url, ['products' => $chunk]);
 
         if ($response->failed()) {
@@ -262,7 +262,7 @@ class TapsiShopService
         $http = Http::withHeaders([
             'Accept' => 'text/plain',
             'Content-Type' => 'application/json',
-            'TapsiShop.Hub.Authorization' => $this->token,
+            'Tapsi-Shop-Hub-Authorization' => $this->token,
         ])->timeout(30);
 
         $response = match ($method) {

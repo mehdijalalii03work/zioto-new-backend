@@ -25,9 +25,9 @@ class TapsiWebhookController extends Controller
             return response()->json(['error' => 'Tapsi integration disabled'], 503);
         }
 
-        $token = $request->header('tapsishop-hub-webhook-authorization')
+        $token = $request->header('Tapsi-Shop-Hub-Authorization')
             ?? $request->header('tapsishopauthorization')
-            ?? $request->header('tapsi-shop-hub-authorization');
+            ?? $request->header('tapsishop-hub-webhook-authorization');
 
         $expectedToken = config('tapsi.auth_token');
         if ($expectedToken && $token !== $expectedToken) {

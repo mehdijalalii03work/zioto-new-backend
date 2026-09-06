@@ -68,7 +68,7 @@ class TapsiWebhookControllerTest extends TestCase
     public function test_webhook_creates_order(): void
     {
         $this->postJson('/api/tapsi/webhook', $this->validPayload(), [
-            'tapsishop-hub-webhook-authorization' => 'test-token-123',
+            'Tapsi-Shop-Hub-Authorization' => 'test-token-123',
         ])
             ->assertOk()
             ->assertJson(['success' => true]);
@@ -86,7 +86,7 @@ class TapsiWebhookControllerTest extends TestCase
     public function test_webhook_creates_user(): void
     {
         $this->postJson('/api/tapsi/webhook', $this->validPayload(), [
-            'tapsishop-hub-webhook-authorization' => 'test-token-123',
+            'Tapsi-Shop-Hub-Authorization' => 'test-token-123',
         ])->assertOk();
 
         $this->assertDatabaseHas('users', [
@@ -102,7 +102,7 @@ class TapsiWebhookControllerTest extends TestCase
     public function test_webhook_creates_order_items(): void
     {
         $this->postJson('/api/tapsi/webhook', $this->validPayload(), [
-            'tapsishop-hub-webhook-authorization' => 'test-token-123',
+            'Tapsi-Shop-Hub-Authorization' => 'test-token-123',
         ])->assertOk();
 
         $order = Order::withoutTenantScope()->where('tapsi_order_id', '999999999')->first();
@@ -116,7 +116,7 @@ class TapsiWebhookControllerTest extends TestCase
     public function test_webhook_handles_duplicate(): void
     {
         $payload = $this->validPayload();
-        $headers = ['tapsishop-hub-webhook-authorization' => 'test-token-123'];
+        $headers = ['Tapsi-Shop-Hub-Authorization' => 'test-token-123'];
 
         $this->postJson('/api/tapsi/webhook', $payload, $headers)->assertOk();
         $this->postJson('/api/tapsi/webhook', $payload, $headers)
@@ -129,14 +129,14 @@ class TapsiWebhookControllerTest extends TestCase
     public function test_webhook_rejects_invalid_token(): void
     {
         $this->postJson('/api/tapsi/webhook', $this->validPayload(), [
-            'tapsishop-hub-webhook-authorization' => 'wrong-token',
+            'Tapsi-Shop-Hub-Authorization' => 'wrong-token',
         ])->assertStatus(401);
     }
 
     public function test_webhook_accepts_valid_token(): void
     {
         $this->postJson('/api/tapsi/webhook', $this->validPayload(), [
-            'tapsishop-hub-webhook-authorization' => 'test-token-123',
+            'Tapsi-Shop-Hub-Authorization' => 'test-token-123',
         ])->assertOk();
     }
 
@@ -146,7 +146,7 @@ class TapsiWebhookControllerTest extends TestCase
         $payload['orderDetail']['changeType'] = 2;
 
         $this->postJson('/api/tapsi/webhook', $payload, [
-            'tapsishop-hub-webhook-authorization' => 'test-token-123',
+            'Tapsi-Shop-Hub-Authorization' => 'test-token-123',
         ])
             ->assertOk()
             ->assertJson(['message' => 'Event ignored']);
@@ -159,7 +159,7 @@ class TapsiWebhookControllerTest extends TestCase
     public function test_webhook_stores_customer_info_in_notes(): void
     {
         $this->postJson('/api/tapsi/webhook', $this->validPayload(), [
-            'tapsishop-hub-webhook-authorization' => 'test-token-123',
+            'Tapsi-Shop-Hub-Authorization' => 'test-token-123',
         ])->assertOk();
 
         $order = Order::withoutTenantScope()->where('tapsi_order_id', '999999999')->first();
@@ -177,7 +177,7 @@ class TapsiWebhookControllerTest extends TestCase
     public function test_webhook_returns_400_without_order_detail(): void
     {
         $this->postJson('/api/tapsi/webhook', ['items' => []], [
-            'tapsishop-hub-webhook-authorization' => 'test-token-123',
+            'Tapsi-Shop-Hub-Authorization' => 'test-token-123',
         ])->assertStatus(400);
     }
 
@@ -186,7 +186,21 @@ class TapsiWebhookControllerTest extends TestCase
         config(['tapsi.enabled' => false]);
 
         $this->postJson('/api/tapsi/webhook', $this->validPayload(), [
-            'tapsishop-hub-webhook-authorization' => 'test-token-123',
+            'Tapsi-Shop-Hub-Authorization' => 'test-token-123',
         ])->assertStatus(503);
+    }
+
+    public function test_webhook_accepts_legacy_header_tapsishopauthorization(): void
+    {
+        $this->postJson('/api/tapsi/webhook', $this->validPayload(), [
+            'tapsishopauthorization' => 'test-token-123',
+        ])->assertOk();
+    }
+
+    public function test_webhook_accepts_legacy_header_tapsishop_hub_webhook_authorization(): void
+    {
+        $this->postJson('/api/tapsi/webhook', $this->validPayload(), [
+            'tapsishop-hub-webhook-authorization' => 'test-token-123',
+        ])->assertOk();
     }
 }
