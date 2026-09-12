@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Morilog\Jalali\Jalalian;
 
 class ShahkarService
 {
@@ -82,13 +83,18 @@ class ShahkarService
             return ['success' => false, 'reason' => 'token_error', 'message' => 'خطا در دریافت توکن احراز هویت'];
         }
 
+        $shamsiDate = $this->gregorianToShamsi($birthDate);
+        if (! $shamsiDate) {
+            return ['success' => false, 'reason' => 'invalid_date', 'message' => 'فرمت تاریخ تولد نامعتبر است'];
+        }
+
         try {
             $response = Http::withHeaders([
                 'Authorization' => "Bearer {$token}",
                 'Content-Type' => 'application/json',
             ])->timeout(15)->get("{$this->baseUrl}/v1/services/identity", [
                 'nationalCode' => $nationalCode,
-                'birthDate' => $birthDate,
+                'birthDate' => $shamsiDate,
                 'completeInfo' => true,
                 'withoutPhoto' => false,
             ]);
@@ -192,6 +198,18 @@ class ShahkarService
             'FEMALE' => 'خانم',
             default => $gender,
         };
+    }
+
+    private function gregorianToShamsi(string $gregorianDate): ?string
+    {
+        try {
+            $date = new \DateTime($gregorianDate);
+            $jalali = Jalalian::fromDateTime($date);
+
+            return $jalali->format('Ymd');
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     private function getIdentityErrorMessage(string $reason): string
