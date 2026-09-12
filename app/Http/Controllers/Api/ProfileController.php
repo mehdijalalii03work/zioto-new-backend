@@ -45,7 +45,19 @@ class ProfileController extends Controller
             'birth_date' => ['sometimes', 'nullable', 'date', 'before:today'],
         ]);
 
+        // Block identity fields when identity is already verified
+        if ($user->isIdentityVerified()) {
+            $blocked = array_intersect(array_keys($validated), ['first_name', 'last_name', 'birth_date']);
+            if (! empty($blocked)) {
+                return response()->json([
+                    'message' => 'اطلاعات هویتی پس از احراز هویت قابل تغییر نیست',
+                    'error_code' => 'IDENTITY_VERIFIED',
+                ], 422);
+            }
+        }
+
         $data = [];
+        $birthDateChanged = false;
 
         if ($request->has('first_name')) {
             $data['first_name'] = $validated['first_name'];
@@ -67,11 +79,44 @@ class ProfileController extends Controller
             $data['email'] = $validated['email'] ?: null;
         }
 
-        if ($request->has('birth_date')) {
+        if ($request->has('birth_date') && $validated['birth_date'] !== $user->birth_date) {
             $data['birth_date'] = $validated['birth_date'];
+            $birthDateChanged = true;
         }
 
         $user->update($data);
+
+        // When birth_date changes and identity was previously mismatched or verified,
+        // re-fetch identity info from Jibit (skip if same birth_date = duplicate prevention)
+        if ($birthDateChanged && in_array($user->identity_verification_status, ['birth_date_mismatch', 'verified'])) {
+            $normalizedMobile = $this->normalizeMobile($user->phone);
+            $nationalCode = $user->national_code;
+
+            // First verify national code matches phone (shahkar matching)
+            $matchResult = $this->shahkar->verify($nationalCode, $normalizedMobile);
+
+            if ($matchResult['success'] && ($matchResult['matched'] ?? false)) {
+                $identityResult = $this->shahkar->getIdentityInfo($nationalCode, $validated['birth_date']);
+
+                if ($identityResult['success']) {
+                    $user->update([
+                        'first_name' => $identityResult['info']['first_name'] ?? $user->first_name,
+                        'last_name' => $identityResult['info']['last_name'] ?? $user->last_name,
+                        'name' => ($identityResult['info']['first_name'] ?? '').' '.($identityResult['info']['last_name'] ?? ''),
+                        'father_name' => $identityResult['info']['father_name'] ?? $user->father_name,
+                        'gender' => ShahkarService::mapGender($identityResult['info']['gender'] ?? $user->gender),
+                        'birth_place' => $identityResult['info']['birth_place'] ?? $user->birth_place,
+                        'identity_verification_status' => 'verified',
+                        'identity_verified_at' => now(),
+                    ]);
+                } elseif ($identityResult['reason'] === 'birth_date_mismatch') {
+                    $user->update([
+                        'identity_verification_status' => 'birth_date_mismatch',
+                        'identity_verified_at' => null,
+                    ]);
+                }
+            }
+        }
 
         return response()->json([
             'message' => 'اطلاعات با موفقیت بروزرسانی شد',
