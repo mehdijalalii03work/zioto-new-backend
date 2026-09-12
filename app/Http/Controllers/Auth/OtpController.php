@@ -154,9 +154,11 @@ class OtpController extends Controller
             $result = $this->shahkar->verify($nationalCode, $normalizedMobile);
 
             if (! $result['success']) {
+                $errorCode = $result['reason'] === 'rate_limit' ? 'RATE_LIMITED' : 'SHAHKAR_FAILED';
+
                 return response()->json([
                     'message' => $result['message'] ?? 'خطا در احراز هویت',
-                    'error_code' => 'SHAHKAR_FAILED',
+                    'error_code' => $errorCode,
                 ], 422);
             }
 
@@ -182,6 +184,13 @@ class OtpController extends Controller
                 return response()->json([
                     'message' => 'تاریخ تولد وارد شده صحیح نیست',
                     'error_code' => 'BIRTH_DATE_MISMATCH',
+                ], 422);
+            }
+
+            if ($identityResult['reason'] === 'rate_limit') {
+                return response()->json([
+                    'message' => $identityResult['message'],
+                    'error_code' => 'RATE_LIMITED',
                 ], 422);
             }
 

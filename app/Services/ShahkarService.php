@@ -53,6 +53,14 @@ class ShahkarService
                 ];
             }
 
+            if ($response->status() === 429) {
+                Log::warning('Shahkar verification rate limited', [
+                    'national_code' => substr($nationalCode, 0, 3).'***'.substr($nationalCode, -2),
+                ]);
+
+                return ['success' => false, 'reason' => 'rate_limit', 'message' => 'تعداد درخواست‌ها بیش از حد مجاز است، لطفاً ۵ دقیقه دیگر تلاش کنید'];
+            }
+
             $body = $response->json();
             $reason = $body['reason'] ?? 'unknown';
             $message = $this->getErrorMessage($reason);
@@ -121,6 +129,14 @@ class ShahkarService
                 ]);
 
                 return ['success' => false, 'reason' => 'birth_date_mismatch', 'message' => 'تاریخ تولد وارد شده صحیح نیست'];
+            }
+
+            if ($response->status() === 429) {
+                Log::warning('Identity info rate limited', [
+                    'national_code' => substr($nationalCode, 0, 3).'***'.substr($nationalCode, -2),
+                ]);
+
+                return ['success' => false, 'reason' => 'rate_limit', 'message' => 'تعداد درخواست‌ها بیش از حد مجاز است، لطفاً ۵ دقیقه دیگر تلاش کنید'];
             }
 
             $body = $response->json();
