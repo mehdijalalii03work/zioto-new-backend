@@ -10,12 +10,12 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\ShahkarService;
 use App\Services\SmsIrService;
+use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 
 class OtpController extends Controller
 {
@@ -77,7 +77,7 @@ class OtpController extends Controller
 
         Cache::forget($key);
 
-        $platform = \App\Support\Platform::fromRequest($request);
+        $platform = Platform::fromRequest($request);
         $user = User::withoutTenantScope()->where('phone', $phone)->where('platform', $platform)->first();
 
         if ($user) {
@@ -98,7 +98,7 @@ class OtpController extends Controller
         }
 
         $token = Str::random(64);
-        $platform = \App\Support\Platform::fromRequest($request);
+        $platform = Platform::fromRequest($request);
         Cache::put("shahkar_register_token:{$token}", ['phone' => $phone, 'platform' => $platform], self::SHAHKAR_TOKEN_TTL);
 
         return response()->json([
@@ -111,8 +111,6 @@ class OtpController extends Controller
     public function shahkarVerify(ShahkarVerifyRequest $request): JsonResponse
     {
         $token = $request->input('token');
-        $firstName = $request->input('first_name');
-        $lastName = $request->input('last_name');
         $nationalCode = $request->input('national_code');
         $birthDate = $request->input('birth_date');
 
@@ -128,7 +126,7 @@ class OtpController extends Controller
 
         // The platform is bound to the registration token so a user can
         // register on main and nopay independently with the same phone.
-        $platform = is_array($registerData) ? ($registerData['platform'] ?? 'main') : \App\Support\Platform::fromRequest($request);
+        $platform = is_array($registerData) ? ($registerData['platform'] ?? 'main') : Platform::fromRequest($request);
         $existingUser = User::withoutTenantScope()
             ->where('national_code', $nationalCode)
             ->where('platform', $platform)
@@ -170,18 +168,46 @@ class OtpController extends Controller
             }
         }
 
+        // Fetch identity info from Jibit (name, father name, gender, birth place)
+        $identityResult = $this->shahkar->getIdentityInfo($nationalCode, $birthDate);
+
+        $firstName = $identityResult['info']['first_name'] ?? null;
+        $lastName = $identityResult['info']['last_name'] ?? null;
+        $fatherName = $identityResult['info']['father_name'] ?? null;
+        $gender = ShahkarService::mapGender($identityResult['info']['gender'] ?? null);
+        $birthPlace = $identityResult['info']['birth_place'] ?? null;
+
+        if (! $identityResult['success']) {
+            if ($identityResult['reason'] === 'birth_date_mismatch') {
+                return response()->json([
+                    'message' => 'تاریخ تولد وارد شده صحیح نیست',
+                    'error_code' => 'BIRTH_DATE_MISMATCH',
+                ], 422);
+            }
+
+            return response()->json([
+                'message' => $identityResult['message'] ?? 'خطا در دریافت اطلاعات هویتی',
+                'error_code' => 'IDENTITY_FAILED',
+            ], 422);
+        }
+
         $apiToken = Str::random(64);
 
         $user = User::create([
             'name' => $firstName.' '.$lastName,
             'first_name' => $firstName,
             'last_name' => $lastName,
+            'father_name' => $fatherName,
+            'gender' => $gender,
+            'birth_place' => $birthPlace,
             'phone' => $phone,
             'email' => null,
             'password' => Hash::make(Str::random(32)),
             'phone_verified_at' => now(),
             'national_code' => $nationalCode,
             'shahkar_verified' => true,
+            'identity_verification_status' => 'verified',
+            'identity_verified_at' => now(),
             'birth_date' => $birthDate,
             'platform' => $platform,
             'api_token' => $apiToken,
