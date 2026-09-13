@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -92,11 +93,29 @@ class ProfileController extends Controller
             $normalizedMobile = $this->normalizeMobile($user->phone);
             $nationalCode = $user->national_code;
 
+            Log::info('Profile identity re-verify started', [
+                'user_id' => $user->id,
+                'national_code' => substr($nationalCode, 0, 3).'***'.substr($nationalCode, -2),
+                'birth_date_input' => $validated['birth_date'],
+                'identity_status' => $user->identity_verification_status,
+            ]);
+
             // First verify national code matches phone (shahkar matching)
             $matchResult = $this->shahkar->verify($nationalCode, $normalizedMobile);
 
+            Log::info('Profile shahkar verify result', [
+                'user_id' => $user->id,
+                'match_result' => $matchResult,
+            ]);
+
             if ($matchResult['success'] && ($matchResult['matched'] ?? false)) {
                 $identityResult = $this->shahkar->getIdentityInfo($nationalCode, $validated['birth_date']);
+
+                Log::info('Profile getIdentityInfo result', [
+                    'user_id' => $user->id,
+                    'birth_date_sent' => $validated['birth_date'],
+                    'identity_result' => $identityResult,
+                ]);
 
                 if ($identityResult['success']) {
                     $user->update([
@@ -115,6 +134,11 @@ class ProfileController extends Controller
                         'identity_verified_at' => null,
                     ]);
                 }
+            } else {
+                Log::warning('Profile shahkar verify failed or not matched', [
+                    'user_id' => $user->id,
+                    'match_result' => $matchResult,
+                ]);
             }
         }
 

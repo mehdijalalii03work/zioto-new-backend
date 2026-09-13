@@ -96,6 +96,12 @@ class ShahkarService
             return ['success' => false, 'reason' => 'invalid_date', 'message' => 'فرمت تاریخ تولد نامعتبر است'];
         }
 
+        Log::info('Jibit getIdentityInfo request', [
+            'national_code' => substr($nationalCode, 0, 3).'***'.substr($nationalCode, -2),
+            'birth_date_input' => $birthDate,
+            'birth_date_converted' => $shamsiDate,
+        ]);
+
         try {
             $response = Http::withHeaders([
                 'Authorization' => "Bearer {$token}",
