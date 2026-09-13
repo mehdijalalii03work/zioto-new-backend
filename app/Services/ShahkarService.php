@@ -236,12 +236,25 @@ class ShahkarService
 
     private function toShamsiIfNeeded(string $date): ?string
     {
-        // If already in Shamsi format (YYYY-MM-DD where year > 1500), return as-is (compact)
-        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $matches) && (int) $matches[1] > 1500) {
+        // If already in compact Shamsi format like "13750106" (8 digits, no dashes), return as-is
+        if (preg_match('/^\d{8}$/', $date)) {
+            return $date;
+        }
+
+        // If in YYYY-MM-DD format, determine if Shamsi or Gregorian
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $matches)) {
+            $year = (int) $matches[1];
+
+            // Gregorian years are >= 1900, Shamsi years are < 1500
+            if ($year >= 1900) {
+                return $this->gregorianToShamsi($date);
+            }
+
+            // Already Shamsi, just compact it
             return str_replace('-', '', $date);
         }
 
-        // Otherwise assume Gregorian and convert
+        // Try as Gregorian fallback
         return $this->gregorianToShamsi($date);
     }
 
