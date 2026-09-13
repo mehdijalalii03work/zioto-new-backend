@@ -91,7 +91,7 @@ class ShahkarService
             return ['success' => false, 'reason' => 'token_error', 'message' => 'خطا در دریافت توکن احراز هویت'];
         }
 
-        $shamsiDate = $this->gregorianToShamsi($birthDate);
+        $shamsiDate = $this->toShamsiIfNeeded($birthDate);
         if (! $shamsiDate) {
             return ['success' => false, 'reason' => 'invalid_date', 'message' => 'فرمت تاریخ تولد نامعتبر است'];
         }
@@ -226,6 +226,17 @@ class ShahkarService
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    private function toShamsiIfNeeded(string $date): ?string
+    {
+        // If already in Shamsi format (YYYY-MM-DD where year > 1500), return as-is (compact)
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $matches) && (int) $matches[1] > 1500) {
+            return str_replace('-', '', $date);
+        }
+
+        // Otherwise assume Gregorian and convert
+        return $this->gregorianToShamsi($date);
     }
 
     private function getIdentityErrorMessage(string $reason): string
