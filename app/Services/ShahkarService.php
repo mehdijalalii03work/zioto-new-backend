@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\JibitApiLog;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -35,14 +36,31 @@ class ShahkarService
             return ['success' => false, 'reason' => 'token_error', 'message' => 'خطا در دریافت توکن احراز هویت'];
         }
 
+        $endpoint = '/v1/services/matching';
+        $requestBody = [
+            'nationalCode' => $nationalCode,
+            'mobileNumber' => $mobile,
+        ];
+
+        $start = microtime(true);
+
         try {
             $response = Http::withHeaders([
                 'Authorization' => "Bearer {$token}",
                 'Content-Type' => 'application/json',
-            ])->timeout(15)->get("{$this->baseUrl}/v1/services/matching", [
-                'nationalCode' => $nationalCode,
-                'mobileNumber' => $mobile,
-            ]);
+            ])->timeout(15)->get("{$this->baseUrl}{$endpoint}", $requestBody);
+
+            $durationMs = (int) ((microtime(true) - $start) * 1000);
+
+            $this->logApiCall(
+                endpoint: $endpoint,
+                method: 'GET',
+                requestBody: $requestBody,
+                responseStatus: $response->status(),
+                responseBody: $response->json(),
+                durationMs: $durationMs,
+                success: $response->successful()
+            );
 
             if ($response->successful()) {
                 $body = $response->json();
@@ -72,6 +90,19 @@ class ShahkarService
 
             return ['success' => false, 'reason' => $reason, 'message' => $message];
         } catch (\Exception $e) {
+            $durationMs = (int) ((microtime(true) - $start) * 1000);
+
+            $this->logApiCall(
+                endpoint: $endpoint,
+                method: 'GET',
+                requestBody: $requestBody,
+                responseStatus: null,
+                responseBody: null,
+                durationMs: $durationMs,
+                success: false,
+                errorMessage: $e->getMessage()
+            );
+
             Log::error('Shahkar API error: '.$e->getMessage());
 
             return ['success' => false, 'reason' => 'connection_error', 'message' => 'خطا در ارتباط با سرویس احراز هویت'];
@@ -96,22 +127,39 @@ class ShahkarService
             return ['success' => false, 'reason' => 'invalid_date', 'message' => 'فرمت تاریخ تولد نامعتبر است'];
         }
 
+        $endpoint = '/v1/services/identity';
+        $requestBody = [
+            'nationalCode' => $nationalCode,
+            'birthDate' => $shamsiDate,
+            'completeInfo' => true,
+            'withoutPhoto' => false,
+        ];
+
         Log::info('Jibit getIdentityInfo request', [
             'national_code' => substr($nationalCode, 0, 3).'***'.substr($nationalCode, -2),
             'birth_date_input' => $birthDate,
             'birth_date_converted' => $shamsiDate,
         ]);
 
+        $start = microtime(true);
+
         try {
             $response = Http::withHeaders([
                 'Authorization' => "Bearer {$token}",
                 'Content-Type' => 'application/json',
-            ])->timeout(15)->get("{$this->baseUrl}/v1/services/identity", [
-                'nationalCode' => $nationalCode,
-                'birthDate' => $shamsiDate,
-                'completeInfo' => true,
-                'withoutPhoto' => false,
-            ]);
+            ])->timeout(15)->get("{$this->baseUrl}{$endpoint}", $requestBody);
+
+            $durationMs = (int) ((microtime(true) - $start) * 1000);
+
+            $this->logApiCall(
+                endpoint: $endpoint,
+                method: 'GET',
+                requestBody: $requestBody,
+                responseStatus: $response->status(),
+                responseBody: $response->json(),
+                durationMs: $durationMs,
+                success: $response->successful()
+            );
 
             if ($response->successful()) {
                 $body = $response->json();
@@ -158,6 +206,19 @@ class ShahkarService
 
             return ['success' => false, 'reason' => $reason, 'message' => $message];
         } catch (\Exception $e) {
+            $durationMs = (int) ((microtime(true) - $start) * 1000);
+
+            $this->logApiCall(
+                endpoint: $endpoint,
+                method: 'GET',
+                requestBody: $requestBody,
+                responseStatus: null,
+                responseBody: null,
+                durationMs: $durationMs,
+                success: false,
+                errorMessage: $e->getMessage()
+            );
+
             Log::error('Identity info API error: '.$e->getMessage());
 
             return ['success' => false, 'reason' => 'connection_error', 'message' => 'خطا در ارتباط با سرویس احراز هویت'];
@@ -171,11 +232,31 @@ class ShahkarService
             return $cached;
         }
 
+        $endpoint = '/v1/tokens/generate';
+        $requestBody = [
+            'apiKey' => $this->apiKey,
+            'secretKey' => $this->secretKey,
+        ];
+
+        $start = microtime(true);
+
         try {
-            $response = Http::timeout(15)->post("{$this->baseUrl}/v1/tokens/generate", [
+            $response = Http::timeout(15)->post("{$this->baseUrl}{$endpoint}", [
                 'apiKey' => $this->apiKey,
                 'secretKey' => $this->secretKey,
             ]);
+
+            $durationMs = (int) ((microtime(true) - $start) * 1000);
+
+            $this->logApiCall(
+                endpoint: $endpoint,
+                method: 'POST',
+                requestBody: ['apiKey' => '***', 'secretKey' => '***'],
+                responseStatus: $response->status(),
+                responseBody: $response->successful() ? ['accessToken' => '***'] : $response->json(),
+                durationMs: $durationMs,
+                success: $response->successful()
+            );
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -195,9 +276,48 @@ class ShahkarService
 
             return null;
         } catch (\Exception $e) {
+            $durationMs = (int) ((microtime(true) - $start) * 1000);
+
+            $this->logApiCall(
+                endpoint: $endpoint,
+                method: 'POST',
+                requestBody: ['apiKey' => '***', 'secretKey' => '***'],
+                responseStatus: null,
+                responseBody: null,
+                durationMs: $durationMs,
+                success: false,
+                errorMessage: $e->getMessage()
+            );
+
             Log::error('Shahkar token error: '.$e->getMessage());
 
             return null;
+        }
+    }
+
+    private function logApiCall(
+        string $endpoint,
+        string $method,
+        array $requestBody,
+        ?int $responseStatus,
+        ?array $responseBody,
+        int $durationMs,
+        bool $success,
+        ?string $errorMessage = null,
+    ): void {
+        try {
+            JibitApiLog::create([
+                'endpoint' => $endpoint,
+                'method' => $method,
+                'request_body' => $requestBody,
+                'response_status' => $responseStatus,
+                'response_body' => $responseBody,
+                'duration_ms' => $durationMs,
+                'success' => $success,
+                'error_message' => $errorMessage,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to log Jibit API call: '.$e->getMessage());
         }
     }
 
@@ -236,25 +356,20 @@ class ShahkarService
 
     private function toShamsiIfNeeded(string $date): ?string
     {
-        // If already in compact Shamsi format like "13750106" (8 digits, no dashes), return as-is
         if (preg_match('/^\d{8}$/', $date)) {
             return $date;
         }
 
-        // If in YYYY-MM-DD format, determine if Shamsi or Gregorian
         if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $matches)) {
             $year = (int) $matches[1];
 
-            // Gregorian years are >= 1900, Shamsi years are < 1500
             if ($year >= 1900) {
                 return $this->gregorianToShamsi($date);
             }
 
-            // Already Shamsi, just compact it
             return str_replace('-', '', $date);
         }
 
-        // Try as Gregorian fallback
         return $this->gregorianToShamsi($date);
     }
 
