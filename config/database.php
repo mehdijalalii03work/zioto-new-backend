@@ -116,6 +116,19 @@ return [
             'engine' => null,
         ],
 
+        'mongodb' => [
+            'driver' => 'mongodb',
+            'url' => env('MONGODB_URL'),
+            'host' => env('MONGODB_HOST', '127.0.0.1'),
+            'port' => env('MONGODB_PORT', 27017),
+            'database' => env('MONGODB_DATABASE', 'sawiss-site'),
+            'username' => env('MONGODB_USERNAME'),
+            'password' => env('MONGODB_PASSWORD'),
+            'options' => [
+                'authSource' => env('MONGODB_AUTH_SOURCE', 'admin'),
+            ],
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),

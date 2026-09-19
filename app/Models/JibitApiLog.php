@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use MongoDB\Laravel\Eloquent\Model;
 
 class JibitApiLog extends Model
 {
-    protected $table = 'jibit_api_logs';
+    protected $connection = 'mongodb';
 
-    public $timestamps = false;
+    protected $collection = 'jibit_api_logs';
 
     protected $fillable = [
         'endpoint',
@@ -24,8 +24,6 @@ class JibitApiLog extends Model
     protected function casts(): array
     {
         return [
-            'request_body' => 'array',
-            'response_body' => 'array',
             'success' => 'boolean',
             'duration_ms' => 'integer',
             'response_status' => 'integer',

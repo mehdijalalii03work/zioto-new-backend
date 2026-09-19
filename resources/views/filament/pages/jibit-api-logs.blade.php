@@ -62,7 +62,7 @@
                     <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                         @forelse($this->getLogs() as $log)
                             <tr class="transition hover:bg-gray-50 dark:hover:bg-white/5">
-                                <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ $log->id }}</td>
+                                <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ $log->_id }}</td>
                                 <td class="px-4 py-3">
                                     <span class="font-mono text-xs text-gray-900 dark:text-white">{{ $this->getEndpointLabel($log->endpoint) }}</span>
                                 </td>
@@ -92,7 +92,7 @@
                                     {{ $log->created_at ? \Morilog\Jalali\Jalalian::fromDateTime($log->created_at)->format('Y/m/d H:i:s') : '—' }}
                                 </td>
                                 <td class="px-4 py-3">
-                                    <button wire:click="viewLog({{ $log->id }})" class="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-xs font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition">
+                                    <button wire:click="viewLog('{{ $log->_id }}')" class="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-xs font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition">
                                         <x-heroicon-o-eye class="h-3 w-3" />
                                         جزئیات
                                     </button>
@@ -126,7 +126,7 @@
             <div class="relative mx-auto w-full max-w-4xl rounded-xl bg-white shadow-xl dark:bg-gray-900 max-h-[85vh] overflow-hidden flex flex-col">
                 {{-- Header --}}
                 <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-white/10">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">جزئیات درخواست #{{ $selectedLog->id }}</h3>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">جزئیات درخواست #{{ $selectedLog->_id }}</h3>
                     <button wire:click="closeDetailModal()" class="rounded-lg p-1 text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10">
                         <x-heroicon-o-x-mark class="h-5 w-5" />
                     </button>

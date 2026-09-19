@@ -44,7 +44,7 @@ class JibitApiLogs extends Page
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'جیبیت';
+        return 'شاهکار';
     }
 
     public static function getNavigationSort(): ?int
@@ -59,7 +59,7 @@ class JibitApiLogs extends Page
 
     public function getLogs()
     {
-        $query = JibitApiLog::query()->latest();
+        $query = JibitApiLog::query()->orderBy('created_at', 'desc');
 
         if ($this->filterEndpoint) {
             $query->where('endpoint', $this->filterEndpoint);
@@ -84,7 +84,7 @@ class JibitApiLogs extends Page
         $this->page = 1;
     }
 
-    public function viewLog(int $logId): void
+    public function viewLog(string $logId): void
     {
         $this->selectedLog = JibitApiLog::find($logId);
         $this->showDetailModal = true;
