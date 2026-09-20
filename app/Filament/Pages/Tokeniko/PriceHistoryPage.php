@@ -7,7 +7,7 @@ use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Morilog\Jalalian\Jalalian;
+use Morilog\Jalali\Jalalian;
 
 class PriceHistoryPage extends Page
 {
@@ -22,11 +22,11 @@ class PriceHistoryPage extends Page
 
     public ?string $filterType = null;
 
-    public ?string $filterItem = null;
-
     public ?string $dateFrom = null;
 
     public ?string $dateTo = null;
+
+    public ?string $expandedId = null;
 
     protected mixed $recordsCache = null;
 
@@ -67,10 +67,6 @@ class PriceHistoryPage extends Page
             $query->where('type', $this->filterType);
         }
 
-        if ($this->filterItem) {
-            $query->where('item_name', $this->filterItem);
-        }
-
         if ($this->dateFrom) {
             $query->whereDate('created_at', '>=', $this->resolveDate($this->dateFrom));
         }
@@ -84,20 +80,9 @@ class PriceHistoryPage extends Page
         return $this->recordsCache;
     }
 
-    public function getTypeItems(): array
-    {
-        return PriceHistory::distinct()->pluck('item_name')->filter()->sort()->values()->toArray();
-    }
-
     public function setFilterType(?string $type): void
     {
         $this->filterType = $type;
-        $this->recordsCache = null;
-    }
-
-    public function setFilterItem(?string $item): void
-    {
-        $this->filterItem = $item;
         $this->recordsCache = null;
     }
 
@@ -114,10 +99,14 @@ class PriceHistoryPage extends Page
     public function clearFilters(): void
     {
         $this->filterType = null;
-        $this->filterItem = null;
         $this->dateFrom = null;
         $this->dateTo = null;
         $this->recordsCache = null;
+    }
+
+    public function toggleExpand(string $id): void
+    {
+        $this->expandedId = $this->expandedId === $id ? null : $id;
     }
 
     public function pruneOldRecords(): void
@@ -130,9 +119,9 @@ class PriceHistoryPage extends Page
             ->send();
     }
 
-    public function formatPrice(int $price): string
+    public function formatPrice(int|float $price): string
     {
-        return number_format($price);
+        return number_format((int) $price);
     }
 
     public function getTypeLabel(string $type): string
@@ -153,6 +142,16 @@ class PriceHistoryPage extends Page
         };
     }
 
+    public function getBoardItems(array $data): array
+    {
+        return $data['products'] ?? [];
+    }
+
+    public function getProductItems(array $data): array
+    {
+        return $data;
+    }
+
     private function resolveDate(string $date): ?string
     {
         try {
@@ -164,7 +163,7 @@ class PriceHistoryPage extends Page
                 }
             }
 
-            return \Illuminate\Support\Carbon::parse($date)->format('Y-m-d');
+            return Carbon::parse($date)->format('Y-m-d');
         } catch (\Throwable) {
             return null;
         }

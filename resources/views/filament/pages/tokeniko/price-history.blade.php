@@ -4,36 +4,18 @@
         <div class="fi-card-body p-6">
             {{-- Filters --}}
             <div class="mb-4 flex items-center gap-4 flex-wrap">
-                {{-- Type Filter --}}
+                @php
+                    $activeClass = 'inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-primary-600 hover:bg-primary-500 transition';
+                    $inactiveClass = 'inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition';
+                @endphp
+
                 <div class="flex items-center gap-2">
                     <span class="text-sm text-gray-500 dark:text-gray-400">نوع:</span>
-                    @php
-                        $activeClass = 'inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-primary-600 hover:bg-primary-500 transition';
-                        $inactiveClass = 'inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition';
-                    @endphp
-                    <button wire:click="setFilterType(null)" class="{{ !$this->filterType ? $activeClass : $inactiveClass }}">
-                        همه
-                    </button>
-                    <button wire:click="setFilterType('board')" class="{{ $this->filterType === 'board' ? $activeClass : $inactiveClass }}">
-                        تابلو قیمت
-                    </button>
-                    <button wire:click="setFilterType('product')" class="{{ $this->filterType === 'product' ? $activeClass : $inactiveClass }}">
-                        قیمت محصول
-                    </button>
+                    <button wire:click="setFilterType(null)" class="{{ !$this->filterType ? $activeClass : $inactiveClass }}">همه</button>
+                    <button wire:click="setFilterType('board')" class="{{ $this->filterType === 'board' ? $activeClass : $inactiveClass }}">تابلو قیمت</button>
+                    <button wire:click="setFilterType('product')" class="{{ $this->filterType === 'product' ? $activeClass : $inactiveClass }}">قیمت محصول</button>
                 </div>
 
-                {{-- Item Filter --}}
-                <div class="flex items-center gap-2">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">آیتم:</span>
-                    <select wire:change="setFilterItem($event.target.value)" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200">
-                        <option value="">همه</option>
-                        @foreach($this->getTypeItems() as $item)
-                            <option value="{{ $item }}" {{ $this->filterItem === $item ? 'selected' : '' }}>{{ $item }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                {{-- Date Range --}}
                 <div class="flex items-center gap-2">
                     <span class="text-sm text-gray-500 dark:text-gray-400">از:</span>
                     <input type="text" wire:model.live="dateFrom" placeholder="1403/01/01" class="w-28 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200" />
@@ -41,13 +23,11 @@
                     <input type="text" wire:model.live="dateTo" placeholder="1403/12/29" class="w-28 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200" />
                 </div>
 
-                {{-- Clear --}}
                 <button wire:click="clearFilters" class="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition">
                     <x-heroicon-o-x-mark class="h-4 w-4" />
                     پاک کردن فیلترها
                 </button>
 
-                {{-- Prune --}}
                 <div class="mr-auto">
                     <button wire:click="pruneOldRecords" wire:confirm="آیا از حذف رکوردهای قدیمی‌تر از ۹۰ روز اطمینان دارید؟" style="background-color: #dc2626; color: #fff;" class="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm transition hover:opacity-90">
                         <x-heroicon-o-trash class="h-4 w-4" />
@@ -63,15 +43,14 @@
                         <tr class="border-b border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5">
                             <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">#</th>
                             <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">نوع</th>
-                            <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">نام آیتم</th>
-                            <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">قیمت فروش (ریال)</th>
-                            <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">تغییرات %</th>
-                            <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">منبع</th>
-                            <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">تاریخ</th>
+                            <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">تعداد آیتم</th>
+                            <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">تاریخ و ساعت</th>
+                            <th class="px-4 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-400">عملیات</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                         @forelse($records as $record)
+                            {{-- Summary Row --}}
                             <tr class="transition hover:bg-gray-50 dark:hover:bg-white/5">
                                 <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ $record->_id }}</td>
                                 <td class="px-4 py-3">
@@ -80,31 +59,82 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-3">
-                                    <span class="font-mono text-xs font-semibold text-gray-900 dark:text-white">{{ $record->item_name }}</span>
-                                </td>
-                                <td class="px-4 py-3">
-                                    <span class="font-mono text-xs text-gray-900 dark:text-white">{{ $this->formatPrice($record->sell_price) }}</span>
-                                </td>
-                                <td class="px-4 py-3">
-                                    @if($record->change_percent !== null)
-                                        @php $changeColor = $record->change_percent > 0 ? 'text-green-600 dark:text-green-400' : ($record->change_percent < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'); @endphp
-                                        <span class="font-mono text-xs {{ $changeColor }}">
-                                            {{ $record->change_percent > 0 ? '+' : '' }}{{ number_format($record->change_percent, 2) }}%
-                                        </span>
-                                    @else
-                                        <span class="text-gray-400 dark:text-gray-500">—</span>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3">
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $record->source }}</span>
+                                    <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-300">
+                                        {{ $record->items_count }}
+                                    </span>
                                 </td>
                                 <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                                     {{ $record->created_at ? \Morilog\Jalali\Jalalian::fromDateTime($record->created_at)->format('Y/m/d H:i:s') : '—' }}
                                 </td>
+                                <td class="px-4 py-3">
+                                    <button wire:click="toggleExpand('{{ $record->_id }}')" class="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-xs font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition">
+                                        @if($this->expandedId === $record->_id)
+                                            <x-heroicon-o-chevron-up class="h-3 w-3" />
+                                            بستن
+                                        @else
+                                            <x-heroicon-o-chevron-down class="h-3 w-3" />
+                                            جزئیات
+                                        @endif
+                                    </button>
+                                </td>
                             </tr>
+
+                            {{-- Expanded Detail --}}
+                            @if($this->expandedId === $record->_id)
+                                <tr>
+                                    <td colspan="5" class="px-4 py-4 bg-gray-50 dark:bg-white/5">
+                                        @if($record->type === 'board')
+                                            <table class="w-full text-xs">
+                                                <thead>
+                                                    <tr class="border-b border-gray-200 dark:border-white/10">
+                                                        <th class="px-3 py-2 text-start font-medium text-gray-500 dark:text-gray-400">نام</th>
+                                                        <th class="px-3 py-2 text-start font-medium text-gray-500 dark:text-gray-400">قیمت فروش</th>
+                                                        <th class="px-3 py-2 text-start font-medium text-gray-500 dark:text-gray-400">تغییرات</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+                                                    @foreach($this->getBoardItems($record->data) as $item)
+                                                        <tr>
+                                                            <td class="px-3 py-2 font-semibold text-gray-900 dark:text-white">{{ $item['name'] ?? '—' }}</td>
+                                                            <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">{{ $this->formatPrice($item['sellPrice'] ?? 0) }}</td>
+                                                            <td class="px-3 py-2">
+                                                                @if(isset($item['changePercent']))
+                                                                    @php $c = $item['changePercent']; @endphp
+                                                                    <span class="font-mono {{ $c > 0 ? 'text-green-600 dark:text-green-400' : ($c < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500') }}">
+                                                                        {{ $c > 0 ? '+' : '' }}{{ number_format($c, 2) }}%
+                                                                    </span>
+                                                                @else
+                                                                    <span class="text-gray-400">—</span>
+                                                                @endif
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        @else
+                                            <table class="w-full text-xs">
+                                                <thead>
+                                                    <tr class="border-b border-gray-200 dark:border-white/10">
+                                                        <th class="px-3 py-2 text-start font-medium text-gray-500 dark:text-gray-400">نام محصول</th>
+                                                        <th class="px-3 py-2 text-start font-medium text-gray-500 dark:text-gray-400">قیمت فروش</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+                                                    @foreach($this->getProductItems($record->data) as $name => $price)
+                                                        <tr>
+                                                            <td class="px-3 py-2 font-semibold text-gray-900 dark:text-white">{{ $name }}</td>
+                                                            <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">{{ $this->formatPrice($price) }}</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endif
                         @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-12 text-center">
+                                <td colspan="5" class="px-4 py-12 text-center">
                                     <div class="flex flex-col items-center gap-2">
                                         <x-heroicon-o-chart-bar class="h-8 w-8 text-gray-300 dark:text-gray-600" />
                                         <span class="text-sm text-gray-500 dark:text-gray-400">داده‌ای یافت نشد</span>

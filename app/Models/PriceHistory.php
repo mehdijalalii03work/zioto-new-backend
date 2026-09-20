@@ -12,35 +12,27 @@ class PriceHistory extends Model
 
     protected $fillable = [
         'type',
-        'item_name',
-        'sell_price',
-        'change_percent',
         'source',
-        'metadata',
+        'items_count',
+        'data',
     ];
 
     protected function casts(): array
     {
         return [
-            'sell_price' => 'integer',
-            'change_percent' => 'float',
-            'metadata' => 'array',
+            'items_count' => 'integer',
+            'data' => 'array',
             'created_at' => 'datetime',
         ];
     }
 
-    public function scopeBoardItems($query)
+    public function scopeBoard($query)
     {
         return $query->where('type', 'board');
     }
 
-    public function scopeProductPrices($query)
+    public function scopeProduct($query)
     {
         return $query->where('type', 'product');
-    }
-
-    public function scopeForItem($query, string $itemName)
-    {
-        return $query->where('item_name', $itemName);
     }
 }
