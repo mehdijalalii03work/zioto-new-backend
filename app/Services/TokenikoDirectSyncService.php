@@ -111,6 +111,7 @@ class TokenikoDirectSyncService
             tapsiSent: count($tapsiProducts),
             tapsiSuccess: $tapsiSuccess,
             emergencyActive: $emergencyActive,
+            directPrices: $prices,
         );
     }
 
@@ -120,6 +121,7 @@ class TokenikoDirectSyncService
         int $tapsiSent = 0,
         ?bool $tapsiSuccess = null,
         bool $emergencyActive = false,
+        array $directPrices = [],
     ): array {
         return [
             'status' => $status,
@@ -127,6 +129,7 @@ class TokenikoDirectSyncService
             'tapsi_sent' => $tapsiSent,
             'tapsi_success' => $tapsiSuccess,
             'emergency_active' => $emergencyActive,
+            'direct_prices' => $directPrices,
         ];
     }
 

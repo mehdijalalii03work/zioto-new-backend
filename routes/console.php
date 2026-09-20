@@ -19,3 +19,7 @@ Schedule::command('pulse:check')
 Schedule::command('backup:run')
     ->dailyAt('03:00')
     ->withoutOverlapping();
+
+Schedule::command('pricehistory:prune')
+    ->dailyAt('04:00')
+    ->withoutOverlapping();

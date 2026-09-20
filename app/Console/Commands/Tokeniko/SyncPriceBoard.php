@@ -6,6 +6,7 @@ use App\Events\PriceBoardUpdated;
 use App\Events\ProductsUpdated;
 use App\Models\Setting;
 use App\Services\PriceBoardService;
+use App\Services\PriceHistoryService;
 use App\Services\TokenikoDirectSyncService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -22,11 +23,12 @@ class SyncPriceBoard extends Command
     public function handle(
         PriceBoardService $priceBoard,
         TokenikoDirectSyncService $sync,
+        PriceHistoryService $priceHistory,
     ): int {
         $mode = config('pricing.mode', 'dynamic');
 
         if ($mode === 'direct') {
-            return $this->syncDirect($priceBoard, $sync);
+            return $this->syncDirect($priceBoard, $sync, $priceHistory);
         }
 
         $this->info('Syncing price board...');
@@ -38,6 +40,8 @@ class SyncPriceBoard extends Command
 
             return self::FAILURE;
         }
+
+        $priceHistory->logBoardPrices($prices);
 
         $lastSync = $priceBoard->getLastSyncAt();
         $fromApi = $lastSync && $lastSync->diffInSeconds(now()) < 60;
@@ -143,7 +147,7 @@ class SyncPriceBoard extends Command
         ];
     }
 
-    private function syncDirect(PriceBoardService $priceBoard, TokenikoDirectSyncService $sync): int
+    private function syncDirect(PriceBoardService $priceBoard, TokenikoDirectSyncService $sync, PriceHistoryService $priceHistory): int
     {
         $this->info('Direct mode: syncing from Tokeniko shop API...');
 
@@ -165,6 +169,10 @@ class SyncPriceBoard extends Command
 
         if ($result['emergency_active']) {
             $this->warn('EMERGENCY LOCK ACTIVE — all Tapsi stock sent as 0.');
+        }
+
+        if (isset($result['direct_prices']) && ! empty($result['direct_prices'])) {
+            $priceHistory->logDirectPrices($result['direct_prices']);
         }
 
         $this->info('Updated '.$result['updated'].' products in DB.');
