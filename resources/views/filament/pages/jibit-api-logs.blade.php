@@ -1,4 +1,5 @@
 <x-filament-panels::page>
+    @php $logs = $this->getLogs(); @endphp
     <div class="fi-card fi-w-full rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
         <div class="fi-card-body p-6">
             {{-- Filters --}}
@@ -60,7 +61,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                        @forelse($this->getLogs() as $log)
+                        @forelse($logs as $log)
                             <tr class="transition hover:bg-gray-50 dark:hover:bg-white/5">
                                 <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ $log->_id }}</td>
                                 <td class="px-4 py-3">
@@ -113,25 +114,25 @@
             </div>
 
             {{-- Pagination --}}
-            <div class="mt-4 flex items-center justify-between">
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                    صفحه {{ $this->getLogs()->currentPage() }} از {{ $this->getLogs()->lastPage() }}
-                </span>
-                <div class="flex items-center gap-1">
-                    @if($this->getLogs()->hasPages())
-                        <a href="{{ $this->getLogs()->previousPageUrl() }}" wire:navigate
-                           class="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition @if(!$this->getLogs()->hasPrevious()) pointer-events-none opacity-50 @endif">
+            @if($logs->hasPages())
+                <div class="mt-4 flex items-center justify-between">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">
+                        صفحه {{ $logs->currentPage() }} از {{ $logs->lastPage() }}
+                    </span>
+                    <div class="flex items-center gap-1">
+                        <a href="{{ $logs->previousPageUrl() }}" wire:navigate
+                           class="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition @if(!$logs->hasPrevious()) pointer-events-none opacity-50 @endif">
                             <x-heroicon-o-chevron-right class="h-4 w-4" />
                             قبلی
                         </a>
-                        <a href="{{ $this->getLogs()->nextPageUrl() }}" wire:navigate
-                           class="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition @if(!$this->getLogs()->hasMorePages()) pointer-events-none opacity-50 @endif">
+                        <a href="{{ $logs->nextPageUrl() }}" wire:navigate
+                           class="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition @if(!$logs->hasMorePages()) pointer-events-none opacity-50 @endif">
                             بعدی
                             <x-heroicon-o-chevron-left class="h-4 w-4" />
                         </a>
-                    @endif
+                    </div>
                 </div>
-            </div>
+            @endif
         </div>
     </div>
 
@@ -142,7 +143,7 @@
             <div class="relative mx-auto w-full max-w-4xl rounded-xl bg-white shadow-xl dark:bg-gray-900 max-h-[85vh] overflow-hidden flex flex-col">
                 {{-- Header --}}
                 <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-white/10">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">جزئیات درخواست #{{ $selectedLog->_id }}</h3>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">جزئیات درخواست</h3>
                     <button wire:click="closeDetailModal()" class="rounded-lg p-1 text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10">
                         <x-heroicon-o-x-mark class="h-5 w-5" />
                     </button>
@@ -175,9 +176,9 @@
                     </div>
 
                     @if($selectedLog->error_message)
-                        <div class="rounded-lg bg-danger-50 p-4 dark:bg-danger-500/10">
-                            <span class="text-xs font-medium text-danger-700 dark:text-danger-500">پیام خطا</span>
-                            <p class="mt-1 text-sm text-danger-800 dark:text-danger-400">{{ $selectedLog->error_message }}</p>
+                        <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 1rem; border-radius: 0.5rem;">
+                            <span class="text-xs font-medium" style="color: #b91c1c;">پیام خطا</span>
+                            <p class="mt-1 text-sm" style="color: #991b1b;">{{ $selectedLog->error_message }}</p>
                         </div>
                     @endif
 
