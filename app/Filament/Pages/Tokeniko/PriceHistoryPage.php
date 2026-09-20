@@ -111,7 +111,7 @@ class PriceHistoryPage extends Page
 
     public function pruneOldRecords(): void
     {
-        $deleted = PriceHistory::where('created_at', '<', Carbon::now()->subDays(90))->delete();
+        $deleted = PriceHistory::where('created_at', '<', Carbon::now()->subDays(30))->delete();
 
         Notification::make()
             ->title("{$deleted} رکورد قدیمی حذف شد")

@@ -29,9 +29,9 @@
                 </button>
 
                 <div class="mr-auto">
-                    <button wire:click="pruneOldRecords" wire:confirm="آیا از حذف رکوردهای قدیمی‌تر از ۹۰ روز اطمینان دارید؟" style="background-color: #dc2626; color: #fff;" class="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm transition hover:opacity-90">
+                    <button wire:click="pruneOldRecords" wire:confirm="آیا از حذف رکوردهای قدیمی‌تر از ۳۰ روز اطمینان دارید؟" style="background-color: #dc2626; color: #fff;" class="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm transition hover:opacity-90">
                         <x-heroicon-o-trash class="h-4 w-4" />
-                        حذف رکوردهای قدیمی (۹۰+ روز)
+                        حذف رکوردهای قدیمی (۳۰+ روز)
                     </button>
                 </div>
             </div>

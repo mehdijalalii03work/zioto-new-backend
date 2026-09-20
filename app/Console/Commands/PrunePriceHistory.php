@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 class PrunePriceHistory extends Command
 {
     protected $signature = 'pricehistory:prune
-                            {--days=90 : Number of days to keep records}
+                            {--days=30 : Number of days to keep records}
                             {--dry-run : Show what would be deleted without making changes}';
 
     protected $description = 'Prune old price history records older than the specified number of days';
