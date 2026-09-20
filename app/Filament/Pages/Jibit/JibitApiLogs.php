@@ -28,6 +28,8 @@ class JibitApiLogs extends Page
 
     public bool $showDetailModal = false;
 
+    protected mixed $logsCache = null;
+
     public static function getNavigationIcon(): string|\BackedEnum|null
     {
         return 'heroicon-o-server-stack';
@@ -55,6 +57,10 @@ class JibitApiLogs extends Page
 
     public function getLogs()
     {
+        if ($this->logsCache !== null) {
+            return $this->logsCache;
+        }
+
         $query = JibitApiLog::query()->orderBy('created_at', 'desc');
 
         if ($this->filterEndpoint) {
@@ -65,17 +71,21 @@ class JibitApiLogs extends Page
             $query->where('success', $this->filterStatus === 'success');
         }
 
-        return $query->simplePaginate($this->perPage);
+        $this->logsCache = $query->simplePaginate($this->perPage);
+
+        return $this->logsCache;
     }
 
     public function setFilterEndpoint(?string $endpoint): void
     {
         $this->filterEndpoint = $endpoint;
+        $this->logsCache = null;
     }
 
     public function setFilterStatus(?string $status): void
     {
         $this->filterStatus = $status;
+        $this->logsCache = null;
     }
 
     public function viewLog(string $logId): void
