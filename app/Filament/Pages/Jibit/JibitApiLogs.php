@@ -6,6 +6,7 @@ use App\Models\JibitApiLog;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class JibitApiLogs extends Page
 {
@@ -55,7 +56,7 @@ class JibitApiLogs extends Page
         return 'لاگ درخواست‌های جیبیت';
     }
 
-    public function getLogs()
+    public function getLogs(): LengthAwarePaginator
     {
         if ($this->logsCache !== null) {
             return $this->logsCache;
@@ -71,7 +72,7 @@ class JibitApiLogs extends Page
             $query->where('success', $this->filterStatus === 'success');
         }
 
-        $this->logsCache = $query->simplePaginate($this->perPage);
+        $this->logsCache = $query->paginate($this->perPage);
 
         return $this->logsCache;
     }

@@ -114,7 +114,7 @@
             </div>
 
             {{-- Pagination --}}
-            @if($logs->hasPages())
+            @if($logs instanceof \Illuminate\Pagination\LengthAwarePaginator && $logs->hasPages())
                 <div class="mt-4 flex items-center justify-between">
                     <span class="text-sm text-gray-500 dark:text-gray-400">
                         صفحه {{ $logs->currentPage() }} از {{ $logs->lastPage() }}
