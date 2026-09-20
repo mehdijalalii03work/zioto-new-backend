@@ -121,12 +121,12 @@
                     </span>
                     <div class="flex items-center gap-1">
                         <a href="{{ $logs->previousPageUrl() }}" wire:navigate
-                           class="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition @if(!$logs->hasPrevious()) pointer-events-none opacity-50 @endif">
+                           class="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition {{ $logs->onFirstPage() ? 'pointer-events-none opacity-50' : '' }}">
                             <x-heroicon-o-chevron-right class="h-4 w-4" />
                             قبلی
                         </a>
                         <a href="{{ $logs->nextPageUrl() }}" wire:navigate
-                           class="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition @if(!$logs->hasMorePages()) pointer-events-none opacity-50 @endif">
+                           class="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition {{ !$logs->hasMorePages() ? 'pointer-events-none opacity-50' : '' }}">
                             بعدی
                             <x-heroicon-o-chevron-left class="h-4 w-4" />
                         </a>
