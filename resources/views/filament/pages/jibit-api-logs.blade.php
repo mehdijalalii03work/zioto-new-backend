@@ -138,11 +138,11 @@
 
     {{-- Detail Modal --}}
     @if($showDetailModal && $selectedLog)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" x-data x-on:keydown.escape.window="$wire.closeDetailModal()">
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="margin: 0 !important; padding: 1rem !important;" x-data x-on:keydown.escape.window="$wire.closeDetailModal()">
             <div class="fixed inset-0 bg-gray-500/75 dark:bg-gray-900/75" x-on:click="$wire.closeDetailModal()"></div>
-            <div class="relative mx-auto w-full max-w-4xl rounded-xl bg-white shadow-xl dark:bg-gray-900 max-h-[85vh] overflow-hidden flex flex-col">
+            <div class="relative mx-auto rounded-xl bg-white shadow-xl dark:bg-gray-900 flex flex-col" style="width: min(90vw, 900px); max-height: 85vh;">
                 {{-- Header --}}
-                <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-white/10">
+                <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-white/10 shrink-0">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">جزئیات درخواست</h3>
                     <button wire:click="closeDetailModal()" class="rounded-lg p-1 text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10">
                         <x-heroicon-o-x-mark class="h-5 w-5" />
@@ -150,7 +150,7 @@
                 </div>
 
                 {{-- Content --}}
-                <div class="overflow-y-auto p-6 space-y-6">
+                <div class="overflow-y-auto p-6 space-y-6" style="min-height: 0;">
                     {{-- Meta Info --}}
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
@@ -185,13 +185,13 @@
                     {{-- Request Body --}}
                     <div>
                         <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Request Body</span>
-                        <pre class="mt-2 overflow-x-auto rounded-lg bg-gray-50 p-4 text-xs font-mono text-gray-800 dark:bg-white/5 dark:text-gray-200">{{ $this->formatJson($selectedLog->request_body) }}</pre>
+                        <pre class="mt-2 rounded-lg bg-gray-50 p-4 text-xs font-mono text-gray-800 dark:bg-white/5 dark:text-gray-200" style="white-space: pre-wrap; word-break: break-all; overflow-x: auto;">{{ $this->formatJson($selectedLog->request_body) }}</pre>
                     </div>
 
                     {{-- Response Body --}}
                     <div>
                         <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Response Body</span>
-                        <pre class="mt-2 overflow-x-auto rounded-lg bg-gray-50 p-4 text-xs font-mono text-gray-800 dark:bg-white/5 dark:text-gray-200">{{ $this->formatJson($selectedLog->response_body) }}</pre>
+                        <pre class="mt-2 rounded-lg bg-gray-50 p-4 text-xs font-mono text-gray-800 dark:bg-white/5 dark:text-gray-200" style="white-space: pre-wrap; word-break: break-all; overflow-x: auto;">{{ $this->formatJson($selectedLog->response_body) }}</pre>
                     </div>
 
                     {{-- Timestamp --}}
