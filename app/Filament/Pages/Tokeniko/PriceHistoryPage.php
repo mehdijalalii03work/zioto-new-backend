@@ -42,7 +42,7 @@ class PriceHistoryPage extends Page
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'شاهکار';
+        return 'سایر';
     }
 
     public static function getNavigationSort(): ?int
