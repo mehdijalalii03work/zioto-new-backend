@@ -28,15 +28,25 @@ class ShahkarService
         if (empty($this->apiKey) || empty($this->secretKey)) {
             Log::error('Shahkar API credentials not configured');
 
-            return ['success' => false, 'reason' => 'config_missing', 'message' => 'تنظیمات احراز هویت یافت نشد'];
+            return [
+                'success' => false,
+                'reason' => 'config_missing',
+                'message' => 'تنظیمات احراز هویت یافت نشد',
+            ];
         }
 
         $token = $this->getAccessToken();
+
         if (! $token) {
-            return ['success' => false, 'reason' => 'token_error', 'message' => 'خطا در دریافت توکن احراز هویت'];
+            return [
+                'success' => false,
+                'reason' => 'token_error',
+                'message' => 'خطا در دریافت توکن احراز هویت',
+            ];
         }
 
         $endpoint = '/v1/services/matching';
+
         $requestBody = [
             'nationalCode' => $nationalCode,
             'mobileNumber' => $mobile,
@@ -76,7 +86,11 @@ class ShahkarService
                     'national_code' => substr($nationalCode, 0, 3).'***'.substr($nationalCode, -2),
                 ]);
 
-                return ['success' => false, 'reason' => 'rate_limit', 'message' => 'تعداد درخواست‌ها بیش از حد مجاز است، لطفاً ۵ دقیقه دیگر تلاش کنید'];
+                return [
+                    'success' => false,
+                    'reason' => 'rate_limit',
+                    'message' => 'تعداد درخواست‌ها بیش از حد مجاز است، لطفاً ۵ دقیقه دیگر تلاش کنید',
+                ];
             }
 
             $body = $response->json();
@@ -88,7 +102,11 @@ class ShahkarService
                 'reason' => $reason,
             ]);
 
-            return ['success' => false, 'reason' => $reason, 'message' => $message];
+            return [
+                'success' => false,
+                'reason' => $reason,
+                'message' => $message,
+            ];
         } catch (\Exception $e) {
             $durationMs = (int) ((microtime(true) - $start) * 1000);
 
@@ -105,7 +123,11 @@ class ShahkarService
 
             Log::error('Shahkar API error: '.$e->getMessage());
 
-            return ['success' => false, 'reason' => 'connection_error', 'message' => 'خطا در ارتباط با سرویس احراز هویت'];
+            return [
+                'success' => false,
+                'reason' => 'connection_error',
+                'message' => 'خطا در ارتباط با سرویس احراز هویت',
+            ];
         }
     }
 
@@ -114,20 +136,35 @@ class ShahkarService
         if (empty($this->apiKey) || empty($this->secretKey)) {
             Log::error('Shahkar API credentials not configured');
 
-            return ['success' => false, 'reason' => 'config_missing', 'message' => 'تنظیمات احراز هویت یافت نشد'];
+            return [
+                'success' => false,
+                'reason' => 'config_missing',
+                'message' => 'تنظیمات احراز هویت یافت نشد',
+            ];
         }
 
         $token = $this->getAccessToken();
+
         if (! $token) {
-            return ['success' => false, 'reason' => 'token_error', 'message' => 'خطا در دریافت توکن احراز هویت'];
+            return [
+                'success' => false,
+                'reason' => 'token_error',
+                'message' => 'خطا در دریافت توکن احراز هویت',
+            ];
         }
 
         $shamsiDate = $this->toShamsiIfNeeded($birthDate);
+
         if (! $shamsiDate) {
-            return ['success' => false, 'reason' => 'invalid_date', 'message' => 'فرمت تاریخ تولد نامعتبر است'];
+            return [
+                'success' => false,
+                'reason' => 'invalid_date',
+                'message' => 'فرمت تاریخ تولد نامعتبر است',
+            ];
         }
 
         $endpoint = '/v1/services/identity';
+
         $requestBody = [
             'nationalCode' => $nationalCode,
             'birthDate' => $shamsiDate,
@@ -163,16 +200,31 @@ class ShahkarService
 
             if ($response->successful()) {
                 $body = $response->json();
+
                 $info = $body['identityInfo'] ?? [];
 
                 return [
                     'success' => true,
                     'info' => [
-                        'first_name' => $info['firstName'] ?? null,
-                        'last_name' => $info['lastName'] ?? null,
-                        'father_name' => $info['fatherName'] ?? null,
-                        'gender' => self::mapGender($info['gender'] ?? null),
-                        'birth_place' => $info['birthPlace'] ?? null,
+                        'first_name' => $this->normalizePersianText(
+                            $info['firstName'] ?? null
+                        ),
+
+                        'last_name' => $this->normalizePersianText(
+                            $info['lastName'] ?? null
+                        ),
+
+                        'father_name' => $this->normalizePersianText(
+                            $info['fatherName'] ?? null
+                        ),
+
+                        'gender' => $this->normalizePersianText(
+                            self::mapGender($info['gender'] ?? null)
+                        ),
+
+                        'birth_place' => $this->normalizePersianText(
+                            $info['birthPlace'] ?? null
+                        ),
                     ],
                 ];
             }
@@ -182,7 +234,11 @@ class ShahkarService
                     'national_code' => substr($nationalCode, 0, 3).'***'.substr($nationalCode, -2),
                 ]);
 
-                return ['success' => false, 'reason' => 'birth_date_mismatch', 'message' => 'تاریخ تولد وارد شده صحیح نیست'];
+                return [
+                    'success' => false,
+                    'reason' => 'birth_date_mismatch',
+                    'message' => 'تاریخ تولد وارد شده صحیح نیست',
+                ];
             }
 
             if ($response->status() === 429) {
@@ -190,10 +246,15 @@ class ShahkarService
                     'national_code' => substr($nationalCode, 0, 3).'***'.substr($nationalCode, -2),
                 ]);
 
-                return ['success' => false, 'reason' => 'rate_limit', 'message' => 'تعداد درخواست‌ها بیش از حد مجاز است، لطفاً ۵ دقیقه دیگر تلاش کنید'];
+                return [
+                    'success' => false,
+                    'reason' => 'rate_limit',
+                    'message' => 'تعداد درخواست‌ها بیش از حد مجاز است، لطفاً ۵ دقیقه دیگر تلاش کنید',
+                ];
             }
 
             $body = $response->json();
+
             $reason = $body['reason'] ?? 'unknown';
             $message = $this->getIdentityErrorMessage($reason);
 
@@ -204,7 +265,11 @@ class ShahkarService
                 'response_body' => $response->body(),
             ]);
 
-            return ['success' => false, 'reason' => $reason, 'message' => $message];
+            return [
+                'success' => false,
+                'reason' => $reason,
+                'message' => $message,
+            ];
         } catch (\Exception $e) {
             $durationMs = (int) ((microtime(true) - $start) * 1000);
 
@@ -221,18 +286,65 @@ class ShahkarService
 
             Log::error('Identity info API error: '.$e->getMessage());
 
-            return ['success' => false, 'reason' => 'connection_error', 'message' => 'خطا در ارتباط با سرویس احراز هویت'];
+            return [
+                'success' => false,
+                'reason' => 'connection_error',
+                'message' => 'خطا در ارتباط با سرویس احراز هویت',
+            ];
         }
+    }
+
+    /**
+     * Normalize Arabic characters to Persian characters.
+     *
+     * This method ensures that identity information returned by
+     * external services is stored using Persian characters.
+     */
+    private function normalizePersianText(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return strtr($value, [
+            // Arabic letters → Persian equivalents
+            'ي' => 'ی',
+            'ى' => 'ی',
+            'ك' => 'ک',
+            'ۀ' => 'ه',
+            'ة' => 'ه',
+            'ؤ' => 'و',
+            'ئ' => 'ی',
+            'أ' => 'ا',
+            'إ' => 'ا',
+            'ٱ' => 'ا',
+
+            // Arabic Tatweel
+            'ـ' => '',
+
+            // Arabic diacritics
+            'َ' => '',
+            'ً' => '',
+            'ُ' => '',
+            'ٌ' => '',
+            'ِ' => '',
+            'ٍ' => '',
+            'ّ' => '',
+            'ْ' => '',
+            'ٰ' => '',
+        ]);
     }
 
     private function getAccessToken(): ?string
     {
         $cached = Cache::get('shahkar_access_token');
+
         if ($cached) {
             return $cached;
         }
 
         $endpoint = '/v1/tokens/generate';
+
         $requestBody = [
             'apiKey' => $this->apiKey,
             'secretKey' => $this->secretKey,
@@ -241,29 +353,42 @@ class ShahkarService
         $start = microtime(true);
 
         try {
-            $response = Http::timeout(15)->post("{$this->baseUrl}{$endpoint}", [
-                'apiKey' => $this->apiKey,
-                'secretKey' => $this->secretKey,
-            ]);
+            $response = Http::timeout(15)->post(
+                "{$this->baseUrl}{$endpoint}",
+                [
+                    'apiKey' => $this->apiKey,
+                    'secretKey' => $this->secretKey,
+                ]
+            );
 
             $durationMs = (int) ((microtime(true) - $start) * 1000);
 
             $this->logApiCall(
                 endpoint: $endpoint,
                 method: 'POST',
-                requestBody: ['apiKey' => '***', 'secretKey' => '***'],
+                requestBody: [
+                    'apiKey' => '***',
+                    'secretKey' => '***',
+                ],
                 responseStatus: $response->status(),
-                responseBody: $response->successful() ? ['accessToken' => '***'] : $response->json(),
+                responseBody: $response->successful()
+                    ? ['accessToken' => '***']
+                    : $response->json(),
                 durationMs: $durationMs,
                 success: $response->successful()
             );
 
             if ($response->successful()) {
                 $data = $response->json();
+
                 $token = $data['accessToken'] ?? null;
 
                 if ($token) {
-                    Cache::put('shahkar_access_token', $token, 23 * 3600);
+                    Cache::put(
+                        'shahkar_access_token',
+                        $token,
+                        23 * 3600
+                    );
                 }
 
                 return $token;
@@ -281,7 +406,10 @@ class ShahkarService
             $this->logApiCall(
                 endpoint: $endpoint,
                 method: 'POST',
-                requestBody: ['apiKey' => '***', 'secretKey' => '***'],
+                requestBody: [
+                    'apiKey' => '***',
+                    'secretKey' => '***',
+                ],
                 responseStatus: null,
                 responseBody: null,
                 durationMs: $durationMs,
@@ -317,7 +445,9 @@ class ShahkarService
                 'error_message' => $errorMessage,
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to log Jibit API call: '.$e->getMessage());
+            Log::error(
+                'Failed to log Jibit API call: '.$e->getMessage()
+            );
         }
     }
 
@@ -346,6 +476,7 @@ class ShahkarService
     {
         try {
             $date = new \DateTime($gregorianDate);
+
             $jalali = Jalalian::fromDateTime($date);
 
             return $jalali->format('Ymd');
@@ -379,7 +510,7 @@ class ShahkarService
             'birth_date_mismatch' => 'تاریخ تولد وارد شده صحیح نیست',
             'invalid_national_code' => 'کد ملی وارد شده در سامانه ثبت احوال یافت نشد',
             'service_unavailable' => 'سرویس احراز هویت موقتاً در دسترس نیست',
-            'rate_limit' => 'تعداد درخواست‌ها بیش از حد مجاز است، لطفاً ۵ دقیقه دیگر تلاش کنید',
+            'rate_limit' => 'تعداد درخواست‌ها بیش از حد مجاز است، لطفاً دوباره تلاش کنید',
             default => 'خطا در دریافت اطلاعات هویتی، لطفاً دوباره تلاش کنید',
         };
     }
