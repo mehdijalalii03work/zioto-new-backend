@@ -25,3 +25,9 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+server.heapsnapshot
+tui.heapsnapshot
+.agents/
+.claude/
+.junie/
