@@ -6,7 +6,6 @@ use App\Models\JibitApiLog;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Livewire\Attributes\Url;
 
 class JibitApiLogs extends Page
 {
@@ -16,9 +15,6 @@ class JibitApiLogs extends Page
     {
         return auth()->user()?->hasRole('admin') ?? false;
     }
-
-    #[Url]
-    public int $page = 1;
 
     public int $perPage = 20;
 
@@ -69,19 +65,17 @@ class JibitApiLogs extends Page
             $query->where('success', $this->filterStatus === 'success');
         }
 
-        return $query->paginate($this->perPage, ['*'], 'page', $this->page);
+        return $query->simplePaginate($this->perPage);
     }
 
     public function setFilterEndpoint(?string $endpoint): void
     {
         $this->filterEndpoint = $endpoint;
-        $this->page = 1;
     }
 
     public function setFilterStatus(?string $status): void
     {
         $this->filterStatus = $status;
-        $this->page = 1;
     }
 
     public function viewLog(string $logId): void

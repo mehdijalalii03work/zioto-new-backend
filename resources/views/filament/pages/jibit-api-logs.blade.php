@@ -113,8 +113,24 @@
             </div>
 
             {{-- Pagination --}}
-            <div class="mt-4">
-                {{ $this->getLogs()->links() }}
+            <div class="mt-4 flex items-center justify-between">
+                <span class="text-sm text-gray-500 dark:text-gray-400">
+                    صفحه {{ $this->getLogs()->currentPage() }} از {{ $this->getLogs()->lastPage() }}
+                </span>
+                <div class="flex items-center gap-1">
+                    @if($this->getLogs()->hasPages())
+                        <a href="{{ $this->getLogs()->previousPageUrl() }}" wire:navigate
+                           class="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition @if(!$this->getLogs()->hasPrevious()) pointer-events-none opacity-50 @endif">
+                            <x-heroicon-o-chevron-right class="h-4 w-4" />
+                            قبلی
+                        </a>
+                        <a href="{{ $this->getLogs()->nextPageUrl() }}" wire:navigate
+                           class="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition @if(!$this->getLogs()->hasMorePages()) pointer-events-none opacity-50 @endif">
+                            بعدی
+                            <x-heroicon-o-chevron-left class="h-4 w-4" />
+                        </a>
+                    @endif
+                </div>
             </div>
         </div>
     </div>
