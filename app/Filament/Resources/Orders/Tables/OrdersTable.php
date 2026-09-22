@@ -47,6 +47,16 @@ class OrdersTable
                         return '—';
                     }),
 
+                TextColumn::make('user.phone')
+                    ->label('شماره موبایل')
+                    ->state(function ($record): string {
+                        if ($record->user?->phone) {
+                            return $record->user->phone;
+                        }
+
+                        return '—';
+                    }),
+
                 TextColumn::make('address.receiver_name')
                     ->label('تحویل گیرنده')
                     ->state(function ($record): string {
