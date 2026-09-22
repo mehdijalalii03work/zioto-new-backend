@@ -2,11 +2,14 @@
 
 namespace App\Filament\Resources\Orders\Pages;
 
+use App\Filament\Resources\Orders\Exports\OrderExcelExport;
 use App\Filament\Resources\Orders\OrderResource;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Modules\Order\Models\Order;
+use Morilog\Jalali\Jalalian;
 
 class ListOrders extends ListRecords
 {
@@ -19,6 +22,22 @@ class ListOrders extends ListRecords
         return [
             CreateAction::make()
                 ->label('سفارش جدید'),
+
+            Action::make('export_current_month')
+                ->label('خروجی اکسل ماه جاری')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->authorize('order.view')
+                ->action(function () {
+                    $now = Jalalian::now();
+                    $startDate = $now->getFirstDayOfMonth()->toCarbon()->startOfDay();
+                    $endDate = $now->getEndDayOfMonth()->toCarbon()->endOfDay();
+
+                    $orders = Order::query()
+                        ->whereBetween('created_at', [$startDate, $endDate])
+                        ->get();
+
+                    return app(OrderExcelExport::class)->export($orders);
+                }),
         ];
     }
 
