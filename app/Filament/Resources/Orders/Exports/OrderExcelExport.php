@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Orders\Exports;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Response;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -22,6 +23,35 @@ class OrderExcelExport
         foreach ($orders as $order) {
             $ordersData[] = $this->prepareOrderData($order);
         }
+
+        $this->createDataSheet($spreadsheet, $ordersData);
+        $this->createLabelSheet($spreadsheet, $ordersData);
+
+        $spreadsheet->setActiveSheetIndexByName('گزارش');
+
+        $filename = 'orders-export-'.now()->format('Y-m-d-H-i').'.xlsx';
+
+        return Response::stream(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => "attachment;filename=\"{$filename}\"",
+            'Cache-Control' => 'max-age=0',
+        ]);
+    }
+
+    public function exportFromQuery(Builder $query): StreamedResponse
+    {
+        $spreadsheet = new Spreadsheet;
+        $ordersData = [];
+
+        $query->with(['user', 'items', 'shipping.shippingMethod', 'address.city', 'address.province'])
+            ->chunk(100, function ($orders) use (&$ordersData) {
+                foreach ($orders as $order) {
+                    $ordersData[] = $this->prepareOrderData($order);
+                }
+            });
 
         $this->createDataSheet($spreadsheet, $ordersData);
         $this->createLabelSheet($spreadsheet, $ordersData);

@@ -32,11 +32,10 @@ class ListOrders extends ListRecords
                     $startDate = $now->getFirstDayOfMonth()->toCarbon()->startOfDay();
                     $endDate = $now->getEndDayOfMonth()->toCarbon()->endOfDay();
 
-                    $orders = Order::query()
-                        ->whereBetween('created_at', [$startDate, $endDate])
-                        ->get();
+                    $query = Order::query()
+                        ->whereBetween('created_at', [$startDate, $endDate]);
 
-                    return app(OrderExcelExport::class)->export($orders);
+                    return app(OrderExcelExport::class)->exportFromQuery($query);
                 }),
         ];
     }
