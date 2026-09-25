@@ -6,13 +6,12 @@ use App\Enums\Product\Ayar;
 use App\Enums\Product\MetalType;
 use App\Enums\Product\ProductShape;
 use App\Models\Brand;
-use App\Models\Setting;
+use App\Services\Pricing\DynamicPriceService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Facades\Cache;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -36,6 +35,7 @@ class Product extends Model implements HasMedia
         'tokeniko_sku',
         'tapsi_product_id',
         'price_type',
+        'dynamic_pricing_enabled',
         'description',
         'metal_type',
         'form',
@@ -44,6 +44,7 @@ class Product extends Model implements HasMedia
         'price_board_item',
         'fee_off_hours',
         'fee_business_hours',
+        'labor_coefficients',
         'price',
         'stock_quantity',
         'sort_order',
@@ -76,6 +77,8 @@ class Product extends Model implements HasMedia
             'hesabfa_stock_synced_at' => 'datetime',
             'contact_only' => 'boolean',
             'is_nopay' => 'boolean',
+            'dynamic_pricing_enabled' => 'boolean',
+            'labor_coefficients' => 'array',
         ];
     }
 
@@ -108,9 +111,13 @@ class Product extends Model implements HasMedia
         return max(0, $physical - $reserved - $manualReserved);
     }
 
+    /**
+     * Persisted base price for this product (basic labor role).
+     * Used by sync and non-session consumers (Rige, Tapsi, admin display).
+     */
     public function calculatePrice(): ?float
     {
-        if ($this->price_type !== 'dynamic') {
+        if ($this->price_type !== 'dynamic' && ! $this->dynamic_pricing_enabled) {
             return null;
         }
 
@@ -118,40 +125,17 @@ class Product extends Model implements HasMedia
             return null;
         }
 
-        $prices = Cache::get('priceboard:prices', []);
-        $products = $prices['products'] ?? [];
+        return app(DynamicPriceService::class)->basePriceFor($this);
+    }
 
-        $boardItem = null;
-        foreach ($products as $item) {
-            if (($item['name'] ?? '') === $this->price_board_item) {
-                $boardItem = $item;
-                break;
-            }
-        }
+    /**
+     * Live price for a specific user (labor role + time period aware).
+     */
+    public function priceForUser(?int $userId = null): float
+    {
+        $dynamic = app(DynamicPriceService::class)->priceFor($this, $userId);
 
-        if (! $boardItem || ! isset($boardItem['sellPrice'])) {
-            return null;
-        }
-
-        $sellPrice = (float) $boardItem['sellPrice'];
-        $weightInGrams = (float) $this->weight;
-
-        $hour = (int) now()->format('H');
-        $minute = (int) now()->format('i');
-        $currentTime = $hour * 60 + $minute;
-
-        $offHoursStart = 18 * 60;
-        $offHoursEnd = 8 * 60 + 59;
-
-        $isOffHours = $currentTime >= $offHoursStart || $currentTime <= $offHoursEnd;
-        $fee = $isOffHours ? (float) $this->fee_off_hours : (float) $this->fee_business_hours;
-
-        $basePrice = $weightInGrams * $sellPrice * (1 + $fee / 100);
-
-        $taxKey = str_starts_with($this->price_board_item, 'Gold') ? 'tax_gold' : 'tax_silver';
-        $taxPercentage = (float) Setting::getValue($taxKey, 0);
-
-        return round($basePrice * (1 + $taxPercentage / 100));
+        return (float) ($dynamic ?? $this->price);
     }
 
     public function scopePublished($query)

@@ -1,0 +1,225 @@
+<?php
+
+namespace App\Services\Pricing;
+
+use App\Models\Setting;
+use Illuminate\Support\Facades\Cache;
+
+/**
+ * Typed access to Zioto pricing settings with plugin-parity defaults.
+ */
+class PricingSettings
+{
+    public const DEFAULT_LABOR_ROLES = [
+        ['slug' => 'basic', 'name' => 'مشتری سطح پایه', 'is_default' => true],
+        ['slug' => 'pro', 'name' => 'مشتری سطح پرو'],
+        ['slug' => 'premium', 'name' => 'مشتری سطح پریمیوم'],
+        ['slug' => 'luxury', 'name' => 'مشتری سطح لاکچری'],
+    ];
+
+    public const DEFAULT_TIME_PERIODS = [
+        ['slug' => 'daily', 'name' => 'روزانه', 'start' => '11:00', 'end' => '18:00'],
+        ['slug' => 'nightly', 'name' => 'شبانه', 'start' => '18:00', 'end' => '11:00'],
+    ];
+
+    public const COEFFICIENT_DEFAULTS = [
+        'coef_gold750_to_gold995' => '1.3333',
+        'coef_gold995_to_gold9999' => '1.005',
+        'coef_buy_price' => '0.99',
+        'coef_silver999_to_silver9999' => '1.04',
+        'coef_silver9999_to_silver925_sell' => '0.925',
+        'coef_silver9999_to_silver925_buy' => '0.975',
+    ];
+
+    public static function get(string $key, mixed $default = null): mixed
+    {
+        return Setting::getValue("zioto_pricing_{$key}", $default);
+    }
+
+    public static function coefficient(string $key): string
+    {
+        return (string) self::get($key, self::COEFFICIENT_DEFAULTS[$key] ?? '1');
+    }
+
+    public static function manualGold750Sell(): string
+    {
+        return (string) (self::get('manual_gold750_sell', '') ?? '');
+    }
+
+    public static function manualSilver9999Sell(): string
+    {
+        return (string) (self::get('manual_silver9999_sell', '') ?? '');
+    }
+
+    public static function enableDynamicPricing(): bool
+    {
+        return (bool) self::get('enable_dynamic_pricing', true);
+    }
+
+    public static function roundPrices(): bool
+    {
+        return (bool) self::get('round_prices', false);
+    }
+
+    public static function roundTo(): int
+    {
+        return (int) self::get('round_to', 1000);
+    }
+
+    public static function trendThreshold(): int
+    {
+        return max(1, (int) self::get('trend_threshold', 100));
+    }
+
+    public static function cacheDurationSeconds(): int
+    {
+        return max(10, (int) self::get('cache_duration_seconds', 300));
+    }
+
+    public static function staleMaxAgeSeconds(): int
+    {
+        return max(0, (int) self::get('stale_max_age_seconds', 21600));
+    }
+
+    public static function staleBlock(): bool
+    {
+        return (bool) self::get('stale_block', false);
+    }
+
+    /** @return list<string> */
+    public static function metalCategories(): array
+    {
+        return array_values((array) self::get('metal_categories', []));
+    }
+
+    /** @return list<int> */
+    public static function disabledProducts(): array
+    {
+        return array_map('intval', (array) self::get('disabled_products', []));
+    }
+
+    /** @return list<int> */
+    public static function disabledCategories(): array
+    {
+        return array_map('intval', (array) self::get('disabled_categories', []));
+    }
+
+    public static function enableSalesHours(): bool
+    {
+        return (bool) self::get('enable_sales_hours', false);
+    }
+
+    public static function salesStartTime(): string
+    {
+        return (string) self::get('sales_start_time', '09:00');
+    }
+
+    public static function salesEndTime(): string
+    {
+        return (string) self::get('sales_end_time', '23:00');
+    }
+
+    public static function showDiscountBadge(): bool
+    {
+        return (bool) self::get('show_discount', false);
+    }
+
+    /** @return list<array{slug:string,name:string,is_default?:bool}> */
+    public static function laborRoles(): array
+    {
+        $roles = self::get('labor_roles', null);
+
+        if (! is_array($roles) || $roles === []) {
+            return self::DEFAULT_LABOR_ROLES;
+        }
+
+        return $roles;
+    }
+
+    /** @return list<array{slug:string,name:string,start:string,end:string}> */
+    public static function timePeriods(): array
+    {
+        $periods = self::get('time_periods', null);
+
+        if (! is_array($periods) || $periods === []) {
+            return self::DEFAULT_TIME_PERIODS;
+        }
+
+        return $periods;
+    }
+
+    public static function previousPrices(): array
+    {
+        return (array) self::get('previous_prices', []);
+    }
+
+    public static function storePreviousPrices(array $values): void
+    {
+        Setting::updateOrCreate(
+            ['key' => 'zioto_pricing_previous_prices'],
+            ['value' => json_encode($values), 'type' => 'json', 'category' => 'pricing', 'label' => 'قیمت‌های قبلی ترندها'],
+        );
+    }
+
+    public static function lastSuccessfulData(): array
+    {
+        return (array) self::get('last_successful_api_data', []);
+    }
+
+    public static function storeLastSuccessfulData(array $prices): void
+    {
+        Setting::updateOrCreate(
+            ['key' => 'zioto_pricing_last_successful_api_data'],
+            ['value' => json_encode($prices), 'type' => 'json', 'category' => 'pricing', 'label' => 'آخرین داده موفق API'],
+        );
+        Setting::updateOrCreate(
+            ['key' => 'zioto_pricing_last_successful_api_time'],
+            ['value' => (string) now()->timestamp, 'type' => 'integer', 'category' => 'pricing', 'label' => 'زمان آخرین داده موفق'],
+        );
+    }
+
+    public static function lastSuccessfulTime(): ?int
+    {
+        $time = self::get('last_successful_api_time', null);
+
+        return $time !== null ? (int) $time : null;
+    }
+
+    public static function lastSuccessfulRaw(): array
+    {
+        return (array) self::get('last_successful_raw_data', []);
+    }
+
+    public static function lastSuccessfulRawTimes(): array
+    {
+        return (array) self::get('last_successful_raw_time', []);
+    }
+
+    public static function storeLastSuccessfulRaw(string $source, array $data): void
+    {
+        $allData = self::lastSuccessfulRaw();
+        $allTime = self::lastSuccessfulRawTimes();
+
+        $allData[$source] = $data;
+        $allTime[$source] = now()->timestamp;
+
+        Setting::updateOrCreate(
+            ['key' => 'zioto_pricing_last_successful_raw_data'],
+            ['value' => json_encode($allData), 'type' => 'json', 'category' => 'pricing', 'label' => 'آخرین داده خام موفق'],
+        );
+        Setting::updateOrCreate(
+            ['key' => 'zioto_pricing_last_successful_raw_time'],
+            ['value' => json_encode($allTime), 'type' => 'json', 'category' => 'pricing', 'label' => 'زمان آخرین داده خام موفق'],
+        );
+    }
+
+    public static function invalidateBoardCache(): void
+    {
+        Cache::forget('priceboard:prices');
+        Cache::forget('priceboard:last_sync_at');
+        Cache::forget('zioto:prices');
+        Cache::forget('zioto:debug');
+        Cache::forget('zioto:source_status');
+        Cache::forget('zioto:raw');
+    }
+}

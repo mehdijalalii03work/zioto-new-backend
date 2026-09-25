@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\ContactMessageController;
+use App\Http\Controllers\Api\DiscountController;
 use App\Http\Controllers\Api\HesabfaWebhookController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\OrderSubmitController;
@@ -84,6 +85,13 @@ Route::prefix('tapsi')->group(function () {
 });
 
 Route::get('/price-board', [PriceBoardController::class, 'index']);
+Route::post('/price-board/refresh', [PriceBoardController::class, 'refresh'])->middleware('throttle:10,1');
+
+Route::middleware('auth.token', 'throttle:20,1')->prefix('discounts')->group(function () {
+    Route::post('/apply', [DiscountController::class, 'apply']);
+    Route::post('/remove', [DiscountController::class, 'remove']);
+    Route::get('/current', [DiscountController::class, 'current']);
+});
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);

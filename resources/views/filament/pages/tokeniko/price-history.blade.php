@@ -93,15 +93,23 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                                                    @foreach($this->getBoardItems($record->data) as $item)
+                                                    @foreach($this->getBoardItems($record->data) as $key => $item)
                                                         <tr>
-                                                            <td class="px-3 py-2 font-semibold text-gray-900 dark:text-white">{{ $item['name'] ?? '—' }}</td>
-                                                            <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">{{ $this->formatPrice($item['sellPrice'] ?? 0) }}</td>
+                                                            <td class="px-3 py-2 font-semibold text-gray-900 dark:text-white">
+                                                                {{ $item['name'] ?? $key }}
+                                                            </td>
+                                                            <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">
+                                                                {{ $this->formatPrice($item['value'] ?? $item['sellPrice'] ?? 0) }}
+                                                            </td>
                                                             <td class="px-3 py-2">
                                                                 @if(isset($item['changePercent']))
                                                                     @php $c = $item['changePercent']; @endphp
                                                                     <span class="font-mono {{ $c > 0 ? 'text-green-600 dark:text-green-400' : ($c < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500') }}">
                                                                         {{ $c > 0 ? '+' : '' }}{{ number_format($c, 2) }}%
+                                                                    </span>
+                                                                @elseif(isset($item['trend']))
+                                                                    <span class="font-mono {{ ($item['trend'] ?? '') === 'up' ? 'text-green-600' : (($item['trend'] ?? '') === 'down' ? 'text-red-600' : 'text-gray-500') }}">
+                                                                        {{ ($item['trend'] ?? '') === 'up' ? '▲' : (($item['trend'] ?? '') === 'down' ? '▼' : '—') }}
                                                                     </span>
                                                                 @else
                                                                     <span class="text-gray-400">—</span>

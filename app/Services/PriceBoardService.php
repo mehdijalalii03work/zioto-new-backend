@@ -2,100 +2,101 @@
 
 namespace App\Services;
 
+use App\Services\Pricing\ApiClientService;
 use Carbon\Carbon;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
+/**
+ * Public facade over the Zioto price board (PersianAPI + Tala.ir).
+ *
+ * Replaces the previous Tokeniko board while keeping the method surface
+ * used by controllers, sync command, and product pricing.
+ */
 class PriceBoardService
 {
-    private const API_URL = 'https://tokeniko.com/api/prices-with-change';
+    public function __construct(
+        private readonly ApiClientService $apiClient,
+    ) {}
 
-    private const CACHE_KEY = 'priceboard:prices';
-
-    private const LAST_SYNC_KEY = 'priceboard:last_sync_at';
-
-    private const CACHE_TTL = 120;
-
-    private const STALE_WARNING_MINUTES = 5;
-
+    /**
+     * Fetch fresh prices, cache them, and return the full payload.
+     *
+     * @return array{prices: array, debug: array, source_status: array, raw: array, used_fallback: bool}
+     */
     public function fetchAndStore(): array
     {
-        $cached = Cache::get(self::CACHE_KEY);
-
-        try {
-            $response = Http::retry(3, 200, fn (ConnectionException $e) => true)
-                ->timeout(10)
-                ->withoutVerifying()
-                ->get(self::API_URL);
-
-            if ($response->failed()) {
-                Log::error('[PriceBoard] API request failed', ['status' => $response->status()]);
-
-                return $this->fallbackToCache($cached);
-            }
-
-            $data = $response->json();
-
-            if (! is_array($data)) {
-                Log::error('[PriceBoard] Invalid API response');
-
-                return $this->fallbackToCache($cached);
-            }
-
-            // prices are stored in Rials (as received from API)
-
-            Cache::put(self::CACHE_KEY, $data, self::CACHE_TTL);
-            Cache::put(self::LAST_SYNC_KEY, now(), self::CACHE_TTL);
-
-            Log::info('[PriceBoard] Prices synced', ['items' => count($data)]);
-
-            return $data;
-        } catch (ConnectionException $e) {
-            Log::error('[PriceBoard] Connection error after retries: '.$e->getMessage());
-
-            $result = $this->fallbackToCache($cached);
-            $this->logIfStale();
-
-            return $result;
-        }
+        return $this->apiClient->getAllPrices(forceRefresh: true);
     }
 
+    /**
+     * Get cached payload (or empty structure).
+     *
+     * @return array{prices: array, debug: array, source_status: array, raw: array, used_fallback: bool}
+     */
     public function getPrices(): array
     {
-        return Cache::get(self::CACHE_KEY, []);
+        $payload = $this->apiClient->readCache();
+
+        if ($payload === null) {
+            $payload = $this->apiClient->getAllPrices();
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Just the board map: [Gold995_Sell => [...], ...]
+     *
+     * @return array<string, array>
+     */
+    public function getBoardPrices(): array
+    {
+        return $this->getPrices()['prices'] ?? [];
     }
 
     public function getLastSyncAt(): ?Carbon
     {
-        $value = Cache::get(self::LAST_SYNC_KEY);
+        $value = Cache::get('priceboard:last_sync_at');
 
-        if (! $value || $value instanceof \__PHP_Incomplete_Class || ! is_string($value)) {
+        if (! $value || $value instanceof \__PHP_Incomplete_Class) {
             return null;
         }
 
-        return Carbon::parse($value);
-    }
-
-    private function fallbackToCache(mixed $cached): array
-    {
-        if (is_array($cached) && ! empty($cached)) {
-            return $cached;
+        if (is_string($value)) {
+            return Carbon::parse($value);
         }
 
-        return Cache::get(self::CACHE_KEY, []);
+        if ($value instanceof Carbon) {
+            return $value;
+        }
+
+        return null;
     }
 
-    private function logIfStale(): void
+    public function getDebugRows(): array
     {
-        $lastSync = $this->getLastSyncAt();
+        return $this->apiClient->getDebugRows();
+    }
 
-        if ($lastSync && $lastSync->diffInMinutes() >= self::STALE_WARNING_MINUTES) {
-            Log::warning('[PriceBoard] Prices are stale', [
-                'last_sync_at' => $lastSync->toDateTimeString(),
-                'minutes_ago' => $lastSync->diffInMinutes(),
-            ]);
+    public function getSourceStatus(): array
+    {
+        return $this->apiClient->getSourceStatus();
+    }
+
+    public function getBasePrices(): array
+    {
+        return $this->apiClient->getBasePrices();
+    }
+
+    public function refresh(): array
+    {
+        return $this->apiClient->refresh();
+    }
+
+    public function clearCache(): void
+    {
+        foreach (['zioto:payload', 'zioto:prices', 'zioto:debug', 'zioto:source_status', 'zioto:raw', 'priceboard:prices', 'priceboard:last_sync_at'] as $key) {
+            Cache::forget($key);
         }
     }
 }

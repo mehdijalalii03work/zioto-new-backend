@@ -3,6 +3,8 @@
 namespace App\Filament\Pages\Products;
 
 use App\Enums\Permission;
+use App\Services\Pricing\DynamicPriceService;
+use App\Services\Pricing\LaborCalculator;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -13,7 +15,7 @@ class ManageProductPricing extends Page
 {
     protected static ?string $slug = 'products/manage-pricing';
 
-    protected static ?string $title = 'مدیریت قیمت‌گذاری';
+    protected static ?string $title = 'تنظیمات ضریب';
 
     protected string $view = 'filament.pages.manage-product-pricing';
 
@@ -28,17 +30,17 @@ class ManageProductPricing extends Page
 
     public static function getNavigationLabel(): string
     {
-        return 'مدیریت قیمت‌گذاری';
+        return 'تنظیمات ضریب';
     }
 
     public static function getNavigationGroup(): string
     {
-        return 'مدیریت کالا';
+        return 'قیمت‌گذاری زیوتو';
     }
 
     public static function getNavigationSort(): ?int
     {
-        return 2;
+        return 6;
     }
 
     public static function getNavigationIcon(): string
@@ -48,24 +50,58 @@ class ManageProductPricing extends Page
 
     public function mount(): void
     {
+        $labor = app(LaborCalculator::class);
+        $roles = $labor->getRoles();
+        $periods = $labor->getTimePeriods();
+
         $this->form->fill([
             'products' => Product::query()
                 ->orderBy('sort_order')
                 ->get()
-                ->map(fn (Product $p) => [
-                    'id' => $p->id,
-                    'name' => $p->name,
-                    'weight' => $p->weight,
-                    'price_board_item' => $p->price_board_item,
-                    'fee_business_hours' => $p->fee_business_hours,
-                    'fee_off_hours' => $p->fee_off_hours,
-                ])
+                ->map(function (Product $p) use ($roles, $periods) {
+                    $matrix = $p->labor_coefficients ?: [];
+                    $state = [
+                        'id' => $p->id,
+                        'name' => $p->name,
+                        'weight' => $p->weight,
+                        'price_board_item' => $p->price_board_item,
+                        'dynamic_pricing_enabled' => (bool) $p->dynamic_pricing_enabled,
+                    ];
+
+                    foreach ($periods as $period) {
+                        foreach ($roles as $role) {
+                            $key = "coef_{$period['slug']}_{$role['slug']}";
+                            $state[$key] = $matrix[$period['slug']][$role['slug']] ?? 1.0;
+                        }
+                    }
+
+                    return $state;
+                })
                 ->toArray(),
         ]);
     }
 
     public function form(Schema $schema): Schema
     {
+        $labor = app(LaborCalculator::class);
+        $roles = $labor->getRoles();
+        $periods = $labor->getTimePeriods();
+
+        $matrixFields = [];
+        foreach ($periods as $period) {
+            foreach ($roles as $role) {
+                $matrixFields[] = Forms\Components\TextInput::make("coef_{$period['slug']}_{$role['slug']}")
+                    ->label("{$period['name']} · {$role['name']}")
+                    ->numeric()
+                    ->minValue(0)
+                    ->maxValue(100)
+                    ->step(0.01)
+                    ->default(1.0)
+                    ->disabled(fn () => ! $this->isEditing)
+                    ->dehydrated();
+            }
+        }
+
         return $schema
             ->schema([
                 Forms\Components\Repeater::make('products')
@@ -83,46 +119,25 @@ class ManageProductPricing extends Page
 
                         Forms\Components\Select::make('price_board_item')
                             ->label('آیتم تابلو قیمت')
-                            ->options([
-                                'Gold995' => 'طلای ۹۹۵ (شمش)',
-                                'Gold999' => 'طلای ۹۹۹',
-                                'Gold9999' => 'طلای ۹۹۹.۹',
-                                'Gold750' => 'طلای ۱۸ عیار (۷۵۰)',
-                                'Gold705' => 'طلای ۱۷.۵ عیار (۷۰۵)',
-                                'Silver990' => 'نقره ۹۹۰',
-                                'Silver999' => 'نقره ۹۹۹',
-                                'Silver9999' => 'نقره ۹۹۹.۹',
-                                'Silver 925' => 'نقره ۹۲۵',
-                                'Euro' => 'یورو',
-                                'USDollar' => 'دلار آمریکا',
-                            ])
+                            ->options(DynamicPriceService::METAL_OPTIONS)
                             ->searchable()
                             ->disabled(fn () => ! $this->isEditing)
                             ->dehydrated(),
 
-                        Forms\Components\TextInput::make('fee_business_hours')
-                            ->label('اجرت اداری (۹ تا ۱۷:۵۹)')
-                            ->numeric()
-                            ->suffix('٪')
-                            ->minValue(0)
-                            ->maxValue(100)
-                            ->step(0.01)
-                            ->nullable()
+                        Forms\Components\Toggle::make('dynamic_pricing_enabled')
+                            ->label('پویا')
+                            ->inline(false)
                             ->disabled(fn () => ! $this->isEditing)
                             ->dehydrated(),
 
-                        Forms\Components\TextInput::make('fee_off_hours')
-                            ->label('اجرت غیراداری (۱۸ تا ۸:۵۹)')
-                            ->numeric()
-                            ->suffix('٪')
-                            ->minValue(0)
-                            ->maxValue(100)
-                            ->step(0.01)
-                            ->nullable()
-                            ->disabled(fn () => ! $this->isEditing)
-                            ->dehydrated(),
+                        ...$matrixFields,
                     ])
-                    ->columns(5)
+                    ->columns([
+                        'default' => 5,
+                        'sm' => 5,
+                        'lg' => 6,
+                        '2xl' => 8,
+                    ])
                     ->defaultItems(0)
                     ->collapsible(),
             ])
@@ -148,13 +163,24 @@ class ManageProductPricing extends Page
             return;
         }
 
+        $labor = app(LaborCalculator::class);
+        $roles = $labor->getRoles();
+        $periods = $labor->getTimePeriods();
         $updated = 0;
 
         foreach ($data['products'] as $item) {
+            $matrix = [];
+            foreach ($periods as $period) {
+                foreach ($roles as $role) {
+                    $key = "coef_{$period['slug']}_{$role['slug']}";
+                    $matrix[$period['slug']][$role['slug']] = (float) ($item[$key] ?? 1.0);
+                }
+            }
+
             Product::where('id', $item['id'])->update([
                 'price_board_item' => $item['price_board_item'] ?? null,
-                'fee_business_hours' => $item['fee_business_hours'] ?? 0,
-                'fee_off_hours' => $item['fee_off_hours'] ?? 0,
+                'dynamic_pricing_enabled' => (bool) ($item['dynamic_pricing_enabled'] ?? false),
+                'labor_coefficients' => $matrix,
             ]);
             $updated++;
         }

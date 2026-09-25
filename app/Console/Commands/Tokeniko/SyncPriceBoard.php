@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
 use Modules\Product\Models\Product;
 
 #[Signature('priceboard:sync')]
-#[Description('Fetch prices from Tokeniko, broadcast to clients, and recalculate product prices')]
+#[Description('Fetch prices from Zioto board (PersianAPI + Tala), broadcast to clients, and recalculate product prices')]
 class SyncPriceBoard extends Command
 {
     public function handle(
@@ -33,7 +33,8 @@ class SyncPriceBoard extends Command
 
         $this->info('Syncing price board...');
 
-        $prices = $priceBoard->fetchAndStore();
+        $payload = $priceBoard->fetchAndStore();
+        $prices = $payload['prices'] ?? [];
 
         if (empty($prices)) {
             $this->warn('No prices received from API or cache.');
@@ -41,7 +42,7 @@ class SyncPriceBoard extends Command
             return self::FAILURE;
         }
 
-        $priceHistory->logBoardPrices($prices);
+        $priceHistory->logBoardPrices($payload);
 
         $lastSync = $priceBoard->getLastSyncAt();
         $fromApi = $lastSync && $lastSync->diffInSeconds(now()) < 60;
@@ -63,13 +64,13 @@ class SyncPriceBoard extends Command
             if ($keys) {
                 $redis->del($keys);
             }
-            Cache::forget('priceboard:prices');
-            Cache::forget('priceboard:last_sync_at');
+            // Do NOT clear priceboard cache here — API controller relies on it.
         }
 
         Log::info('[PriceBoard] Sync completed', [
             'products_updated' => $updated,
             'from_cache' => ! $fromApi,
+            'source' => 'zioto',
         ]);
 
         return self::SUCCESS;

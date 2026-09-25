@@ -3,6 +3,8 @@
 namespace App\Http\Resources;
 
 use App\Models\Setting;
+use App\Services\Pricing\DynamicPriceService;
+use App\Services\Pricing\SalesRestrictionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -10,13 +12,20 @@ class ProductResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $price = (int) $this->price;
         $primaryImage = $this->images->firstWhere('is_primary', true) ?? $this->images->first();
 
-        $taxKey = str_starts_with($this->price_board_item ?? '', 'Gold') ? 'tax_gold' : 'tax_silver';
+        $livePrice = app(DynamicPriceService::class)->priceFor($this->resource, $request->user()?->id);
+        $price = (int) ($livePrice ?? $this->price);
+
+        $taxKey = str_starts_with($this->price_board_item ?? '', 'Gold') || ($this->metal_type?->value ?? null) === 'gold'
+            ? 'tax_gold'
+            : 'tax_silver';
         $taxRate = (float) Setting::getValue($taxKey, 0);
         $priceBeforeTax = $taxRate > 0 ? round($price / (1 + $taxRate / 100)) : $price;
         $taxAmount = $price - $priceBeforeTax;
+
+        $salesRestriction = app(SalesRestrictionService::class);
+        $blockedReason = $salesRestriction->blockedReason($this->resource);
 
         return [
             'id' => $this->id,
@@ -44,6 +53,8 @@ class ProductResource extends JsonResource
             'stock' => $this->stock_quantity > 0,
             'contact_only' => (bool) $this->contact_only,
             'is_nopay' => (bool) $this->is_nopay,
+            'purchasable' => $blockedReason === null,
+            'unavailable_reason' => $blockedReason,
             'desc' => strip_tags($this->description ?? ''),
             'full_desc' => $this->description ?? '',
             'image' => $primaryImage ? asset('storage/'.$primaryImage->image_path) : null,

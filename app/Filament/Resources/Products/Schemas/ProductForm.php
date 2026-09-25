@@ -6,8 +6,10 @@ use App\Enums\Permission;
 use App\Enums\Product\Ayar;
 use App\Enums\Product\MetalType;
 use App\Enums\Product\ProductShape;
+use App\Services\Pricing\DynamicPriceService;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -191,37 +193,18 @@ class ProductForm
                             ->schema([
                                 Select::make('price_board_item')
                                     ->label('آیتم تابلو قیمت')
-                                    ->options([
-                                        'Gold995' => 'طلای ۹۹۵ (شمش)',
-                                        'Gold999' => 'طلای ۹۹۹',
-                                        'Gold9999' => 'طلای ۹۹۹.۹',
-                                        'Gold750' => 'طلای ۱۸ عیار (۷۵۰)',
-                                        'Gold705' => 'طلای ۱۷.۵ عیار (۷۰۵)',
-                                        'Silver990' => 'نقره ۹۹۰',
-                                        'Silver999' => 'نقره ۹۹۹',
-                                        'Silver9999' => 'نقره ۹۹۹.۹',
-                                        'Silver 925' => 'نقره ۹۲۵',
-                                        'Euro' => 'یورو',
-                                        'USDollar' => 'دلار آمریکا',
-                                    ])
+                                    ->options(DynamicPriceService::METAL_OPTIONS)
                                     ->placeholder('انتخاب آیتم')
                                     ->searchable(),
 
-                                TextInput::make('fee_off_hours')
-                                    ->label('اجرت (ساعت ۱۸ تا ۸:۵۹)')
-                                    ->numeric()
-                                    ->suffix('٪')
-                                    ->minValue(0)
-                                    ->maxValue(100)
-                                    ->step(0.01)
-                                    ->nullable()
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->placeholder('مثلاً 3.5')
-                                    ->helperText('از صفحه مدیریت قیمت‌گذاری قابل تغییر است'),
+                                Toggle::make('dynamic_pricing_enabled')
+                                    ->label('قیمت‌گذاری پویای اجرت')
+                                    ->helperText('بر اساس نقش کاربر و بازه زمانی')
+                                    ->inline(false)
+                                    ->default(true),
 
                                 TextInput::make('fee_business_hours')
-                                    ->label('اجرت (ساعت ۹ تا ۱۷:۵۹)')
+                                    ->label('اجرت قدیمی (ساعت ۹ تا ۱۷:۵۹)')
                                     ->numeric()
                                     ->suffix('٪')
                                     ->minValue(0)
@@ -231,8 +214,44 @@ class ProductForm
                                     ->disabled()
                                     ->dehydrated()
                                     ->placeholder('مثلاً 5')
-                                    ->helperText('از صفحه مدیریت قیمت‌گذاری قابل تغییر است'),
+                                    ->helperText('فقط برای سازگاری — از ماتریس لابور استفاده می‌شود'),
+
+                                TextInput::make('fee_off_hours')
+                                    ->label('اجرت قدیمی (ساعت ۱۸ تا ۸:۵۹)')
+                                    ->numeric()
+                                    ->suffix('٪')
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->step(0.01)
+                                    ->nullable()
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->placeholder('مثلاً 3.5')
+                                    ->helperText('فقط برای سازگاری — از ماتریس لابور استفاده می‌شود'),
                             ]),
+
+                        Textarea::make('labor_coefficients_preview')
+                            ->label('ماتریس ضرایب لابور')
+                            ->rows(4)
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->afterStateHydrated(function ($state, $set, $record) {
+                                $matrix = $record?->labor_coefficients ?? [];
+                                if ($matrix === []) {
+                                    $set('labor_coefficients_preview', 'پیش‌فرض: همه سلول‌ها ۱.۰ — از صفحه «مدیریت قیمت‌گذاری» قابل ویرایش است.');
+
+                                    return;
+                                }
+                                $lines = [];
+                                foreach ($matrix as $period => $roles) {
+                                    foreach ($roles as $role => $value) {
+                                        $lines[] = "{$period}/{$role}: {$value}";
+                                    }
+                                }
+                                $set('labor_coefficients_preview', implode("\n", $lines));
+                            })
+                            ->helperText('ماتریس کامل از صفحه مدیریت قیمت‌گذاری محصولات ویرایش می‌شود')
+                            ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
 

@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             ProvinceSeeder::class,
             CitySeeder::class,
             RolePermissionSeeder::class,
+            ZiotoPricingSettingsSeeder::class,
         ]);
 
         User::factory()->create([

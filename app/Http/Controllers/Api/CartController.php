@@ -7,6 +7,7 @@ use App\Http\Requests\StoreCartRequest;
 use App\Http\Requests\UpdateCartRequest;
 use App\Http\Resources\CartResource;
 use App\Models\Cart;
+use App\Services\Pricing\SalesRestrictionService;
 use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -14,12 +15,16 @@ use Modules\Product\Models\Product;
 
 class CartController extends Controller
 {
+    public function __construct(
+        private readonly SalesRestrictionService $salesRestrictions,
+    ) {}
+
     public function index(): JsonResponse
     {
         $userId = Auth::id();
 
         $items = Cart::where('user_id', $userId)
-            ->with('product:id,name,price,weight,stock_quantity')
+            ->with('product:id,name,price,weight,stock_quantity,price_board_item,price_type,labor_coefficients,dynamic_pricing_enabled,category_id,metal_type')
             ->get();
 
         return response()->json([
@@ -33,6 +38,20 @@ class CartController extends Controller
         $validated = $request->validated();
         $productId = $validated['product_id'];
         $quantity = (int) ($validated['quantity'] ?? 1);
+
+        $product = Product::find($productId);
+
+        if ($product && ($reason = $this->salesRestrictions->blockedReason($product)) !== null) {
+            return response()->json([
+                'message' => $this->salesRestrictions->humanMessage($reason),
+                'error_code' => match ($reason) {
+                    'product_disabled' => 'PRODUCT_SALES_DISABLED',
+                    'category_disabled' => 'CATEGORY_SALES_DISABLED',
+                    'outside_hours' => 'OUTSIDE_SALES_HOURS',
+                    default => 'PRODUCT_NOT_PURCHASABLE',
+                },
+            ], 422);
+        }
 
         if (Platform::isNopay($request) && ! Product::nopayEligible()->whereKey($productId)->exists()) {
             return response()->json([

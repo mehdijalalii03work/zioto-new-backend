@@ -120,6 +120,18 @@ class UserForm
                 ->icon('heroicon-o-shield-check')
                 ->collapsible()
                 ->schema([
+                    Select::make('labor_role')
+                        ->label('سطح لابور (قیمت‌گذاری)')
+                        ->options([
+                            'basic' => 'پایه',
+                            'pro' => 'پرو',
+                            'premium' => 'پریمیوم',
+                            'luxury' => 'لاکچری',
+                        ])
+                        ->default('basic')
+                        ->required()
+                        ->helperText('سطح قیمت‌گذاری اجرت برای این کاربر در فروشگاه'),
+
                     Select::make('roles')
                         ->relationship('roles', 'name')
                         ->label('نقش')

@@ -144,7 +144,13 @@ class PriceHistoryPage extends Page
 
     public function getBoardItems(array $data): array
     {
-        return $data['products'] ?? [];
+        $items = $data['prices'] ?? $data['products'] ?? [];
+
+        if (isset($items['prices'])) {
+            $items = $items['prices'];
+        }
+
+        return $items;
     }
 
     public function getProductItems(array $data): array

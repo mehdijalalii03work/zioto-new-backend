@@ -19,7 +19,7 @@ use Illuminate\Notifications\Notifiable;
 use Modules\Product\Models\Product;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'first_name', 'last_name', 'father_name', 'gender', 'birth_place', 'email', 'password', 'phone', 'phone_verified_at', 'national_code', 'shahkar_verified', 'identity_verification_status', 'identity_verified_at', 'birth_date', 'api_token', 'api_token_hash', 'token_created_at', 'platform'])]
+#[Fillable(['name', 'first_name', 'last_name', 'father_name', 'gender', 'birth_place', 'email', 'password', 'phone', 'phone_verified_at', 'national_code', 'labor_role', 'shahkar_verified', 'identity_verification_status', 'identity_verified_at', 'birth_date', 'api_token', 'api_token_hash', 'token_created_at', 'platform'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {

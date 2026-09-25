@@ -102,6 +102,14 @@ enum Permission: string
 
     case ManagementReportView = 'management-report.view';
 
+    case PricingView = 'pricing.view';
+
+    case PricingEdit = 'pricing.edit';
+
+    case DiscountView = 'discount.view';
+
+    case DiscountEdit = 'discount.edit';
+
     public function label(): string
     {
         return match ($this) {
@@ -154,6 +162,10 @@ enum Permission: string
             self::HesabfaView => 'مشاهده حسابفا',
             self::HesabfaSync => 'همگام‌سازی با حسابفا',
             self::ManagementReportView => 'مشاهده گزارشات مدیریتی',
+            self::PricingView => 'مشاهده تنظیمات قیمت‌گذاری',
+            self::PricingEdit => 'ویرایش تنظیمات قیمت‌گذاری',
+            self::DiscountView => 'مشاهده کدهای تخفیف',
+            self::DiscountEdit => 'مدیریت کدهای تخفیف',
         };
     }
 
@@ -175,6 +187,8 @@ enum Permission: string
             self::ContactMessageView, self::ContactMessageEdit, self::ContactMessageDelete => 'پیام‌های تماس',
             self::HesabfaView, self::HesabfaSync => 'حسابفا',
             self::ManagementReportView => 'گزارشات مدیریتی',
+            self::PricingView, self::PricingEdit => 'قیمت‌گذاری',
+            self::DiscountView, self::DiscountEdit => 'کدهای تخفیف',
         };
     }
 

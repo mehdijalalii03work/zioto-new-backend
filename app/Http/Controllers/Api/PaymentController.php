@@ -10,6 +10,9 @@ use App\Models\Cart;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
 use App\Services\InstallmentService;
+use App\Services\Pricing\DiscountService;
+use App\Services\Pricing\DynamicPriceService;
+use App\Services\Pricing\SalesRestrictionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,6 +28,12 @@ use Shetabit\Multipay\Payment as ShetabitPayment;
 
 class PaymentController extends Controller
 {
+    public function __construct(
+        private readonly DynamicPriceService $dynamicPrice,
+        private readonly SalesRestrictionService $salesRestrictions,
+        private readonly DiscountService $discounts,
+    ) {}
+
     public function calculateFee(CalculateFeeRequest $request): JsonResponse
     {
         $validated = $request->validated();
@@ -34,7 +43,8 @@ class PaymentController extends Controller
         $totalWeight = 0;
         foreach ($validated['items'] as $item) {
             $product = Product::findOrFail($item['product_id']);
-            $baseTotal += $product->price * $item['quantity'];
+            $unitPrice = $this->dynamicPrice->priceFor($product, $user->id) ?? (float) $product->price;
+            $baseTotal += $unitPrice * $item['quantity'];
             $totalWeight += ($product->weight ?? 0) * $item['quantity'];
         }
 
@@ -49,6 +59,10 @@ class PaymentController extends Controller
 
         $baseTotal += $shippingCost;
 
+        $discountResolved = $this->discounts->resolveForOrder($user->id);
+        $discountAmount = min((float) $discountResolved['amount'], max(0, $baseTotal - $shippingCost));
+        $baseTotal = max(0, $baseTotal - $discountAmount);
+
         $isFeeGateway = InstallmentService::isFeeGateway($validated['gateway']);
         $feeAmount = 0;
 
@@ -59,6 +73,8 @@ class PaymentController extends Controller
         return response()->json([
             'base_total' => (int) $baseTotal,
             'shipping_cost' => $shippingCost,
+            'discount_amount' => (int) $discountAmount,
+            'discount_code' => $discountResolved['code'],
             'fee_amount' => $feeAmount,
             'total_with_fee' => (int) $baseTotal + $feeAmount,
         ]);
@@ -78,6 +94,27 @@ class PaymentController extends Controller
             return response()->json(['message' => 'سفارش لغو شده یا منقضی شده است', 'error_code' => 'ORDER_NOT_ACTIVE'], 422);
         }
 
+        $order->load('items.product:id,name,price,is_nopay,weight,price_board_item,price_type,labor_coefficients,dynamic_pricing_enabled,category_id,metal_type');
+
+        foreach ($order->items as $orderItem) {
+            $product = $orderItem->product;
+            if (! $product) {
+                continue;
+            }
+
+            if (($reason = $this->salesRestrictions->blockedReason($product)) !== null) {
+                return response()->json([
+                    'message' => $this->salesRestrictions->humanMessage($reason),
+                    'error_code' => match ($reason) {
+                        'product_disabled' => 'PRODUCT_SALES_DISABLED',
+                        'category_disabled' => 'CATEGORY_SALES_DISABLED',
+                        'outside_hours' => 'OUTSIDE_SALES_HOURS',
+                        default => 'PRODUCT_NOT_PURCHASABLE',
+                    },
+                ], 422);
+            }
+        }
+
         $existingPending = Payment::where('order_id', $order->id)
             ->whereIn('status', ['pending', 'processing'])
             ->first();
@@ -87,8 +124,6 @@ class PaymentController extends Controller
         }
 
         if ($validated['gateway'] === 'nopay') {
-            $order->load('items.product:id,is_nopay');
-
             if ($order->items->contains(fn ($item) => ! $item->product?->is_nopay)) {
                 return response()->json([
                     'message' => 'برخی محصولات سفارش برای پرداخت اقساطی نوپی در دسترس نیستند',

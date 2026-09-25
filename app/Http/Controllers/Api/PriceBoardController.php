@@ -14,14 +14,28 @@ class PriceBoardController extends Controller
 
     public function index(): JsonResponse
     {
-        $prices = $this->priceBoard->getPrices();
-
-        if (empty($prices)) {
-            $prices = $this->priceBoard->fetchAndStore();
-        }
+        $payload = $this->priceBoard->getPrices();
 
         return response()->json([
-            'data' => $prices,
+            'data' => [
+                'prices' => $payload['prices'] ?? [],
+                'source_status' => $payload['source_status'] ?? [],
+                'updated_at' => $this->priceBoard->getLastSyncAt()?->toIso8601String(),
+            ],
+        ]);
+    }
+
+    public function refresh(): JsonResponse
+    {
+        $payload = $this->priceBoard->refresh();
+
+        return response()->json([
+            'message' => 'تخته قیمت بروزرسانی شد',
+            'data' => [
+                'prices' => $payload['prices'] ?? [],
+                'source_status' => $payload['source_status'] ?? [],
+                'updated_at' => $this->priceBoard->getLastSyncAt()?->toIso8601String(),
+            ],
         ]);
     }
 }

@@ -8,16 +8,17 @@ class PriceHistoryService
 {
     public function logBoardPrices(array $prices): void
     {
-        $products = $prices['products'] ?? [];
+        // New Zioto shape: payload with 'prices' key. Legacy Tokeniko: 'products'.
+        $boardItems = $prices['prices'] ?? $prices['products'] ?? [];
 
-        if (empty($products)) {
+        if (empty($boardItems)) {
             return;
         }
 
         PriceHistory::create([
             'type' => 'board',
-            'source' => 'tokeniko_board',
-            'items_count' => count($products),
+            'source' => 'zioto_board',
+            'items_count' => count($boardItems),
             'data' => $prices,
         ]);
     }

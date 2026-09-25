@@ -11,6 +11,9 @@ use App\Models\OrderShipping;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
 use App\Services\InstallmentService;
+use App\Services\Pricing\DiscountService;
+use App\Services\Pricing\DynamicPriceService;
+use App\Services\Pricing\SalesRestrictionService;
 use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,6 +22,12 @@ use Modules\Order\Models\Order;
 
 class OrderSubmitController extends Controller
 {
+    public function __construct(
+        private readonly SalesRestrictionService $salesRestrictions,
+        private readonly DynamicPriceService $dynamicPrice,
+        private readonly DiscountService $discounts,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $orders = Order::with(['shipping', 'items', 'address.province', 'address.city'])
@@ -65,7 +74,7 @@ class OrderSubmitController extends Controller
         $validated = $request->validated();
 
         $cartItems = Cart::where('user_id', $user->id)
-            ->with('product:id,name,price,is_nopay')
+            ->with('product:id,name,price,is_nopay,weight,price_board_item,price_type,labor_coefficients,dynamic_pricing_enabled,category_id,metal_type')
             ->get();
 
         if ($cartItems->isEmpty()) {
@@ -73,6 +82,25 @@ class OrderSubmitController extends Controller
                 'message' => 'سبد خرید شما خالی است',
                 'error_code' => 'CART_EMPTY',
             ], 422);
+        }
+
+        foreach ($cartItems as $cartItem) {
+            $product = $cartItem->product;
+            if (! $product) {
+                continue;
+            }
+
+            if (($reason = $this->salesRestrictions->blockedReason($product)) !== null) {
+                return response()->json([
+                    'message' => $this->salesRestrictions->humanMessage($reason),
+                    'error_code' => match ($reason) {
+                        'product_disabled' => 'PRODUCT_SALES_DISABLED',
+                        'category_disabled' => 'CATEGORY_SALES_DISABLED',
+                        'outside_hours' => 'OUTSIDE_SALES_HOURS',
+                        default => 'PRODUCT_NOT_PURCHASABLE',
+                    },
+                ], 422);
+            }
         }
 
         if (Platform::isNopay($request) && $cartItems->contains(fn (Cart $item) => ! $item->product->is_nopay)) {
@@ -100,7 +128,7 @@ class OrderSubmitController extends Controller
             $nationalId = $user->national_code;
 
             $gateway = $validated['gateway'] ?? 'parsian';
-            $orderData = $this->calculateOrderData($cartItems, $validated, $address);
+            $orderData = $this->calculateOrderData($cartItems, $validated, $address, $user->id);
 
             $notesData = [
                 'name' => $buyerName,
@@ -117,11 +145,18 @@ class OrderSubmitController extends Controller
                 'platform' => Platform::fromRequest(),
                 'status' => 'pending',
                 'total_amount' => $orderData['total_amount'],
+                'discount_code' => $orderData['discount_code'],
+                'discount_amount' => $orderData['discount_amount'],
                 'payment_method' => $orderData['payment_method'],
                 'payment_status' => 'pending',
                 'user_address_id' => $validated['user_address_id'] ?? null,
                 'notes' => json_encode($notesData),
             ]);
+
+            if ($orderData['discount'] !== null) {
+                $this->discounts->incrementUsage($orderData['discount']);
+                $this->discounts->removeForUser($user->id);
+            }
 
             foreach ($orderData['items'] as $orderItem) {
                 $order->items()->create($orderItem);
@@ -152,19 +187,20 @@ class OrderSubmitController extends Controller
         ], 201);
     }
 
-    private function calculateOrderData($cartItems, array $validated, ?object $address = null): array
+    private function calculateOrderData($cartItems, array $validated, ?object $address = null, ?int $userId = null): array
     {
         $baseAmount = 0;
         $orderItems = [];
 
         foreach ($cartItems as $cartItem) {
             $product = $cartItem->product;
-            $subtotal = $product->price * $cartItem->quantity;
+            $unitPrice = $this->dynamicPrice->priceFor($product, $userId) ?? (float) $product->price;
+            $subtotal = $unitPrice * $cartItem->quantity;
             $baseAmount += $subtotal;
             $orderItems[] = [
                 'product_id' => $product->id,
                 'product_name' => $product->name,
-                'product_price' => $product->price,
+                'product_price' => $unitPrice,
                 'quantity' => $cartItem->quantity,
                 'subtotal' => $subtotal,
             ];
@@ -183,7 +219,14 @@ class OrderSubmitController extends Controller
             ? (InstallmentService::isFeeGateway($gateway) ? 'installment' : 'installment_nofee')
             : 'online';
 
-        $totalAmount = $baseAmount + $shippingResult['total'];
+        $subtotalWithShipping = $baseAmount + $shippingResult['total'];
+
+        $discountResolved = $userId !== null
+            ? $this->discounts->resolveForOrder($userId)
+            : ['discount' => null, 'amount' => 0.0, 'code' => null];
+
+        $discountAmount = min((float) $discountResolved['amount'], $baseAmount);
+        $totalAmount = max(0, $subtotalWithShipping - $discountAmount);
         $installmentFee = 0;
 
         if (InstallmentService::isFeeGateway($gateway)) {
@@ -199,6 +242,9 @@ class OrderSubmitController extends Controller
             'shipping_cost' => $shippingResult['total'],
             'tax_amount' => $shippingResult['tax_amount'],
             'tax_rate' => $shippingResult['tax_rate'],
+            'discount' => $discountResolved['discount'],
+            'discount_amount' => $discountAmount,
+            'discount_code' => $discountResolved['code'],
         ];
     }
 
@@ -207,7 +253,7 @@ class OrderSubmitController extends Controller
         $cartItemData = collect($cartItems)->map(fn (Cart $item) => [
             'product_id' => $item->product_id,
             'quantity' => $item->quantity,
-            'product_price' => $item->product->price,
+            'product_price' => $this->dynamicPrice->priceFor($item->product, $user->id) ?? (float) $item->product->price,
         ])->sortBy('product_id')->values()->toArray();
 
         $pendingOrders = Order::where('user_id', $user->id)
@@ -231,10 +277,12 @@ class OrderSubmitController extends Controller
                 ->toArray();
 
             if ($cartItemData === $orderItemData) {
-                $orderData = $this->calculateOrderData($cartItems, $validated);
+                $orderData = $this->calculateOrderData($cartItems, $validated, null, $user->id);
                 $order->update([
                     'total_amount' => $orderData['total_amount'],
                     'payment_method' => $orderData['payment_method'],
+                    'discount_code' => $orderData['discount_code'],
+                    'discount_amount' => $orderData['discount_amount'],
                 ]);
 
                 return $order;
