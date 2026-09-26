@@ -38,7 +38,6 @@ class ApiClientService
         'Gold750' => 'طلای ۷۵۰ (۱۸ عیار)',
         'Gold705' => 'طلای ۷۰۵ (مظنه)',
         'Silver9999' => 'نقره ۹۹۹.۹',
-        'Silver925' => 'نقره ۹۲۵',
         'Silver999' => 'نقره ۹۹۹ (۹۹.۹٪)',
         'Silver990' => 'نقره ۹۹۰ (۹۹٪)',
     ];
@@ -219,11 +218,9 @@ class ApiClientService
             ? $talaData['Gold750']
             : null;
         $coefGold750To995 = PricingSettings::coefficient('coef_gold750_to_gold995');
-        $coefGold995To9999 = PricingSettings::coefficient('coef_gold995_to_gold9999');
+        $coefGold750To9999 = PricingSettings::coefficient('coef_gold750_to_gold9999');
         $coefBuy = PricingSettings::coefficient('coef_buy_price');
         $coefSilver999To9999 = PricingSettings::coefficient('coef_silver999_to_silver9999');
-        $coefSilver9999To925Sell = PricingSettings::coefficient('coef_silver9999_to_silver925_sell');
-        $coefSilver9999To925Buy = PricingSettings::coefficient('coef_silver9999_to_silver925_buy');
 
         $maxApiGold750 = null;
         if ($bc::isPositive($persianGold750) && $bc::isPositive($talaGold750)) {
@@ -273,11 +270,11 @@ class ApiClientService
             $gold750Buy = $bc::mul($gold750Sell, $coefBuy);
         }
 
-        // Gold 995 / 9999
+        // Gold 995 / 9999 (both derived directly from Gold 750)
         $gold995Sell = $bc::isPositive($gold750Sell) ? $bc::mul($gold750Sell, $coefGold750To995) : null;
         $gold995Buy = $bc::isPositive($gold750Buy) ? $bc::mul($gold750Buy, $coefGold750To995) : null;
-        $gold9999Sell = $bc::isPositive($gold995Sell) ? $bc::mul($gold995Sell, $coefGold995To9999) : null;
-        $gold9999Buy = $bc::isPositive($gold995Buy) ? $bc::mul($gold995Buy, $coefGold995To9999) : null;
+        $gold9999Sell = $bc::isPositive($gold750Sell) ? $bc::mul($gold750Sell, $coefGold750To9999) : null;
+        $gold9999Buy = $bc::isPositive($gold750Buy) ? $bc::mul($gold750Buy, $coefGold750To9999) : null;
 
         // Silver 9999
         $silver999Persian = $persianData['Silver999'] ?? null;
@@ -300,10 +297,6 @@ class ApiClientService
 
         $silver9999Buy = $bc::isPositive($silver9999Sell) ? $bc::mul($silver9999Sell, $coefBuy) : null;
 
-        // Silver 925
-        $silver925Sell = $bc::isPositive($silver9999Sell) ? $bc::mul($silver9999Sell, $coefSilver9999To925Sell) : null;
-        $silver925Buy = $bc::isPositive($silver925Sell) ? $bc::mul($silver925Sell, $coefSilver9999To925Buy) : null;
-
         $prices = [];
         $this->maybeAdd($prices, 'Gold750_Sell', 'Gold750', $gold750Sell, 'sell', $nameMap);
         $this->maybeAdd($prices, 'Gold750_Buy', 'Gold750', $gold750Buy, 'buy', $nameMap);
@@ -313,20 +306,16 @@ class ApiClientService
         $this->maybeAdd($prices, 'Gold9999_Buy', 'Gold9999', $gold9999Buy, 'buy', $nameMap);
         $this->maybeAdd($prices, 'Silver9999_Sell', 'Silver9999', $silver9999Sell, 'sell', $nameMap);
         $this->maybeAdd($prices, 'Silver9999_Buy', 'Silver9999', $silver9999Buy, 'buy', $nameMap);
-        $this->maybeAdd($prices, 'Silver925_Sell', 'Silver925', $silver925Sell, 'sell', $nameMap);
-        $this->maybeAdd($prices, 'Silver925_Buy', 'Silver925', $silver925Buy, 'buy', $nameMap);
 
         // Debug rows
         $this->debugRows['Gold750_Sell'] = $this->debugRow('Gold750_Sell', $persianGold750, $talaGold750, $manualGold750 !== '' ? $manualGold750 : null, $gold750Sell, 'geram18k (Tala.ir)', 'Max(PersianAPI, Tala.ir) or Manual if > Max', $nameMap);
         $this->debugRows['Gold750_Buy'] = $this->debugRow('Gold750_Buy', $persianGold750, $talaGold750, $manualGold750 !== '' ? $manualGold750 : null, $gold750Buy, 'Min(APIs) or Sell*0.99', 'Min(PersianAPI, Tala.ir) or Sell×0.99 if Manual>Max', $nameMap);
-        $this->debugRows['Gold995_Sell'] = $this->debugRow('Gold995_Sell', null, null, null, $gold995Sell, 'Gold750_Sell * 1.3333', 'Gold750_Sell * 1.3333', $nameMap);
-        $this->debugRows['Gold995_Buy'] = $this->debugRow('Gold995_Buy', null, null, null, $gold995Buy, 'Gold750_Buy * 1.3333', 'Gold750_Buy * 1.3333', $nameMap);
-        $this->debugRows['Gold9999_Sell'] = $this->debugRow('Gold9999_Sell', null, null, null, $gold9999Sell, 'Gold995_Sell * 1.005', 'Gold995_Sell * 1.005', $nameMap);
-        $this->debugRows['Gold9999_Buy'] = $this->debugRow('Gold9999_Buy', null, null, null, $gold9999Buy, 'Gold995_Buy * 1.005', 'Gold995_Buy * 1.005', $nameMap);
+        $this->debugRows['Gold995_Sell'] = $this->debugRow('Gold995_Sell', null, null, null, $gold995Sell, 'Gold750_Sell * '.$coefGold750To995, 'Gold750_Sell * '.$coefGold750To995, $nameMap);
+        $this->debugRows['Gold995_Buy'] = $this->debugRow('Gold995_Buy', null, null, null, $gold995Buy, 'Gold750_Buy * '.$coefGold750To995, 'Gold750_Buy * '.$coefGold750To995, $nameMap);
+        $this->debugRows['Gold9999_Sell'] = $this->debugRow('Gold9999_Sell', null, null, null, $gold9999Sell, 'Gold750_Sell * '.$coefGold750To9999, 'Gold750_Sell * '.$coefGold750To9999, $nameMap);
+        $this->debugRows['Gold9999_Buy'] = $this->debugRow('Gold9999_Buy', null, null, null, $gold9999Buy, 'Gold750_Buy * '.$coefGold750To9999, 'Gold750_Buy * '.$coefGold750To9999, $nameMap);
         $this->debugRows['Silver9999_Sell'] = $this->debugRow('Silver9999_Sell', $silver999Persian, null, $manualSilver9999 !== '' ? $manualSilver9999 : null, $silver9999Sell, 'Silver999 * 1.04', 'PersianAPI Silver999 × 1.04, then Max(result, Manual)', $nameMap);
         $this->debugRows['Silver9999_Buy'] = $this->debugRow('Silver9999_Buy', null, null, null, $silver9999Buy, 'Silver9999_Sell * 0.99', 'Silver9999_Sell × 0.99', $nameMap);
-        $this->debugRows['Silver925_Sell'] = $this->debugRow('Silver925_Sell', $silver9999Sell, null, null, $silver925Sell, 'Silver9999_Sell * '.$coefSilver9999To925Sell, 'Silver9999_Sell × coefficient', $nameMap);
-        $this->debugRows['Silver925_Buy'] = $this->debugRow('Silver925_Buy', $silver925Sell, null, null, $silver925Buy, 'Silver925_Sell * '.$coefSilver9999To925Buy, 'Silver925_Sell × coefficient', $nameMap);
 
         return $prices;
     }

@@ -22,7 +22,7 @@ class ManualPricesPage extends Page
 
     protected static ?string $navigationLabel = 'قیمت‌های دستی تابلو';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'قیمت‌گذاری زیوتو';
+    protected static string|\UnitEnum|null $navigationGroup = 'تابلو قیمت زیوتو';
 
     protected static ?int $navigationSort = 4;
 

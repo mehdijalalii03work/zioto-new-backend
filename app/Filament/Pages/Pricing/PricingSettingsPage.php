@@ -23,7 +23,7 @@ class PricingSettingsPage extends Page
 
     protected static ?string $navigationLabel = 'تنظیمات';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'قیمت‌گذاری زیوتو';
+    protected static string|\UnitEnum|null $navigationGroup = 'تابلو قیمت زیوتو';
 
     protected static ?int $navigationSort = 2;
 

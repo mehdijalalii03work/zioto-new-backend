@@ -18,8 +18,6 @@ return new class extends Migration
         'Silver990' => 'Silver9999_Sell',
         'Silver999' => 'Silver9999_Sell',
         'Silver9999' => 'Silver9999_Sell',
-        'Silver 925' => 'Silver925_Sell',
-        'Silver925' => 'Silver925_Sell',
     ];
 
     public function up(): void
@@ -31,7 +29,7 @@ return new class extends Migration
         }
 
         DB::table('products')
-            ->whereIn('price_board_item', ['Euro', 'USDollar', 'Dollar', 'GoldOunce', 'SilverOunce'])
+            ->whereIn('price_board_item', ['Euro', 'USDollar', 'Dollar', 'GoldOunce', 'SilverOunce', 'Silver925', 'Silver 925'])
             ->update(['price_board_item' => null]);
     }
 

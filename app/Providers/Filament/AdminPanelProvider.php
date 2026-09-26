@@ -48,6 +48,18 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarWidth('19rem')
             ->favicon(asset('favicon.ico'))
             ->globalSearch(false)
+            ->navigationGroups([
+                'مدیریت محتوا',
+                'مدیریت کالا',
+                'حسابفا',
+                'سایر',
+                'تابلو قیمت زیوتو',
+                'قیمت‌گذاری زیوتو',
+                'گزارشات مدیریتی',
+                'فروش',
+                'تنظیمات',
+                'مدیریت',
+            ])
             ->colors([
                 'primary' => [
                     50 => '#FBF7EE',

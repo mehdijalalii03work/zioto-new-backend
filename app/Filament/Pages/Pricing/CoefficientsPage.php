@@ -22,7 +22,7 @@ class CoefficientsPage extends Page
 
     protected static ?string $navigationLabel = 'ضرایب تابلو';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'قیمت‌گذاری زیوتو';
+    protected static string|\UnitEnum|null $navigationGroup = 'تابلو قیمت زیوتو';
 
     protected static ?int $navigationSort = 3;
 
@@ -39,11 +39,9 @@ class CoefficientsPage extends Page
     {
         $this->form->fill([
             'coef_gold750_to_gold995' => PricingSettings::coefficient('coef_gold750_to_gold995'),
-            'coef_gold995_to_gold9999' => PricingSettings::coefficient('coef_gold995_to_gold9999'),
+            'coef_gold750_to_gold9999' => PricingSettings::coefficient('coef_gold750_to_gold9999'),
             'coef_buy_price' => PricingSettings::coefficient('coef_buy_price'),
             'coef_silver999_to_silver9999' => PricingSettings::coefficient('coef_silver999_to_silver9999'),
-            'coef_silver9999_to_silver925_sell' => PricingSettings::coefficient('coef_silver9999_to_silver925_sell'),
-            'coef_silver9999_to_silver925_buy' => PricingSettings::coefficient('coef_silver9999_to_silver925_buy'),
         ]);
     }
 
@@ -56,12 +54,10 @@ class CoefficientsPage extends Page
                     ->icon('heroicon-o-calculator')
                     ->schema([
                         Grid::make(4)->schema([
-                            TextInput::make('coef_gold750_to_gold995')->label('۷۵۰ ← ۹۹۵')->numeric(),
-                            TextInput::make('coef_gold995_to_gold9999')->label('۹۹۵ ← ۹۹۹.۹')->numeric(),
+                            TextInput::make('coef_gold750_to_gold995')->label('طلا ۷۵۰ ← ۹۹۵')->numeric(),
+                            TextInput::make('coef_gold750_to_gold9999')->label('طلا ۷۵۰ ← ۹۹۹.۹')->numeric(),
                             TextInput::make('coef_silver999_to_silver9999')->label('نقره ۹۹۹ ← ۹۹۹.۹')->numeric(),
-                            TextInput::make('coef_buy_price')->label('قیمت خرید')->numeric(),
-                            TextInput::make('coef_silver9999_to_silver925_sell')->label('نقره فروش → ۹۲۵')->numeric(),
-                            TextInput::make('coef_silver9999_to_silver925_buy')->label('نقره خرید → ۹۲۵')->numeric(),
+                            TextInput::make('coef_buy_price')->label('ضریب خرید نسبت به فروش (طلا و نقره)')->numeric(),
                         ]),
                     ])->columnSpanFull(),
             ])
@@ -80,11 +76,9 @@ class CoefficientsPage extends Page
 
         $keys = [
             'coef_gold750_to_gold995',
-            'coef_gold995_to_gold9999',
+            'coef_gold750_to_gold9999',
             'coef_buy_price',
             'coef_silver999_to_silver9999',
-            'coef_silver9999_to_silver925_sell',
-            'coef_silver9999_to_silver925_buy',
         ];
 
         foreach ($keys as $key) {

@@ -20,7 +20,7 @@ class PricingDashboard extends Page
 
     protected static ?string $navigationLabel = 'داشبورد تابلو';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'قیمت‌گذاری زیوتو';
+    protected static string|\UnitEnum|null $navigationGroup = 'تابلو قیمت زیوتو';
 
     protected static ?int $navigationSort = 1;
 
@@ -139,11 +139,9 @@ class PricingDashboard extends Page
         $num = fn (mixed $value): ?float => ($value !== null && $value !== '' && is_numeric($value)) ? (float) $value : null;
 
         $coefGold750To995 = $coef('coef_gold750_to_gold995');
-        $coefGold995To9999 = $coef('coef_gold995_to_gold9999');
+        $coefGold750To9999 = $coef('coef_gold750_to_gold9999');
         $coefBuy = $coef('coef_buy_price');
         $coefSilver999To9999 = $coef('coef_silver999_to_silver9999');
-        $coefSilver925Sell = $coef('coef_silver9999_to_silver925_sell');
-        $coefSilver925Buy = $coef('coef_silver9999_to_silver925_buy');
 
         $persianGold750 = $num($persian['Gold750'] ?? null);
         $talaGold750Effective = $num($tala['Gold750'] ?? null);
@@ -219,8 +217,8 @@ class PricingDashboard extends Page
         $gold995Sell = $gold750Sell !== null ? $gold750Sell * (float) $coefGold750To995 : null;
         $gold995Buy = $gold750Buy !== null ? $gold750Buy * (float) $coefGold750To995 : null;
 
-        $gold9999Sell = $gold995Sell !== null ? $gold995Sell * (float) $coefGold995To9999 : null;
-        $gold9999Buy = $gold995Buy !== null ? $gold995Buy * (float) $coefGold995To9999 : null;
+        $gold9999Sell = $gold750Sell !== null ? $gold750Sell * (float) $coefGold750To9999 : null;
+        $gold9999Buy = $gold750Buy !== null ? $gold750Buy * (float) $coefGold750To9999 : null;
 
         $persianSilver999 = $num($persian['Silver999'] ?? null);
         $silver9999Persian = $persianSilver999 !== null ? $persianSilver999 * (float) $coefSilver999To9999 : null;
@@ -240,17 +238,12 @@ class PricingDashboard extends Page
 
         $silver9999Buy = $silver9999Sell !== null ? $silver9999Sell * (float) $coefBuy : null;
 
-        $silver925Sell = $silver9999Sell !== null ? $silver9999Sell * (float) $coefSilver925Sell : null;
-        $silver925Buy = $silver925Sell !== null ? $silver925Sell * (float) $coefSilver925Buy : null;
-
         return [
             'coefs' => [
                 'gold750_to_gold995' => $coefGold750To995,
-                'gold995_to_gold9999' => $coefGold995To9999,
+                'gold750_to_gold9999' => $coefGold750To9999,
                 'buy' => $coefBuy,
                 'silver999_to_silver9999' => $coefSilver999To9999,
-                'silver925_sell' => $coefSilver925Sell,
-                'silver925_buy' => $coefSilver925Buy,
             ],
             'gold750' => [
                 'persian' => $persianGold750,
@@ -282,10 +275,6 @@ class PricingDashboard extends Page
                 'sell' => $silver9999Sell,
                 'sellLogic' => $silverSellLogic,
                 'buy' => $silver9999Buy,
-            ],
-            'silver925' => [
-                'sell' => $silver925Sell,
-                'buy' => $silver925Buy,
             ],
         ];
     }

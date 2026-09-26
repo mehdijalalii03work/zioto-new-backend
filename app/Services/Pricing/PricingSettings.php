@@ -24,11 +24,9 @@ class PricingSettings
 
     public const COEFFICIENT_DEFAULTS = [
         'coef_gold750_to_gold995' => '1.3333',
-        'coef_gold995_to_gold9999' => '1.005',
+        'coef_gold750_to_gold9999' => '1.3399665',
         'coef_buy_price' => '0.99',
         'coef_silver999_to_silver9999' => '1.04',
-        'coef_silver9999_to_silver925_sell' => '0.925',
-        'coef_silver9999_to_silver925_buy' => '0.975',
     ];
 
     public static function get(string $key, mixed $default = null): mixed

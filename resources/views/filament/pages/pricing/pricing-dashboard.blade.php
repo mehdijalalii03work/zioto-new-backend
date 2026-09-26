@@ -58,7 +58,6 @@
             'Gold995' => ['label' => 'طلای ۹۹۵', 'dot' => 'bg-amber-500'],
             'Gold9999' => ['label' => 'طلای ۹۹۹.۹', 'dot' => 'bg-yellow-300'],
             'Silver9999' => ['label' => 'نقره ۹۹۹.۹', 'dot' => 'bg-slate-400'],
-//            'Silver925' => ['label' => 'نقره ۹۲۵', 'dot' => 'bg-slate-500'],
         ];
 
         $f = $formula;
@@ -67,7 +66,6 @@
         $g995 = $f['gold995'] ?? [];
         $g9999 = $f['gold9999'] ?? [];
         $s9999 = $f['silver9999'] ?? [];
-        $s925 = $f['silver925'] ?? [];
     @endphp
 
     {{-- Header --}}
@@ -386,7 +384,7 @@
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden hover:bg-gray-50">
                         <span class="flex items-center gap-2.5">
                             <span class="size-2.5 shrink-0 rounded-full bg-orange-500"></span>
-                            <span class="font-semibold text-gray-900">۳. طلای ۹۹۹.۹ (۲۴ عیار خالص)</span>
+                            <span class="font-semibold text-gray-900">۳. طلای ۹۹۹.۹ (۲۴ عیار)</span>
                         </span>
                         <span class="flex items-center gap-4 text-sm tabular-nums">
                             <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $fmt($g9999['sell'] ?? null) }}</strong></span>
@@ -400,24 +398,24 @@
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>
                                 <dl class="space-y-2">
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">قیمت فروش طلای ۹۹۵</dt>
-                                        <dd class="font-mono tabular-nums text-blue-700">{{ $fmt($g995['sell'] ?? null) }}</dd>
+                                        <dt class="text-gray-600">قیمت فروش طلای ۷۵۰</dt>
+                                        <dd class="font-mono tabular-nums text-blue-700">{{ $fmt($g750['sell'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">قیمت خرید طلای ۹۹۵</dt>
-                                        <dd class="font-mono tabular-nums text-emerald-700">{{ $fmt($g995['buy'] ?? null) }}</dd>
+                                        <dt class="text-gray-600">قیمت خرید طلای ۷۵۰</dt>
+                                        <dd class="font-mono tabular-nums text-emerald-700">{{ $fmt($g750['buy'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">ضریب تبدیل ۹۹۵ به ۹۹۹.۹</dt>
-                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['gold995_to_gold9999'] ?? '—' }}</dd>
+                                        <dt class="text-gray-600">ضریب تبدیل ۷۵۰ به ۹۹۹.۹</dt>
+                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['gold750_to_gold9999'] ?? '—' }}</dd>
                                     </div>
                                 </dl>
                             </div>
 
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
-                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ فروش = طلای۹۹۵ فروش × {{ $c['gold995_to_gold9999'] ?? '—' }}</code>
-                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ خرید = طلای۹۹۵ خرید × {{ $c['gold995_to_gold9999'] ?? '—' }}</code>
+                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ فروش = طلای۷۵۰ فروش × {{ $c['gold750_to_gold9999'] ?? '—' }}</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ خرید = طلای۷۵۰ خرید × {{ $c['gold750_to_gold9999'] ?? '—' }}</code>
                                 <div class="mt-3 space-y-1.5">
                                     <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 px-3 py-2">
                                         <span class="text-xs text-blue-700">فروش: </span>
@@ -490,57 +488,6 @@
                     </div>
                 </details>
 
-                {{-- 5. نقره ۹۲۵ --}}
-{{--                <details class="group overflow-hidden rounded-lg ring-1 ring-gray-950/5">--}}
-{{--                    <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden hover:bg-gray-50">--}}
-{{--                        <span class="flex items-center gap-2.5">--}}
-{{--                            <span class="size-2.5 shrink-0 rounded-full bg-slate-500"></span>--}}
-{{--                            <span class="font-semibold text-gray-900">۵. نقره ۹۲۵</span>--}}
-{{--                        </span>--}}
-{{--                        <span class="flex items-center gap-4 text-sm tabular-nums">--}}
-{{--                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $fmt($s925['sell'] ?? null) }}</strong></span>--}}
-{{--                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $fmt($s925['buy'] ?? null) }}</strong></span>--}}
-{{--                            <x-filament::icon icon="heroicon-m-chevron-down" class="size-4 shrink-0 text-gray-400 transition group-open:rotate-180" />--}}
-{{--                        </span>--}}
-{{--                    </summary>--}}
-{{--                    <div class="border-t border-gray-100 bg-gray-50/60 px-4 py-4 text-sm">--}}
-{{--                        <div class="grid gap-4 md:grid-cols-2">--}}
-{{--                            <div class="rounded-lg bg-white p-4">--}}
-{{--                                <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>--}}
-{{--                                <dl class="space-y-2">--}}
-{{--                                    <div class="flex items-center justify-between gap-3">--}}
-{{--                                        <dt class="text-gray-600">قیمت فروش نقره ۹۹۹.۹</dt>--}}
-{{--                                        <dd class="font-mono tabular-nums text-purple-700">{{ $fmt($s9999['sell'] ?? null) }}</dd>--}}
-{{--                                    </div>--}}
-{{--                                    <div class="flex items-center justify-between gap-3">--}}
-{{--                                        <dt class="text-gray-600">ضریب تبدیل ۹۲۵ (فروش)</dt>--}}
-{{--                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['silver925_sell'] ?? '—' }}</dd>--}}
-{{--                                    </div>--}}
-{{--                                    <div class="flex items-center justify-between gap-3">--}}
-{{--                                        <dt class="text-gray-600">ضریب تبدیل ۹۲۵ (خرید)</dt>--}}
-{{--                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['silver925_buy'] ?? '—' }}</dd>--}}
-{{--                                    </div>--}}
-{{--                                </dl>--}}
-{{--                            </div>--}}
-
-{{--                            <div class="rounded-lg bg-white p-4">--}}
-{{--                                <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>--}}
-{{--                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۲۵_فروش = نقره۹۹۹.۹ فروش × {{ $c['silver925_sell'] ?? '—' }}</code>--}}
-{{--                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۲۵_خرید = نقره۹۲۵_فروش × {{ $c['silver925_buy'] ?? '—' }}</code>--}}
-{{--                                <div class="mt-3 space-y-1.5">--}}
-{{--                                    <div class="rounded-lg border-s-4 border-slate-600 bg-slate-100 px-3 py-2">--}}
-{{--                                        <span class="text-xs text-slate-700">فروش: </span>--}}
-{{--                                        <span class="text-sm font-bold tabular-nums text-slate-900">{{ $toman($s925['sell'] ?? null) }}</span>--}}
-{{--                                    </div>--}}
-{{--                                    <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 px-3 py-2">--}}
-{{--                                        <span class="text-xs text-emerald-700">خرید: </span>--}}
-{{--                                        <span class="text-sm font-bold tabular-nums text-emerald-900">{{ $toman($s925['buy'] ?? null) }}</span>--}}
-{{--                                    </div>--}}
-{{--                                </div>--}}
-{{--                            </div>--}}
-{{--                        </div>--}}
-{{--                    </div>--}}
-{{--                </details>--}}
             </div>
 
             <p class="mt-4 rounded-lg border-s-4 border-amber-500 bg-amber-50 p-3 text-sm text-amber-800">
