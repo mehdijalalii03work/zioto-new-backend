@@ -18,7 +18,7 @@ class PricingDashboard extends Page
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar';
 
-    protected static ?string $navigationLabel = 'داشبورد';
+    protected static ?string $navigationLabel = 'داشبورد تابلو';
 
     protected static string|\UnitEnum|null $navigationGroup = 'قیمت‌گذاری زیوتو';
 

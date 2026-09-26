@@ -20,7 +20,7 @@ class ManualPricesPage extends Page
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
 
-    protected static ?string $navigationLabel = 'قیمت‌های دستی';
+    protected static ?string $navigationLabel = 'قیمت‌های دستی تابلو';
 
     protected static string|\UnitEnum|null $navigationGroup = 'قیمت‌گذاری زیوتو';
 

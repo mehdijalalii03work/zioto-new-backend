@@ -10,13 +10,55 @@
             return \Morilog\Jalali\Jalalian::forge((int) $timestamp)->format('Y-m-d H:i');
         };
 
+        $trendBadge = function (?string $trend) {
+            return match ($trend) {
+                'up' => '<span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"><span aria-hidden="true">▲</span> صعودی</span>',
+                'down' => '<span class="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700"><span aria-hidden="true">▼</span> نزولی</span>',
+                default => '<span class="text-xs text-gray-400">بدون تغییر</span>',
+            };
+        };
+
         $sourceLabels = ['persian' => 'PersianAPI', 'tala' => 'Tala.ir'];
         $statusMap = [
-            'ok' => ['موفق', 'text-emerald-600'],
-            'fallback' => ['ذخیره‌شده', 'text-amber-600'],
-            'stale' => ['قدیمی', 'text-amber-600'],
-            'down' => ['عدم دسترسی', 'text-red-600'],
-            'disabled' => ['غیرفعال', 'text-gray-500'],
+            'ok' => ['موفق', 'text-emerald-600', 'bg-emerald-500'],
+            'fallback' => ['ذخیره‌شده', 'text-amber-600', 'bg-amber-500'],
+            'stale' => ['قدیمی', 'text-amber-600', 'bg-amber-500'],
+            'down' => ['عدم دسترسی', 'text-red-600', 'bg-red-500'],
+            'disabled' => ['غیرفعال', 'text-gray-500', 'bg-gray-400'],
+        ];
+
+        $okCount = 0;
+        foreach ($sourceStatus as $status) {
+            if (($status['status'] ?? '') === 'ok') {
+                $okCount++;
+            }
+        }
+        $totalCount = count($sourceStatus);
+
+        $latestTs = 0;
+        foreach ($sourceStatus as $status) {
+            $time = (int) ($status['last_time'] ?? 0);
+            if ($time > $latestTs) {
+                $latestTs = $time;
+            }
+        }
+        $agoLabel = '—';
+        if ($latestTs > 0) {
+            $diff = max(0, time() - $latestTs);
+            $agoLabel = match (true) {
+                $diff < 60 => 'همین حالا',
+                $diff < 3600 => floor($diff / 60).' دقیقه پیش',
+                $diff < 86400 => floor($diff / 3600).' ساعت پیش',
+                default => floor($diff / 86400).' روز پیش',
+            };
+        }
+
+        $priceGroups = [
+            'Gold750' => ['label' => 'طلای ۷۵۰', 'dot' => 'bg-emerald-500'],
+            'Gold995' => ['label' => 'طلای ۹۹۵', 'dot' => 'bg-amber-500'],
+            'Gold9999' => ['label' => 'طلای ۹۹۹.۹', 'dot' => 'bg-yellow-300'],
+            'Silver9999' => ['label' => 'نقره ۹۹۹.۹', 'dot' => 'bg-slate-400'],
+//            'Silver925' => ['label' => 'نقره ۹۲۵', 'dot' => 'bg-slate-500'],
         ];
 
         $f = $formula;
@@ -29,18 +71,22 @@
     @endphp
 
     {{-- Header --}}
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
-            <h2 class="text-lg font-semibold text-gray-900">قیمت‌های فعلی</h2>
-            <p class="text-sm text-gray-500">آخرین بروزرسانی: {{ $updatedAt ?: '—' }}</p>
+            <h2 class="text-lg font-bold text-gray-900">تابلوی قیمت زیوتو</h2>
+            <p class="mt-1 text-sm text-gray-500">
+                آخرین بروزرسانی نمایش: {{ $updatedAt ? $jalali(strtotime($updatedAt)) : ($lastSuccessAt ?: '—') }}
+                <span class="mx-1 text-gray-300">•</span>
+                مدت کش: {{ $cacheDuration }} ثانیه
+            </p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
             <x-filament::button wire:click="refreshBoard" color="gray" size="sm">
                 بروزرسانی نمایش
             </x-filament::button>
             @if(auth()->user()?->can(\App\Enums\Permission::PricingEdit->value))
                 <x-filament::button wire:click="forceRefresh" color="primary" size="sm" wire:loading.attr="disabled">
-                    بروزرسانی داده‌های API
+                    بروزرسانی از API
                 </x-filament::button>
                 <x-filament::button wire:click="clearCache" color="gray" size="sm" wire:loading.attr="disabled">
                     پاک کردن کش
@@ -49,505 +95,458 @@
         </div>
     </div>
 
-    {{-- وضعیت بروزرسانی --}}
-    <div class="mb-6 rounded-xl bg-white p-4 ring-1 ring-gray-950/5">
-        <div class="font-semibold mb-2">وضعیت بروزرسانی</div>
-        @if($lastSuccessAt)
-            <div class="text-sm text-gray-700">آخرین بروزرسانی موفق: {{ $lastSuccessAt }}</div>
-            @if($usedFallback)
-                <div class="text-sm text-amber-600 mt-1">از داده ذخیره‌شده (کش) استفاده شده است.</div>
+    {{-- KPI cards --}}
+    <div class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {{-- منابع قیمتی --}}
+        <div class="rounded-xl bg-white p-4 ring-1 ring-gray-950/5">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-gray-500">وضعیت منابع قیمتی</span>
+                <x-filament::icon icon="heroicon-o-server" class="size-4 text-gray-400" />
+            </div>
+            <div class="space-y-1.5 border-t border-gray-100 mt-2 pt-2">
+                @foreach($sourceStatus as $source => $status)
+                    @php
+                        [$label, $color, $dot] = $statusMap[$status['status'] ?? ''] ?? [($status['status'] ?? '—'), 'text-gray-500', 'bg-gray-400'];
+                    @endphp
+                    <div class="flex items-center justify-between gap-2 text-xs">
+                        <span class="flex items-center gap-1.5 font-medium text-gray-700">
+                            <span class="size-1.5 shrink-0 rounded-full {{ $dot }}"></span>
+                            {{ $sourceLabels[$source] ?? $source }}
+                        </span>
+                        <span class="{{ $color }}">{{ $label }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- آخرین بروزرسانی موفق --}}
+        <div class="rounded-xl bg-white p-4 ring-1 ring-gray-950/5">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-gray-500">آخرین بروزرسانی موفق</span>
+                <x-filament::icon icon="heroicon-o-clock" class="size-4 text-gray-400" />
+            </div>
+            @if($lastSuccessAt)
+                <div class="mt-2 text-2xl font-bold tabular-nums text-gray-900">{{ $lastSuccessAt }}</div>
+                <div class="mt-1 text-xs text-gray-500">{{ $agoLabel }}</div>
+                @if($usedFallback)
+                    <div class="mt-2 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                        از داده ذخیره‌شده (کش) استفاده شده است.
+                    </div>
+                @endif
+            @else
+                <div class="mt-2 text-2xl font-bold text-red-500">ثبت نشده</div>
+                <div class="mt-1 text-xs text-gray-500">اتصال API را بررسی کنید.</div>
             @endif
-        @else
-            <div class="text-sm text-red-600">هنوز بروزرسانی موفقی ثبت نشده است.</div>
-        @endif
+        </div>
+
+        {{-- طلای ۷۵۰ --}}
+{{--        <div class="rounded-xl bg-white p-4 ring-1 ring-gray-950/5">--}}
+{{--            <div class="flex items-center justify-between">--}}
+{{--                <span class="text-xs font-medium text-gray-500">طلای ۷۵۰ (۱۸ عیار)</span>--}}
+{{--                <x-filament::icon icon="heroicon-o-banknotes" class="size-4 text-gray-400" />--}}
+{{--            </div>--}}
+{{--            <div class="mt-2 flex items-center justify-between gap-2">--}}
+{{--                <span class="text-2xl font-bold tabular-nums text-gray-900">{{ $fmt($g750['sell'] ?? null) }}</span>--}}
+{{--                {!! $trendBadge($board['Gold750_Sell']['trend'] ?? null) !!}--}}
+{{--            </div>--}}
+{{--            <div class="mt-1 text-xs text-gray-500">--}}
+{{--                فروش (تومان) <span class="mx-1 text-gray-300">•</span>--}}
+{{--                خرید: <span class="font-medium text-gray-700">{{ $fmt($g750['buy'] ?? null) }}</span>--}}
+{{--            </div>--}}
+{{--        </div>--}}
+
+        {{-- نقره ۹۹۹.۹ --}}
+{{--        <div class="rounded-xl bg-white p-4 ring-1 ring-gray-950/5">--}}
+{{--            <div class="flex items-center justify-between">--}}
+{{--                <span class="text-xs font-medium text-gray-500">نقره ۹۹۹.۹</span>--}}
+{{--                <x-filament::icon icon="heroicon-o-banknotes" class="size-4 text-gray-400" />--}}
+{{--            </div>--}}
+{{--            <div class="mt-2 flex items-center justify-between gap-2">--}}
+{{--                <span class="text-2xl font-bold tabular-nums text-gray-900">{{ $fmt($s9999['sell'] ?? null) }}</span>--}}
+{{--                {!! $trendBadge($board['Silver9999_Sell']['trend'] ?? null) !!}--}}
+{{--            </div>--}}
+{{--            <div class="mt-1 text-xs text-gray-500">--}}
+{{--                فروش (تومان) <span class="mx-1 text-gray-300">•</span>--}}
+{{--                خرید: <span class="font-medium text-gray-700">{{ $fmt($s9999['buy'] ?? null) }}</span>--}}
+{{--            </div>--}}
+{{--        </div>--}}
+
     </div>
 
-    {{-- Source status --}}
-    @if(!empty($sourceStatus))
-        <div class="mb-6 overflow-x-auto rounded-xl bg-white ring-1 ring-gray-950/5">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b border-gray-200 bg-gray-50">
-                        <th class="px-4 py-3 text-start text-xs font-medium text-gray-500">منبع</th>
-                        <th class="px-4 py-3 text-start text-xs font-medium text-gray-500">وضعیت</th>
-                        <th class="px-4 py-3 text-start text-xs font-medium text-gray-500">آخرین داده موفق</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @foreach($sourceStatus as $source => $status)
-                        @php
-                            [$label, $color] = $statusMap[$status['status'] ?? ''] ?? [($status['status'] ?? '—'), 'text-gray-500'];
-                        @endphp
-                        <tr>
-                            <td class="px-4 py-3"><strong>{{ $sourceLabels[$source] ?? $source }}</strong></td>
-                            <td class="px-4 py-3 {{ $color }}">{{ $label }}</td>
-                            <td class="px-4 py-3 text-gray-600">{{ $status['last_time'] ? $jalali($status['last_time']) : '—' }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endif
+    <div class="mt-6 space-y-6">
+        {{-- Current prices --}}
+        <section class="overflow-hidden rounded-xl bg-white ring-1 ring-gray-950/5">
+            <header class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-4">
+                <h3 class="font-semibold text-gray-900">قیمت‌های فعلی تابلو</h3>
+                <span class="text-xs text-gray-500">واحد: تومان</span>
+            </header>
 
-    {{-- Current prices --}}
-    @if(!empty($board))
-        <div class="mb-6 overflow-x-auto rounded-xl bg-white ring-1 ring-gray-950/5">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b border-gray-200 bg-gray-50">
-                        <th class="px-4 py-3 text-start text-xs font-medium text-gray-500">نوع فلز</th>
-                        <th class="px-4 py-3 text-start text-xs font-medium text-gray-500">قیمت</th>
-                        <th class="px-4 py-3 text-start text-xs font-medium text-gray-500">روند</th>
-                        <th class="px-4 py-3 text-start text-xs font-medium text-gray-500">آخرین بروزرسانی</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @foreach($board as $key => $row)
-                        <tr class="hover:bg-gray-50/80">
-                            <td class="px-4 py-3"><strong>{{ $row['name'] ?? (\App\Services\Pricing\DynamicPriceService::METAL_OPTIONS[$key] ?? $key) }}</strong></td>
-                            <td class="px-4 py-3">{{ $toman($row['value'] ?? null) }}</td>
-                            <td class="px-4 py-3">
-                                @if(($row['trend'] ?? null) === 'up')
-                                    <span class="text-emerald-600">▲ صعودی</span>
-                                @elseif(($row['trend'] ?? null) === 'down')
-                                    <span class="text-red-600">▼ نزولی</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 text-xs text-gray-500">{{ $jalali($row['updated_at'] ?? null) }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    @else
-        <p class="mb-6 text-sm text-gray-500">اطلاعات قیمتی موجود نیست. لطفاً اتصال API را بررسی کنید.</p>
-    @endif
-
-    <p class="mb-6 text-xs text-gray-500">مدت زمان کش: {{ $cacheDuration }} ثانیه</p>
-
-    {{-- Base prices --}}
-    <div class="mb-6 rounded-xl bg-white p-5 ring-1 ring-gray-950/5">
-        <h3 class="text-base font-semibold text-gray-900">قیمت‌های پایه</h3>
-        <p class="mt-1 mb-4 text-sm text-gray-500">این قیمت‌ها مستقیماً از API ها دریافت می‌شوند و پایه محاسبات هستند:</p>
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="border-b border-gray-200 bg-gray-50">
-                    <th class="px-4 py-3 text-start text-xs font-medium text-gray-500">نام</th>
-                    <th class="px-4 py-3 text-start text-xs font-medium text-gray-500">قیمت</th>
-                    <th class="px-4 py-3 text-start text-xs font-medium text-gray-500">منبع</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-                <tr>
-                    <td class="px-4 py-3"><strong>طلای ۷۵۰ (PersianAPI)</strong></td>
-                    <td class="px-4 py-3">{{ $toman($basePrices['persian']['Gold750'] ?? null) }}</td>
-                    <td class="px-4 py-3"><span class="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700">PersianAPI</span></td>
-                </tr>
-                <tr>
-                    <td class="px-4 py-3"><strong>گرم ۱۸ عیار (Tala.ir)</strong></td>
-                    <td class="px-4 py-3">{{ $toman($basePrices['tala']['Gold750'] ?? null) }}</td>
-                    <td class="px-4 py-3"><span class="rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-700">Tala.ir</span></td>
-                </tr>
-                <tr>
-                    <td class="px-4 py-3"><strong>نقره ۹۹۹ (PersianAPI)</strong></td>
-                    <td class="px-4 py-3">{{ $toman($basePrices['persian']['Silver999'] ?? null) }}</td>
-                    <td class="px-4 py-3"><span class="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700">PersianAPI</span></td>
-                </tr>
-            </tbody>
-        </table>
-        <p class="mt-3 text-xs text-gray-500">این سه قیمت پایه محاسبات تابلو قیمت هستند.</p>
-    </div>
-
-    {{-- Formulas --}}
-    <div class="rounded-xl bg-white p-5 ring-1 ring-gray-950/5">
-        <h3 class="text-base font-semibold text-gray-900">نحوه محاسبه قیمت‌ها</h3>
-        <p class="mt-1 text-sm text-gray-500">سیستم قیمت‌گذاری با استفاده از منابع مختلف و ضرایب قابل تنظیم، قیمت‌های خرید و فروش را محاسبه می‌کند.</p>
-
-        <h4 class="mt-5 mb-3 text-sm font-semibold text-gray-700">فرمول‌های محاسبه (گام به گام)</h4>
-
-        {{-- 1. طلای ۷۵۰ --}}
-        <div class="mb-5 rounded-lg border-r-4 border-[#0073aa] bg-gray-50 p-5">
-            <h5 class="m-0 mb-4 font-bold text-[#0073aa]">۱. طلای ۷۵۰ (۱۸ عیار) - قیمت فروش و خرید</h5>
-
-            <div class="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">📥 پیش‌نیازها (قیمت‌های پایه از API ها)</h6>
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="border-b border-gray-200">
-                            <th class="py-2 text-start text-xs font-medium text-gray-500">منبع داده</th>
-                            <th class="py-2 text-start text-xs font-medium text-gray-500">قیمت (تومان)</th>
-                            <th class="py-2 text-start text-xs font-medium text-gray-500">نوع</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        <tr>
-                            <td class="py-2"><strong>PersianAPI - طلای ۷۵۰</strong></td>
-                            <td class="py-2"><code class="rounded bg-blue-50 px-2 py-0.5">{{ $fmt($g750['persian'] ?? null) }}</code></td>
-                            <td class="py-2 text-xs text-gray-500">مستقیم از API</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2"><strong>Tala.ir - گرم ۱۸ عیار (مستقیم)</strong></td>
-                            <td class="py-2"><code class="rounded bg-amber-50 px-2 py-0.5">{{ $fmt($g750['talaDirect'] ?? null) }}</code></td>
-                            <td class="py-2 text-xs text-gray-500">مستقیم از API</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2"><strong>قیمت دستی ورودی</strong></td>
-                            <td class="py-2"><code class="rounded bg-red-50 px-2 py-0.5">{{ $fmt($g750['manual'] ?? null) }}</code></td>
-                            <td class="py-2 text-xs text-gray-500">از تنظیمات</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">🧮 دریافت مستقیم طلای ۷۵۰ از Tala.ir</h6>
-                <p class="my-1 text-xs text-gray-500">Tala.ir قیمت «گرم ۱۸ عیار» را مستقیماً ارائه می‌دهد؛ نیازی به تبدیل از مظنه (۷۰۵) نیست:</p>
-                <div class="my-2 border-r-3 border-sky-500 bg-gray-100 p-3">
-                    <code class="block text-sm text-pink-700">طلای۷۵۰ (Tala.ir) = geram18k (Tala.ir)</code>
-                    <p class="mt-2 text-xs text-gray-500">💡 کلید <code>geram18k</code> با واحد تومان، مستقیم از API تلا دریافت می‌شود.</p>
+            @if(!empty($board))
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200 bg-gray-50">
+                                <th class="px-5 py-3 text-start text-xs font-medium text-gray-500">نوع فلز</th>
+                                <th class="px-5 py-3 text-start text-xs font-medium text-gray-500">فروش</th>
+                                <th class="px-5 py-3 text-start text-xs font-medium text-gray-500">خرید</th>
+                                <th class="px-5 py-3 text-start text-xs font-medium text-gray-500">آخرین بروزرسانی</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @foreach($priceGroups as $base => $meta)
+                                @php
+                                    $sellRow = $board[$base.'_Sell'] ?? null;
+                                    $buyRow = $board[$base.'_Buy'] ?? null;
+                                @endphp
+                                <tr class="hover:bg-gray-50/80">
+                                    <td class="px-5 py-3">
+                                        <span class="flex items-center gap-2 font-medium text-gray-900">
+                                            <span class="size-2.5 shrink-0 rounded-full"></span>
+                                            {{ $meta['label'] }}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-3 font-semibold tabular-nums text-gray-900">{{ $fmt($sellRow['value'] ?? null) }}</td>
+                                    <td class="px-5 py-3 tabular-nums text-gray-600">{{ $fmt($buyRow['value'] ?? null) }}</td>
+                                    <td class="px-5 py-3 text-xs text-gray-500">{{ $jalali($sellRow['updated_at'] ?? ($buyRow['updated_at'] ?? null)) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
-                <h6 class="mt-4 mb-2 text-xs font-semibold text-gray-600">📝 مقدار دریافتی:</h6>
-                <div class="rounded-md border border-dashed border-gray-400 bg-gray-50 p-3 font-mono text-xs leading-7">
-                    <div class="text-gray-500">// دریافت مستقیم از Tala.ir</div>
-                    <div>گرم ۱۸ عیار (geram18k) = <strong class="text-red-600">{{ $fmt($g750['talaDirect'] ?? null) }}</strong> تومان</div>
-                    <div class="mt-2 border-t border-gray-200 pt-2">
-                        <strong class="text-emerald-600">= {{ $fmt($g750['talaDirect'] ?? null) }} تومان</strong>
+            @else
+                <div class="px-5 py-8 text-center text-sm text-gray-500">
+                    اطلاعات قیمتی موجود نیست. لطفاً اتصال API را بررسی کنید.
+                </div>
+            @endif
+        </section>
+
+        {{-- Base prices --}}
+        <section class="rounded-xl bg-white p-5 ring-1 ring-gray-950/5">
+            <h3 class="font-semibold text-gray-900">قیمت‌های پایه</h3>
+            <p class="mt-1 text-sm text-gray-500">این قیمت‌ها مستقیماً از API ها دریافت می‌شوند و پایه محاسبات هستند:</p>
+
+            <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                <div class="rounded-lg bg-gray-50 p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-medium text-gray-500">طلای ۷۵۰</span>
+                        <span class="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">PersianAPI</span>
                     </div>
+                    <div class="mt-2 text-lg font-bold tabular-nums text-gray-900">{{ $fmt($basePrices['persian']['Gold750'] ?? null) }}</div>
+                    <div class="mt-0.5 text-xs text-gray-500">تومان</div>
                 </div>
-            </div>
 
-            <div class="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">💰 محاسبه قیمت فروش طلای ۷۵۰</h6>
-                <p class="my-1 text-xs text-gray-500"><strong>منطق:</strong> انتخاب بیشترین قیمت بین API ها و قیمت دستی</p>
-                <div class="rounded-md border border-dashed border-gray-400 bg-gray-50 p-3 font-mono text-xs leading-7">
-                    <div class="text-gray-500">// مرحله ۲: مقایسه قیمت‌های API</div>
-                    <div>PersianAPI = <strong class="text-blue-700">{{ $fmt($g750['persian'] ?? null) }}</strong> تومان</div>
-                    <div>Tala.ir = <strong class="text-amber-600">{{ $fmt($g750['talaEffective'] ?? null) }}</strong> تومان</div>
-                    <div class="my-2 border-t border-gray-200 pt-2">
-                        Max(PersianAPI, Tala.ir) = <strong class="text-emerald-600">{{ $fmt($g750['maxApi'] ?? null) }}</strong> تومان
-                        <span class="text-gray-400">(منبع: {{ $g750['maxSource'] ?? '—' }})</span>
+                <div class="rounded-lg bg-gray-50 p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-medium text-gray-500">طلای ۷۵۰</span>
+                        <span class="rounded bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">Tala.ir</span>
                     </div>
+                    <div class="mt-2 text-lg font-bold tabular-nums text-gray-900">{{ $fmt($basePrices['tala']['Gold750'] ?? null) }}</div>
+                    <div class="mt-0.5 text-xs text-gray-500">تومان</div>
+                </div>
 
-                    <div class="mt-3 text-gray-500">// مرحله ۳: بررسی قیمت دستی</div>
-                    <div>قیمت دستی = <strong class="text-red-600">{{ $fmt($g750['manual'] ?? null) }}</strong> تومان</div>
-                    <div>Max API = <strong>{{ $fmt($g750['maxApi'] ?? null) }}</strong> تومان</div>
-                    @if(($g750['manual'] ?? null) !== null && $g750['manual'] > 0 && ($g750['maxApi'] ?? null) !== null && $g750['manual'] > $g750['maxApi'])
-                        <div class="text-red-600">✓ قیمت دستی > Max API → انتخاب قیمت دستی</div>
-                    @else
-                        <div class="text-emerald-600">✓ قیمت دستی ≤ Max API → انتخاب Max API</div>
-                    @endif
-
-                    <div class="my-3 rounded-sm border-t-2 border-blue-700 bg-blue-50 p-2">
-                        <strong class="text-blue-700">🎯 قیمت نهایی فروش = {{ $fmt($g750['sell'] ?? null) }} تومان</strong>
-                        <div class="mt-1 text-gray-500">({{ $g750['sellLogic'] ?? '—' }})</div>
+                <div class="rounded-lg bg-gray-50 p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-medium text-gray-500">نقره ۹۹۹</span>
+                        <span class="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">PersianAPI</span>
                     </div>
+                    <div class="mt-2 text-lg font-bold tabular-nums text-gray-900">{{ $fmt($basePrices['persian']['Silver999'] ?? null) }}</div>
+                    <div class="mt-0.5 text-xs text-gray-500">تومان</div>
                 </div>
             </div>
 
-            <div class="rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">🏷️ محاسبه قیمت خرید طلای ۷۵۰</h6>
-                <p class="my-1 text-xs text-gray-500"><strong>منطق:</strong> اگر قیمت دستی بیشتر از Max API است → ۹۹٪ قیمت فروش، در غیر اینصورت → کمترین قیمت API</p>
-                <div class="rounded-md border border-dashed border-gray-400 bg-gray-50 p-3 font-mono text-xs leading-7">
-                    <div class="text-gray-500">// مرحله ۴: محاسبه Min API</div>
-                    <div>Min(PersianAPI, Tala.ir) = <strong class="text-amber-600">{{ $fmt($g750['minApi'] ?? null) }}</strong> تومان
-                        <span class="text-gray-400">(منبع: {{ $g750['minSource'] ?? '—' }})</span>
+            <p class="mt-3 text-xs text-gray-500">این سه قیمت پایه محاسبات تابلو قیمت هستند.</p>
+        </section>
+
+        {{-- Formulas --}}
+        <section class="rounded-xl bg-white p-5 ring-1 ring-gray-950/5">
+            <h3 class="font-semibold text-gray-900">نحوه محاسبه قیمت‌ها</h3>
+            <p class="mt-1 text-sm text-gray-500">سیستم قیمت‌گذاری با استفاده از منابع مختلف و ضرایب قابل تنظیم، قیمت‌های خرید و فروش را محاسبه می‌کند. روی هر ردیف کلیک کنید تا جزئیات باز شود.</p>
+
+            <div class="mt-4 space-y-3">
+                {{-- 1. طلای ۷۵۰ --}}
+                <details class="group overflow-hidden rounded-lg ring-1 ring-gray-950/5" open>
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden hover:bg-gray-50">
+                        <span class="flex items-center gap-2.5">
+                            <span class="size-2.5 shrink-0 rounded-full bg-[#0073aa]"></span>
+                            <span class="font-semibold text-gray-900">۱. طلای ۷۵۰ (۱۸ عیار)</span>
+                        </span>
+                        <span class="flex items-center gap-4 text-sm tabular-nums">
+                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $fmt($g750['sell'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $fmt($g750['buy'] ?? null) }}</strong></span>
+                            <x-filament::icon icon="heroicon-m-chevron-down" class="size-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
+                        </span>
+                    </summary>
+                    <div class="border-t border-gray-100 bg-gray-50/60 px-4 py-4 text-sm">
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div class="rounded-lg bg-white p-4">
+                                <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>
+                                <dl class="space-y-2">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">PersianAPI — طلای ۷۵۰</dt>
+                                        <dd class="font-mono tabular-nums text-blue-700">{{ $fmt($g750['persian'] ?? null) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">Tala.ir — طلای ۷۵۰</dt>
+                                        <dd class="font-mono tabular-nums text-amber-600">{{ $fmt($g750['talaDirect'] ?? null) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">قیمت دستی</dt>
+                                        <dd class="font-mono tabular-nums text-red-600">{{ $fmt($g750['manual'] ?? null) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
+                                        <dt class="text-gray-600">Max(Persian, Tala)</dt>
+                                        <dd class="font-mono tabular-nums">{{ $fmt($g750['maxApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g750['maxSource'] ?? '—' }})</span></dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">Min(Persian, Tala)</dt>
+                                        <dd class="font-mono tabular-nums">{{ $fmt($g750['minApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g750['minSource'] ?? '—' }})</span></dd>
+                                    </div>
+                                </dl>
+                            </div>
+
+                            <div class="rounded-lg bg-white p-4">
+                                <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
+                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">فروش = بیشترین قیمت بین PersianAPI و Tala.ir و قیمت دستی</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = کمترین قیمت بین PersianAPI و Tala.ir یا فروش × {{ $c['buy'] ?? '—' }}</code>
+                                <p class="mt-2.5 text-xs leading-6 text-gray-500">
+                                    قیمت خرید فقط وقتی از قیمت فروش × {{ $c['buy'] ?? '—' }} محاسبه می‌شود که قیمت دستی از Max API بیشتر باشد یا دو API برابر باشند.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 p-3">
+                                <div class="text-xs font-medium text-blue-700">قیمت نهایی فروش</div>
+                                <div class="mt-1 text-lg font-bold tabular-nums text-blue-900">{{ $toman($g750['sell'] ?? null) }}</div>
+                                <div class="mt-1 text-xs text-blue-700/80">{{ $g750['sellLogic'] ?? '—' }}</div>
+                            </div>
+                            <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 p-3">
+                                <div class="text-xs font-medium text-emerald-700">قیمت نهایی خرید</div>
+                                <div class="mt-1 text-lg font-bold tabular-nums text-emerald-900">{{ $toman($g750['buy'] ?? null) }}</div>
+                                <div class="mt-1 text-xs text-emerald-700/80">{{ $g750['buyLogic'] ?? '—' }}</div>
+                            </div>
+                        </div>
                     </div>
+                </details>
 
-                    <div class="mt-3 text-gray-500">// مرحله ۵: تعیین قیمت خرید</div>
-                    @if(($g750['manual'] ?? null) !== null && $g750['manual'] > 0 && ($g750['maxApi'] ?? null) !== null && $g750['manual'] > $g750['maxApi'])
-                        <div class="text-emerald-600">✓ قیمت دستی > Max API → استفاده از ضریب</div>
-                    @else
-                        <div class="text-emerald-600">✓ قیمت دستی ≤ Max API → استفاده از Min API</div>
-                    @endif
+                {{-- 2. طلای ۹۹۵ --}}
+                <details class="group overflow-hidden rounded-lg ring-1 ring-gray-950/5">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden hover:bg-gray-50">
+                        <span class="flex items-center gap-2.5">
+                            <span class="size-2.5 shrink-0 rounded-full bg-emerald-600"></span>
+                            <span class="font-semibold text-gray-900">۲. طلای ۹۹۵ (۲۴ عیار)</span>
+                        </span>
+                        <span class="flex items-center gap-4 text-sm tabular-nums">
+                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $fmt($g995['sell'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $fmt($g995['buy'] ?? null) }}</strong></span>
+                            <x-filament::icon icon="heroicon-m-chevron-down" class="size-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
+                        </span>
+                    </summary>
+                    <div class="border-t border-gray-100 bg-gray-50/60 px-4 py-4 text-sm">
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div class="rounded-lg bg-white p-4">
+                                <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>
+                                <dl class="space-y-2">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">قیمت فروش طلای ۷۵۰</dt>
+                                        <dd class="font-mono tabular-nums text-blue-700">{{ $fmt($g750['sell'] ?? null) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">قیمت خرید طلای ۷۵۰</dt>
+                                        <dd class="font-mono tabular-nums text-emerald-700">{{ $fmt($g750['buy'] ?? null) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">ضریب تبدیل ۷۵۰ به ۹۹۵</dt>
+                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['gold750_to_gold995'] ?? '—' }}</dd>
+                                    </div>
+                                </dl>
+                            </div>
 
-                    <div class="my-3 rounded-sm border-t-2 border-emerald-600 bg-emerald-50 p-2">
-                        <strong class="text-emerald-700">🎯 قیمت نهایی خرید = {{ $fmt($g750['buy'] ?? null) }} تومان</strong>
-                        <div class="mt-1 text-gray-500">({{ $g750['buyLogic'] ?? '—' }})</div>
+                            <div class="rounded-lg bg-white p-4">
+                                <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
+                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ فروش = طلای۷۵۰ فروش × {{ $c['gold750_to_gold995'] ?? '—' }}</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ خرید = طلای۷۵۰ خرید × {{ $c['gold750_to_gold995'] ?? '—' }}</code>
+                                <div class="mt-3 space-y-1.5">
+                                    <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 px-3 py-2">
+                                        <span class="text-xs text-blue-700">فروش: </span>
+                                        <span class="text-sm font-bold tabular-nums text-blue-900">{{ $toman($g995['sell'] ?? null) }}</span>
+                                    </div>
+                                    <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 px-3 py-2">
+                                        <span class="text-xs text-emerald-700">خرید: </span>
+                                        <span class="text-sm font-bold tabular-nums text-emerald-900">{{ $toman($g995['buy'] ?? null) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
+                </details>
 
-            <div class="mt-4 rounded-md border-r-4 border-sky-500 bg-sky-50 p-3">
-                <strong class="text-sky-700">📊 خلاصه نتیجه:</strong>
-                <div class="mt-2 text-sm leading-6">
-                    • <strong>قیمت فروش:</strong> {{ $toman($g750['sell'] ?? null) }} - انتخاب شده از {{ $g750['sellLogic'] ?? '—' }}<br>
-                    • <strong>قیمت خرید:</strong> {{ $toman($g750['buy'] ?? null) }} - انتخاب شده از {{ $g750['buyLogic'] ?? '—' }}
-                </div>
-            </div>
-        </div>
+                {{-- 3. طلای ۹۹۹.۹ --}}
+                <details class="group overflow-hidden rounded-lg ring-1 ring-gray-950/5">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden hover:bg-gray-50">
+                        <span class="flex items-center gap-2.5">
+                            <span class="size-2.5 shrink-0 rounded-full bg-orange-500"></span>
+                            <span class="font-semibold text-gray-900">۳. طلای ۹۹۹.۹ (۲۴ عیار خالص)</span>
+                        </span>
+                        <span class="flex items-center gap-4 text-sm tabular-nums">
+                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $fmt($g9999['sell'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $fmt($g9999['buy'] ?? null) }}</strong></span>
+                            <x-filament::icon icon="heroicon-m-chevron-down" class="size-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
+                        </span>
+                    </summary>
+                    <div class="border-t border-gray-100 bg-gray-50/60 px-4 py-4 text-sm">
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div class="rounded-lg bg-white p-4">
+                                <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>
+                                <dl class="space-y-2">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">قیمت فروش طلای ۹۹۵</dt>
+                                        <dd class="font-mono tabular-nums text-blue-700">{{ $fmt($g995['sell'] ?? null) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">قیمت خرید طلای ۹۹۵</dt>
+                                        <dd class="font-mono tabular-nums text-emerald-700">{{ $fmt($g995['buy'] ?? null) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">ضریب تبدیل ۹۹۵ به ۹۹۹.۹</dt>
+                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['gold995_to_gold9999'] ?? '—' }}</dd>
+                                    </div>
+                                </dl>
+                            </div>
 
-        {{-- 2. طلای ۹۹۵ --}}
-        <div class="mb-5 rounded-lg border-r-4 border-emerald-600 bg-gray-50 p-5">
-            <h5 class="m-0 mb-4 font-bold text-emerald-600">۲. طلای ۹۹۵ (۲۴ عیار) - قیمت فروش و خرید</h5>
-
-            <div class="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">📥 پیش‌نیازها</h6>
-                <p class="my-1 text-xs text-gray-500">طلای ۹۹۵ به طور مستقیم از طلای ۷۵۰ محاسبه می‌شود:</p>
-                <table class="w-full text-sm">
-                    <tbody class="divide-y divide-gray-100">
-                        <tr>
-                            <td class="py-2 w-2/5"><strong>قیمت فروش طلای ۷۵۰</strong></td>
-                            <td class="py-2"><code class="rounded bg-blue-50 px-2 py-0.5">{{ $fmt($g750['sell'] ?? null) }}</code> تومان</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2"><strong>قیمت خرید طلای ۷۵۰</strong></td>
-                            <td class="py-2"><code class="rounded bg-emerald-50 px-2 py-0.5">{{ $fmt($g750['buy'] ?? null) }}</code> تومان</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2"><strong>ضریب تبدیل ۷۵۰ به ۹۹۵</strong></td>
-                            <td class="py-2"><code class="rounded bg-amber-50 px-2 py-0.5">{{ $c['gold750_to_gold995'] ?? '—' }}</code></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">🧮 فرمول محاسبه</h6>
-                <div class="my-2 border-r-3 border-emerald-600 bg-gray-100 p-3">
-                    <code class="block text-sm text-pink-700">طلای۹۹۵_فروش = طلای۷۵۰_فروش × {{ $c['gold750_to_gold995'] ?? '—' }}</code>
-                    <code class="block text-sm text-pink-700">طلای۹۹۵_خرید = طلای۷۵۰_خرید × {{ $c['gold750_to_gold995'] ?? '—' }}</code>
-                </div>
-                <h6 class="mt-4 mb-2 text-xs font-semibold text-gray-600">📝 جایگذاری اعداد:</h6>
-                <div class="rounded-md border border-dashed border-gray-400 bg-gray-50 p-3 font-mono text-xs leading-7">
-                    <div class="text-gray-500">// محاسبه قیمت فروش</div>
-                    <div>طلای۹۹۵_فروش = {{ $fmt($g750['sell'] ?? null) }} × {{ $c['gold750_to_gold995'] ?? '—' }}</div>
-                    <div class="mt-2 border-t border-gray-200 pt-2">
-                        <strong class="text-blue-700">= {{ $fmt($g995['sell'] ?? null) }} تومان</strong>
+                            <div class="rounded-lg bg-white p-4">
+                                <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
+                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ فروش = طلای۹۹۵ فروش × {{ $c['gold995_to_gold9999'] ?? '—' }}</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ خرید = طلای۹۹۵ خرید × {{ $c['gold995_to_gold9999'] ?? '—' }}</code>
+                                <div class="mt-3 space-y-1.5">
+                                    <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 px-3 py-2">
+                                        <span class="text-xs text-blue-700">فروش: </span>
+                                        <span class="text-sm font-bold tabular-nums text-blue-900">{{ $toman($g9999['sell'] ?? null) }}</span>
+                                    </div>
+                                    <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 px-3 py-2">
+                                        <span class="text-xs text-emerald-700">خرید: </span>
+                                        <span class="text-sm font-bold tabular-nums text-emerald-900">{{ $toman($g9999['buy'] ?? null) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                </details>
 
-                    <div class="mt-3 text-gray-500">// محاسبه قیمت خرید</div>
-                    <div>طلای۹۹۵_خرید = {{ $fmt($g750['buy'] ?? null) }} × {{ $c['gold750_to_gold995'] ?? '—' }}</div>
-                    <div class="mt-2 border-t border-gray-200 pt-2">
-                        <strong class="text-emerald-600">= {{ $fmt($g995['buy'] ?? null) }} تومان</strong>
+                {{-- 4. نقره ۹۹۹.۹ --}}
+                <details class="group overflow-hidden rounded-lg ring-1 ring-gray-950/5">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden hover:bg-gray-50">
+                        <span class="flex items-center gap-2.5">
+                            <span class="size-2.5 shrink-0 rounded-full bg-purple-600"></span>
+                            <span class="font-semibold text-gray-900">۴. نقره ۹۹۹.۹</span>
+                        </span>
+                        <span class="flex items-center gap-4 text-sm tabular-nums">
+                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $fmt($s9999['sell'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $fmt($s9999['buy'] ?? null) }}</strong></span>
+                            <x-filament::icon icon="heroicon-m-chevron-down" class="size-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
+                        </span>
+                    </summary>
+                    <div class="border-t border-gray-100 bg-gray-50/60 px-4 py-4 text-sm">
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div class="rounded-lg bg-white p-4">
+                                <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>
+                                <dl class="space-y-2">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">PersianAPI — نقره ۹۹۹</dt>
+                                        <dd class="font-mono tabular-nums text-blue-700">{{ $fmt($s9999['persian999'] ?? null) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">ضریب تبدیل ۹۹۹ به ۹۹۹.۹</dt>
+                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['silver999_to_silver9999'] ?? '—' }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">نقره ۹۹۹.۹ محاسبه‌شده</dt>
+                                        <dd class="font-mono tabular-nums">{{ $fmt($s9999['converted'] ?? null) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">قیمت دستی</dt>
+                                        <dd class="font-mono tabular-nums text-red-600">{{ $fmt($s9999['manual'] ?? null) }}</dd>
+                                    </div>
+                                </dl>
+                            </div>
+
+                            <div class="rounded-lg bg-white p-4">
+                                <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
+                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۹۹.۹ فروش = بیشترین قیمت بین «نقره۹۹۹ × {{ $c['silver999_to_silver9999'] ?? '—' }}» و قیمت دستی</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۹۹.۹ خرید = نقره۹۹۹.۹ فروش × {{ $c['buy'] ?? '—' }}</code>
+                                <div class="mt-3 space-y-1.5">
+                                    <div class="rounded-lg border-s-4 border-purple-600 bg-purple-50 px-3 py-2">
+                                        <div class="text-xs text-purple-700">قیمت نهایی فروش</div>
+                                        <div class="mt-0.5 text-sm font-bold tabular-nums text-purple-900">{{ $toman($s9999['sell'] ?? null) }}</div>
+                                        <div class="mt-0.5 text-xs text-purple-700/80">{{ $s9999['sellLogic'] ?? '—' }}</div>
+                                    </div>
+                                    <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 px-3 py-2">
+                                        <div class="text-xs text-emerald-700">قیمت نهایی خرید (۹۹٪ فروش)</div>
+                                        <div class="mt-0.5 text-sm font-bold tabular-nums text-emerald-900">{{ $toman($s9999['buy'] ?? null) }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </details>
+
+                {{-- 5. نقره ۹۲۵ --}}
+{{--                <details class="group overflow-hidden rounded-lg ring-1 ring-gray-950/5">--}}
+{{--                    <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden hover:bg-gray-50">--}}
+{{--                        <span class="flex items-center gap-2.5">--}}
+{{--                            <span class="size-2.5 shrink-0 rounded-full bg-slate-500"></span>--}}
+{{--                            <span class="font-semibold text-gray-900">۵. نقره ۹۲۵</span>--}}
+{{--                        </span>--}}
+{{--                        <span class="flex items-center gap-4 text-sm tabular-nums">--}}
+{{--                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $fmt($s925['sell'] ?? null) }}</strong></span>--}}
+{{--                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $fmt($s925['buy'] ?? null) }}</strong></span>--}}
+{{--                            <x-filament::icon icon="heroicon-m-chevron-down" class="size-4 shrink-0 text-gray-400 transition group-open:rotate-180" />--}}
+{{--                        </span>--}}
+{{--                    </summary>--}}
+{{--                    <div class="border-t border-gray-100 bg-gray-50/60 px-4 py-4 text-sm">--}}
+{{--                        <div class="grid gap-4 md:grid-cols-2">--}}
+{{--                            <div class="rounded-lg bg-white p-4">--}}
+{{--                                <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>--}}
+{{--                                <dl class="space-y-2">--}}
+{{--                                    <div class="flex items-center justify-between gap-3">--}}
+{{--                                        <dt class="text-gray-600">قیمت فروش نقره ۹۹۹.۹</dt>--}}
+{{--                                        <dd class="font-mono tabular-nums text-purple-700">{{ $fmt($s9999['sell'] ?? null) }}</dd>--}}
+{{--                                    </div>--}}
+{{--                                    <div class="flex items-center justify-between gap-3">--}}
+{{--                                        <dt class="text-gray-600">ضریب تبدیل ۹۲۵ (فروش)</dt>--}}
+{{--                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['silver925_sell'] ?? '—' }}</dd>--}}
+{{--                                    </div>--}}
+{{--                                    <div class="flex items-center justify-between gap-3">--}}
+{{--                                        <dt class="text-gray-600">ضریب تبدیل ۹۲۵ (خرید)</dt>--}}
+{{--                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['silver925_buy'] ?? '—' }}</dd>--}}
+{{--                                    </div>--}}
+{{--                                </dl>--}}
+{{--                            </div>--}}
+
+{{--                            <div class="rounded-lg bg-white p-4">--}}
+{{--                                <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>--}}
+{{--                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۲۵_فروش = نقره۹۹۹.۹ فروش × {{ $c['silver925_sell'] ?? '—' }}</code>--}}
+{{--                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۲۵_خرید = نقره۹۲۵_فروش × {{ $c['silver925_buy'] ?? '—' }}</code>--}}
+{{--                                <div class="mt-3 space-y-1.5">--}}
+{{--                                    <div class="rounded-lg border-s-4 border-slate-600 bg-slate-100 px-3 py-2">--}}
+{{--                                        <span class="text-xs text-slate-700">فروش: </span>--}}
+{{--                                        <span class="text-sm font-bold tabular-nums text-slate-900">{{ $toman($s925['sell'] ?? null) }}</span>--}}
+{{--                                    </div>--}}
+{{--                                    <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 px-3 py-2">--}}
+{{--                                        <span class="text-xs text-emerald-700">خرید: </span>--}}
+{{--                                        <span class="text-sm font-bold tabular-nums text-emerald-900">{{ $toman($s925['buy'] ?? null) }}</span>--}}
+{{--                                    </div>--}}
+{{--                                </div>--}}
+{{--                            </div>--}}
+{{--                        </div>--}}
+{{--                    </div>--}}
+{{--                </details>--}}
             </div>
 
-            <div class="rounded-md border-r-4 border-emerald-600 bg-emerald-50 p-3">
-                <strong class="text-emerald-700">📊 خلاصه نتیجه:</strong>
-                <div class="mt-2 text-sm leading-6">
-                    • <strong>قیمت فروش:</strong> {{ $toman($g995['sell'] ?? null) }}<br>
-                    • <strong>قیمت خرید:</strong> {{ $toman($g995['buy'] ?? null) }}
-                </div>
-            </div>
-        </div>
-
-        {{-- 3. طلای ۹۹۹.۹ --}}
-        <div class="mb-5 rounded-lg border-r-4 border-orange-500 bg-gray-50 p-5">
-            <h5 class="m-0 mb-4 font-bold text-orange-500">۳. طلای ۹۹۹.۹ (۲۴ عیار خالص) - قیمت فروش و خرید</h5>
-
-            <div class="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">📥 پیش‌نیازها</h6>
-                <p class="my-1 text-xs text-gray-500">طلای ۹۹۹.۹ به طور مستقیم از طلای ۹۹۵ محاسبه می‌شود:</p>
-                <table class="w-full text-sm">
-                    <tbody class="divide-y divide-gray-100">
-                        <tr>
-                            <td class="py-2 w-2/5"><strong>قیمت فروش طلای ۹۹۵</strong></td>
-                            <td class="py-2"><code class="rounded bg-blue-50 px-2 py-0.5">{{ $fmt($g995['sell'] ?? null) }}</code> تومان</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2"><strong>قیمت خرید طلای ۹۹۵</strong></td>
-                            <td class="py-2"><code class="rounded bg-emerald-50 px-2 py-0.5">{{ $fmt($g995['buy'] ?? null) }}</code> تومان</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2"><strong>ضریب تبدیل ۹۹۵ به ۹۹۹.۹</strong></td>
-                            <td class="py-2"><code class="rounded bg-amber-50 px-2 py-0.5">{{ $c['gold995_to_gold9999'] ?? '—' }}</code></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">🧮 فرمول محاسبه</h6>
-                <div class="my-2 border-r-3 border-orange-500 bg-gray-100 p-3">
-                    <code class="block text-sm text-pink-700">طلای۹۹۹.۹_فروش = طلای۹۹۵_فروش × {{ $c['gold995_to_gold9999'] ?? '—' }}</code>
-                    <code class="block text-sm text-pink-700">طلای۹۹۹.۹_خرید = طلای۹۹۵_خرید × {{ $c['gold995_to_gold9999'] ?? '—' }}</code>
-                </div>
-                <h6 class="mt-4 mb-2 text-xs font-semibold text-gray-600">📝 جایگذاری اعداد:</h6>
-                <div class="rounded-md border border-dashed border-gray-400 bg-gray-50 p-3 font-mono text-xs leading-7">
-                    <div class="text-gray-500">// محاسبه قیمت فروش</div>
-                    <div>طلای۹۹۹.۹_فروش = {{ $fmt($g995['sell'] ?? null) }} × {{ $c['gold995_to_gold9999'] ?? '—' }}</div>
-                    <div class="mt-2 border-t border-gray-200 pt-2">
-                        <strong class="text-blue-700">= {{ $fmt($g9999['sell'] ?? null) }} تومان</strong>
-                    </div>
-
-                    <div class="mt-3 text-gray-500">// محاسبه قیمت خرید</div>
-                    <div>طلای۹۹۹.۹_خرید = {{ $fmt($g995['buy'] ?? null) }} × {{ $c['gold995_to_gold9999'] ?? '—' }}</div>
-                    <div class="mt-2 border-t border-gray-200 pt-2">
-                        <strong class="text-emerald-600">= {{ $fmt($g9999['buy'] ?? null) }} تومان</strong>
-                    </div>
-                </div>
-            </div>
-
-            <div class="rounded-md border-r-4 border-orange-500 bg-orange-50 p-3">
-                <strong class="text-orange-700">📊 خلاصه نتیجه:</strong>
-                <div class="mt-2 text-sm leading-6">
-                    • <strong>قیمت فروش:</strong> {{ $toman($g9999['sell'] ?? null) }}<br>
-                    • <strong>قیمت خرید:</strong> {{ $toman($g9999['buy'] ?? null) }}
-                </div>
-            </div>
-        </div>
-
-        {{-- 4. نقره ۹۹۹.۹ --}}
-        <div class="mb-5 rounded-lg border-r-4 border-purple-600 bg-gray-50 p-5">
-            <h5 class="m-0 mb-4 font-bold text-purple-600">۴. نقره ۹۹۹.۹ - قیمت فروش و خرید</h5>
-
-            <div class="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">📥 پیش‌نیازها (قیمت‌های پایه از API ها)</h6>
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="border-b border-gray-200">
-                            <th class="py-2 text-start text-xs font-medium text-gray-500">منبع داده</th>
-                            <th class="py-2 text-start text-xs font-medium text-gray-500">قیمت (تومان)</th>
-                            <th class="py-2 text-start text-xs font-medium text-gray-500">نوع</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        <tr>
-                            <td class="py-2"><strong>PersianAPI - نقره ۹۹۹</strong></td>
-                            <td class="py-2"><code class="rounded bg-blue-50 px-2 py-0.5">{{ $fmt($s9999['persian999'] ?? null) }}</code></td>
-                            <td class="py-2 text-xs text-gray-500">مستقیم از API</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2"><strong>قیمت دستی ورودی</strong></td>
-                            <td class="py-2"><code class="rounded bg-red-50 px-2 py-0.5">{{ $fmt($s9999['manual'] ?? null) }}</code></td>
-                            <td class="py-2 text-xs text-gray-500">از تنظیمات</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2"><strong>ضریب تبدیل ۹۹۹ به ۹۹۹.۹</strong></td>
-                            <td class="py-2"><code class="rounded bg-amber-50 px-2 py-0.5">{{ $c['silver999_to_silver9999'] ?? '—' }}</code></td>
-                            <td class="py-2 text-xs text-gray-500">ضریب تبدیل</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">🧮 فرمول محاسبه نقره ۹۹۹.۹ از PersianAPI</h6>
-                <p class="my-1 text-xs text-gray-500">PersianAPI نقره ۹۹۹ را ارائه می‌دهد، برای تبدیل به ۹۹۹.۹:</p>
-                <div class="my-2 border-r-3 border-purple-600 bg-gray-100 p-3">
-                    <code class="block text-sm text-pink-700">نقره۹۹۹.۹ (PersianAPI) = نقره۹۹۹ (PersianAPI) × {{ $c['silver999_to_silver9999'] ?? '—' }}</code>
-                </div>
-                <h6 class="mt-4 mb-2 text-xs font-semibold text-gray-600">📝 جایگذاری اعداد:</h6>
-                <div class="rounded-md border border-dashed border-gray-400 bg-gray-50 p-3 font-mono text-xs leading-7">
-                    <div class="text-gray-500">// مرحله ۱: تبدیل نقره ۹۹۹ به ۹۹۹.۹</div>
-                    <div>نقره۹۹۹ (PersianAPI) = <strong class="text-red-600">{{ $fmt($s9999['persian999'] ?? null) }}</strong> تومان</div>
-                    <div>ضریب تبدیل = <strong class="text-sky-600">{{ $c['silver999_to_silver9999'] ?? '—' }}</strong></div>
-                    <div>نقره۹۹۹.۹ (محاسبه‌شده) = {{ $fmt($s9999['persian999'] ?? null) }} × {{ $c['silver999_to_silver9999'] ?? '—' }}</div>
-                    <div class="mt-2 border-t border-gray-200 pt-2">
-                        <strong class="text-emerald-600">= {{ $fmt($s9999['converted'] ?? null) }} تومان</strong>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">💰 محاسبه قیمت فروش نقره ۹۹۹.۹</h6>
-                <p class="my-1 text-xs text-gray-500"><strong>منطق:</strong> انتخاب بیشترین قیمت بین PersianAPI و قیمت دستی</p>
-                <div class="rounded-md border border-dashed border-gray-400 bg-gray-50 p-3 font-mono text-xs leading-7">
-                    <div class="text-gray-500">// مرحله ۲: بررسی قیمت دستی</div>
-                    <div>نقره۹۹۹.۹ (PersianAPI) = <strong class="text-blue-700">{{ $fmt($s9999['converted'] ?? null) }}</strong> تومان</div>
-                    <div>قیمت دستی = <strong class="text-red-600">{{ $fmt($s9999['manual'] ?? null) }}</strong> تومان</div>
-                    @if(($s9999['manual'] ?? null) !== null && $s9999['manual'] > 0 && ($s9999['converted'] ?? null) !== null && $s9999['manual'] > $s9999['converted'])
-                        <div class="mt-2 text-red-600">✓ قیمت دستی > PersianAPI → انتخاب قیمت دستی</div>
-                    @else
-                        <div class="mt-2 text-emerald-600">✓ قیمت دستی ≤ PersianAPI → انتخاب PersianAPI</div>
-                    @endif
-
-                    <div class="my-3 rounded-sm border-t-2 border-purple-600 bg-purple-50 p-2">
-                        <strong class="text-purple-700">🎯 قیمت نهایی فروش = {{ $fmt($s9999['sell'] ?? null) }} تومان</strong>
-                        <div class="mt-1 text-gray-500">({{ $s9999['sellLogic'] ?? '—' }})</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">🏷️ محاسبه قیمت خرید نقره ۹۹۹.۹</h6>
-                <p class="my-1 text-xs text-gray-500"><strong>منطق:</strong> ۹۹٪ قیمت فروش</p>
-                <div class="rounded-md border border-dashed border-gray-400 bg-gray-50 p-3 font-mono text-xs leading-7">
-                    <div class="text-gray-500">// مرحله ۳: محاسبه قیمت خرید</div>
-                    <div>نقره۹۹۹.۹_خرید = نقره۹۹۹.۹_فروش × {{ $c['buy'] ?? '—' }}</div>
-                    <div>نقره۹۹۹.۹_خرید = {{ $fmt($s9999['sell'] ?? null) }} × {{ $c['buy'] ?? '—' }}</div>
-
-                    <div class="my-3 rounded-sm border-t-2 border-emerald-600 bg-emerald-50 p-2">
-                        <strong class="text-emerald-700">🎯 قیمت نهایی خرید = {{ $fmt($s9999['buy'] ?? null) }} تومان</strong>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-4 rounded-md border-r-4 border-purple-600 bg-purple-50 p-3">
-                <strong class="text-purple-800">📊 خلاصه نتیجه:</strong>
-                <div class="mt-2 text-sm leading-6">
-                    • <strong>قیمت فروش:</strong> {{ $toman($s9999['sell'] ?? null) }} - انتخاب شده از {{ $s9999['sellLogic'] ?? '—' }}<br>
-                    • <strong>قیمت خرید:</strong> {{ $toman($s9999['buy'] ?? null) }} - محاسبه شده از ۹۹٪ قیمت فروش
-                </div>
-            </div>
-        </div>
-
-        {{-- 5. نقره ۹۲۵ --}}
-        <div class="mb-5 rounded-lg border-r-4 border-slate-500 bg-gray-50 p-5">
-            <h5 class="m-0 mb-4 font-bold text-slate-600">۵. نقره ۹۲۵ - قیمت فروش و خرید</h5>
-
-            <div class="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">📥 پیش‌نیازها</h6>
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="border-b border-gray-200">
-                            <th class="py-2 text-start text-xs font-medium text-gray-500">منبع داده</th>
-                            <th class="py-2 text-start text-xs font-medium text-gray-500">مقدار</th>
-                            <th class="py-2 text-start text-xs font-medium text-gray-500">نوع</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        <tr>
-                            <td class="py-2"><strong>قیمت فروش نقره ۹۹۹.۹</strong></td>
-                            <td class="py-2"><code class="rounded bg-blue-50 px-2 py-0.5">{{ $fmt($s9999['sell'] ?? null) }}</code></td>
-                            <td class="py-2 text-xs text-gray-500">مبنای محاسبه</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2"><strong>ضریب تبدیل نقره ۹۲۵ (فروش)</strong></td>
-                            <td class="py-2"><code class="rounded bg-amber-50 px-2 py-0.5">{{ $c['silver925_sell'] ?? '—' }}</code></td>
-                            <td class="py-2 text-xs text-gray-500">ضریب تبدیل</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2"><strong>ضریب تبدیل نقره ۹۲۵ (خرید)</strong></td>
-                            <td class="py-2"><code class="rounded bg-amber-50 px-2 py-0.5">{{ $c['silver925_buy'] ?? '—' }}</code></td>
-                            <td class="py-2 text-xs text-gray-500">ضریب تبدیل</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <h6 class="m-0 mb-3 text-sm font-semibold text-gray-800">🧮 فرمول‌ها</h6>
-                <div class="my-2 border-r-3 border-slate-500 bg-gray-100 p-3">
-                    <code class="block text-sm text-pink-700">نقره۹۲۵_فروش = نقره۹۹۹.۹_فروش × {{ $c['silver925_sell'] ?? '—' }}</code>
-                    <code class="mt-1 block text-sm text-pink-700">نقره۹۲۵_خرید = نقره۹۲۵_فروش × {{ $c['silver925_buy'] ?? '—' }}</code>
-                </div>
-                <h6 class="mt-4 mb-2 text-xs font-semibold text-gray-600">📝 جایگذاری اعداد:</h6>
-                <div class="rounded-md border border-dashed border-gray-400 bg-gray-50 p-3 font-mono text-xs leading-7">
-                    <div>نقره۹۲۵_فروش = {{ $fmt($s9999['sell'] ?? null) }} × {{ $c['silver925_sell'] ?? '—' }}</div>
-                    <div class="mt-2 border-t border-gray-200 pt-2">
-                        <strong class="text-slate-600">= {{ $fmt($s925['sell'] ?? null) }} تومان</strong>
-                    </div>
-                    <div class="mt-2">نقره۹۲۵_خرید = {{ $fmt($s925['sell'] ?? null) }} × {{ $c['silver925_buy'] ?? '—' }}</div>
-                    <div class="mt-2 border-t border-gray-200 pt-2">
-                        <strong class="text-slate-600">= {{ $fmt($s925['buy'] ?? null) }} تومان</strong>
-                    </div>
-                </div>
-            </div>
-
-            <div class="rounded-md border-r-4 border-slate-500 bg-slate-100 p-3">
-                <strong class="text-slate-700">📊 خلاصه نتیجه:</strong>
-                <div class="mt-2 text-sm leading-6">
-                    • <strong>قیمت فروش:</strong> {{ $toman($s925['sell'] ?? null) }}<br>
-                    • <strong>قیمت خرید:</strong> {{ $toman($s925['buy'] ?? null) }}
-                </div>
-            </div>
-        </div>
-
-        <p class="rounded-md border-r-4 border-amber-500 bg-amber-50 p-3 text-sm">
-            <strong>نکته:</strong>
-            تمام ضرایب از تب «ضرایب محاسبه قیمت» قابل تغییر هستند. هر تغییری در ضرایب بلافاصله در محاسبات قیمت اعمال می‌شود.
-        </p>
+            <p class="mt-4 rounded-lg border-s-4 border-amber-500 bg-amber-50 p-3 text-sm text-amber-800">
+                <strong>نکته:</strong>
+                تمام ضرایب از تب «ضرایب محاسبه قیمت» قابل تغییر هستند. هر تغییری در ضرایب بلافاصله در محاسبات قیمت اعمال می‌شود.
+            </p>
+        </section>
     </div>
 </x-filament-panels::page>
