@@ -23,6 +23,26 @@
             محصولی با قیمت‌گذاری پویا یافت نشد. برای دیدن این صفحه، قیمت‌گذاری پویا را روی محصولات فعال کنید.
         </div>
     @else
+        @php($activePeriodData = collect($periods)->firstWhere('slug', $activePeriod))
+
+        <div class="mb-3 flex justify-center">
+            <div class="inline-flex rounded-xl bg-gray-100 p-1">
+                @foreach($periods as $period)
+                    <button
+                        type="button"
+                        wire:click="setPeriod('{{ $period['slug'] }}')"
+                        @class([
+                            'rounded-lg px-6 py-2 text-sm transition',
+                            'bg-white font-semibold text-gray-900 shadow-sm ring-1 ring-gray-950/5' => $activePeriod === $period['slug'],
+                            'text-gray-500 hover:text-gray-900' => $activePeriod !== $period['slug'],
+                        ])
+                    >
+                        {{ $period['name'] }}
+                    </button>
+                @endforeach
+            </div>
+        </div>
+
         <div class="overflow-x-auto rounded-2xl ring-1 ring-gray-950/5">
             <table class="w-full min-w-[1100px] border-collapse text-sm">
                 <thead>
@@ -31,23 +51,21 @@
                         <th rowspan="2" class="border-e border-gray-200 px-3 py-2 text-start">نوع</th>
                         <th rowspan="2" class="border-e border-gray-200 px-3 py-2 text-start">وزن (گرم)</th>
 
-                        @foreach($periods as $period)
+                        @if($activePeriodData)
                             <th colspan="{{ count($roles) }}" class="border-e-2 border-gray-300 bg-gray-200 px-3 py-2 text-center">
-                                {{ $period['name'] }}
+                                {{ $activePeriodData['name'] }}
                                 <span class="block text-xs font-normal text-gray-500">
-                                    {{ $period['start'] }} - {{ $period['end'] }}
+                                    {{ $activePeriodData['start'] }} - {{ $activePeriodData['end'] }}
                                 </span>
                             </th>
-                        @endforeach
+                        @endif
                     </tr>
 
                     <tr class="bg-gray-50">
-                        @foreach($periods as $period)
-                            @foreach($roles as $role)
-                                <th class="px-2 py-1.5 text-center text-[11px] font-normal text-gray-600">
-                                    {{ $role['name'] }}
-                                </th>
-                            @endforeach
+                        @foreach($roles as $role)
+                            <th class="px-2 py-1.5 text-center text-[11px] font-normal text-gray-600">
+                                {{ $role['name'] }}
+                            </th>
                         @endforeach
                     </tr>
                 </thead>
@@ -63,7 +81,7 @@
                             <td class="px-3 py-2 text-gray-600">{{ $row['metal_label'] }}</td>
                             <td class="px-3 py-2 text-gray-600">{{ $row['weight'] }}</td>
 
-                            @foreach($row['cells'] as $cell)
+                            @foreach($row['cells'][$activePeriod] ?? [] as $cell)
                                 <td class="border-e border-gray-100 px-1 py-2 text-center align-top">
                                     @if($cell)
                                         <span class="block text-xs text-gray-500">ضریب: {{ $cell['coefficient'] }}</span>

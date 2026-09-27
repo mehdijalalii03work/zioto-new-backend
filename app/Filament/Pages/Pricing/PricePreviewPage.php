@@ -61,9 +61,14 @@ class PricePreviewPage extends Page
     public array $roles = [];
 
     /**
-     * One row per product, cells flattened in period × role order to match the header.
+     * Slug of the time period currently shown as the active tab.
+     */
+    public string $activePeriod = '';
+
+    /**
+     * One row per product, cells keyed by period slug then role order to match the header.
      *
-     * @var list<array{id: int, name: string, edit_url: string, metal_label: string, weight: float, cells: list<array{coefficient: float, labor_cost: float, final_price: float}|null>}>
+     * @var list<array{id: int, name: string, edit_url: string, metal_label: string, weight: float, cells: array<string, list<array{coefficient: float, labor_cost: float, final_price: float}|null>>}>
      */
     public array $rows = [];
 
@@ -80,6 +85,7 @@ class PricePreviewPage extends Page
 
         $this->periods = array_values($labor->getTimePeriods());
         $this->roles = array_values($labor->getRoles());
+        $this->activePeriod = $this->resolveDefaultPeriod($labor);
 
         $service = app(DynamicPriceService::class);
 
@@ -94,6 +100,26 @@ class PricePreviewPage extends Page
         $this->livePrices = $this->resolveLivePrices($prices);
         $this->rows = $this->buildRows($service);
         $this->productCount = count($this->rows);
+    }
+
+    /**
+     * Switch the visible time period tab.
+     */
+    public function setPeriod(string $periodSlug): void
+    {
+        if (! in_array($periodSlug, array_column($this->periods, 'slug'), true)) {
+            return;
+        }
+
+        $this->activePeriod = $periodSlug;
+    }
+
+    private function resolveDefaultPeriod(LaborCalculator $labor): string
+    {
+        $slugs = array_column($this->periods, 'slug');
+        $current = $labor->getCurrentTimePeriod();
+
+        return in_array($current, $slugs, true) ? $current : (string) ($slugs[0] ?? '');
     }
 
     /**
@@ -118,7 +144,7 @@ class PricePreviewPage extends Page
     }
 
     /**
-     * @return list<array{id: int, name: string, edit_url: string, metal_label: string, weight: float, cells: list<array{coefficient: float, labor_cost: float, final_price: float}|null>}>
+     * @return list<array{id: int, name: string, edit_url: string, metal_label: string, weight: float, cells: array<string, list<array{coefficient: float, labor_cost: float, final_price: float}|null>>}>
      */
     private function buildRows(DynamicPriceService $service): array
     {
@@ -135,9 +161,7 @@ class PricePreviewPage extends Page
             $cells = [];
 
             foreach ($this->periods as $period) {
-                foreach ($this->roles as $role) {
-                    $cells[] = $matrix[$period['slug']][$role['slug']] ?? null;
-                }
+                $cells[$period['slug']] = array_values($matrix[$period['slug']] ?? []);
             }
 
             return [

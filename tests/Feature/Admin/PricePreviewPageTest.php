@@ -63,18 +63,23 @@ class PricePreviewPageTest extends TestCase
             'price' => 1,
         ]);
 
-        Livewire::actingAs($this->admin(), 'web')
+        $component = Livewire::actingAs($this->admin(), 'web')
             ->test(PricePreviewPage::class)
             ->assertSuccessful()
             ->assertSee('قیمت لحظه‌ای هر گرم (تومان)')
             ->assertSee('طلای ۷۵۰:')
             ->assertSee('1,000')
-            ->assertSee('روزانه')
-            ->assertSee('مشتری سطح پایه')
             ->assertSee('ضریب: 1')
             ->assertSee('اجرت: 2,000')
             ->assertSee('نهایی: 4,000')
-            ->assertSee('1 محصول');
+            ->assertSee('1 محصول')
+            ->call('setPeriod', 'daily')
+            ->assertSee('11:00 - 18:00')
+            ->assertDontSee('18:00 - 11:00');
+
+        // Only the active period's role columns are rendered.
+        $this->assertSame(4, substr_count($component->html(), 'ضریب:'));
+        $this->assertSame(4, substr_count($component->html(), 'مشتری سطح '));
     }
 
     public function test_preview_shows_empty_state_without_dynamic_products(): void
