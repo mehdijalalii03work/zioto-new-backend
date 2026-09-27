@@ -3,14 +3,18 @@
 namespace App\Filament\Pages\Pricing;
 
 use App\Enums\Permission;
+use App\Filament\Resources\Products\ProductResource;
 use App\Services\Pricing\DynamicPriceService;
 use App\Services\Pricing\LaborCalculator;
-use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Log;
 use Modules\Product\Models\Product;
+use Throwable;
 
+/**
+ * WordPress-style price preview: the live board strip on top, then every
+ * dynamically priced product against each time period × labor role.
+ */
 class PricePreviewPage extends Page
 {
     protected static ?string $slug = 'pricing/preview';
@@ -23,13 +27,47 @@ class PricePreviewPage extends Page
 
     protected static string|\UnitEnum|null $navigationGroup = 'قیمت‌گذاری زیوتو';
 
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 1;
 
     protected string $view = 'filament.pages.pricing.price-preview';
 
-    public array $data = [];
+    /**
+     * Short board labels, shared by the live price strip and the «نوع» column.
+     */
+    private const BOARD_LABELS = [
+        'Gold750_Sell' => 'طلای ۷۵۰',
+        // 'Gold750_Buy' => 'طلای ۷۵۰ (خرید)',
+        'Gold995_Sell' => 'طلای ۹۹۵',
+        // 'Gold995_Buy' => 'طلای ۹۹۵ (خرید)',
+        'Gold9999_Sell' => 'طلای ۹۹۹.۹',
+        // 'Gold9999_Buy' => 'طلای ۹۹۹.۹ (خرید)',
+        'Silver9999_Sell' => 'نقره ۹۹۹.۹',
+        // 'Silver9999_Buy' => 'نقره ۹۹۹.۹ (خرید)',
+    ];
 
-    public ?array $preview = null;
+    /**
+     * @var list<array{label: string, kind: string, value: float|null}>
+     */
+    public array $livePrices = [];
+
+    /**
+     * @var list<array{slug: string, name: string, start: string, end: string}>
+     */
+    public array $periods = [];
+
+    /**
+     * @var list<array{slug: string, name: string}>
+     */
+    public array $roles = [];
+
+    /**
+     * One row per product, cells flattened in period × role order to match the header.
+     *
+     * @var list<array{id: int, name: string, edit_url: string, metal_label: string, weight: float, cells: list<array{coefficient: float, labor_cost: float, final_price: float}|null>}>
+     */
+    public array $rows = [];
+
+    public int $productCount = 0;
 
     public static function canAccess(): bool
     {
@@ -40,72 +78,76 @@ class PricePreviewPage extends Page
     {
         $labor = app(LaborCalculator::class);
 
-        $this->form->fill([
-            'product_id' => Product::query()->where('price_type', 'dynamic')->value('id'),
-            'role' => 'basic',
-            'time_period' => $labor->getCurrentTimePeriod(),
-        ]);
+        $this->periods = array_values($labor->getTimePeriods());
+        $this->roles = array_values($labor->getRoles());
 
-        $this->runPreview();
-    }
+        $service = app(DynamicPriceService::class);
 
-    public function form(Schema $schema): Schema
-    {
-        $labor = app(LaborCalculator::class);
-        $roleOptions = collect($labor->getRoles())->mapWithKeys(fn (array $r) => [$r['slug'] => $r['name']]);
-        $periodOptions = collect($labor->getTimePeriods())->mapWithKeys(fn (array $p) => [$p['slug'] => $p['name']]);
+        try {
+            $prices = $service->boardPrices();
+        } catch (Throwable $exception) {
+            Log::warning('[PricePreview] Unable to load the price board: '.$exception->getMessage());
 
-        return $schema
-            ->components([
-                Grid::make(3)->schema([
-                    Select::make('product_id')
-                        ->label('محصول')
-                        ->options(fn () => Product::query()
-                            ->whereNotNull('price_board_item')
-                            ->orderBy('name')
-                            ->pluck('name', 'id')
-                            ->toArray())
-                        ->required()
-                        ->live(),
-
-                    Select::make('role')
-                        ->label('نقش اجرت')
-                        ->options($roleOptions->toArray())
-                        ->required()
-                        ->live(),
-
-                    Select::make('time_period')
-                        ->label('بازه زمانی')
-                        ->options($periodOptions->toArray())
-                        ->required()
-                        ->live(),
-                ]),
-            ])
-            ->statePath('data');
-    }
-
-    public function runPreview(): void
-    {
-        $state = $this->data;
-        $productId = $state['product_id'] ?? null;
-
-        if (! $productId) {
-            $this->preview = null;
-
-            return;
+            $prices = [];
         }
 
-        $product = Product::find($productId);
-        if (! $product) {
-            $this->preview = null;
+        $this->livePrices = $this->resolveLivePrices($prices);
+        $this->rows = $this->buildRows($service);
+        $this->productCount = count($this->rows);
+    }
 
-            return;
+    /**
+     * @param  array<string, array>  $prices
+     * @return list<array{label: string, kind: string, value: float|null}>
+     */
+    private function resolveLivePrices(array $prices): array
+    {
+        $items = [];
+
+        foreach (self::BOARD_LABELS as $key => $label) {
+            $value = isset($prices[$key]['value']) ? (float) $prices[$key]['value'] : null;
+
+            $items[] = [
+                'label' => $label,
+                'kind' => str_starts_with($key, 'Gold') ? 'gold' : 'silver',
+                'value' => ($value !== null && $value > 0) ? $value : null,
+            ];
         }
 
-        $this->preview = app(DynamicPriceService::class)->detailsFor(
-            $product,
-            $state['role'] ?? 'basic',
-            $state['time_period'] ?? null,
-        );
+        return $items;
+    }
+
+    /**
+     * @return list<array{id: int, name: string, edit_url: string, metal_label: string, weight: float, cells: list<array{coefficient: float, labor_cost: float, final_price: float}|null>}>
+     */
+    private function buildRows(DynamicPriceService $service): array
+    {
+        $products = Product::query()
+            ->whereNotNull('price_board_item')
+            ->where('weight', '>', 0)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (Product $product): bool => $service->isEligibleProduct($product));
+
+        return $products->map(function (Product $product) use ($service): array {
+            $matrix = $service->previewMatrix($product, $this->periods, $this->roles);
+            $cells = [];
+
+            foreach ($this->periods as $period) {
+                foreach ($this->roles as $role) {
+                    $cells[] = $matrix[$period['slug']][$role['slug']] ?? null;
+                }
+            }
+
+            return [
+                'id' => $product->getKey(),
+                'name' => $product->name,
+                'edit_url' => ProductResource::getUrl('edit', ['record' => $product]),
+                'metal_label' => self::BOARD_LABELS[$product->price_board_item] ?? $product->price_board_item,
+                'weight' => (float) $product->weight,
+                'cells' => $cells,
+            ];
+        })->values()->all();
     }
 }

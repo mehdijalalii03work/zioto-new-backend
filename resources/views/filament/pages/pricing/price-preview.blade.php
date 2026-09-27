@@ -1,48 +1,87 @@
 <x-filament-panels::page>
-    <form wire:submit.prevent="runPreview">
-        {{ $this->form }}
+    <p class="mb-4 text-sm text-gray-500">
+        قیمت نهایی بر اساس وزن، قیمت فلز و ضرایب اجرت محاسبه می‌شود.
+    </p>
 
-        <div class="mt-4">
-            <x-filament::button type="submit" color="primary" wire:loading.attr="disabled">
-                محاسبه پیش‌نمایش
-            </x-filament::button>
-        </div>
-    </form>
+    <div class="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+        <span class="text-sm font-bold text-gray-700">قیمت لحظه‌ای هر گرم (تومان)</span>
 
-    @if($preview)
-        <div class="mt-8 rounded-2xl bg-white p-6 ring-1 ring-gray-950/5">
-            <h3 class="text-base font-semibold text-gray-900 mb-4">نتیجه محاسبه</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div class="rounded-xl bg-gray-50 p-4">
-                    <p class="text-xs text-gray-500">کلید تابلو</p>
-                    <p class="mt-1 font-semibold">{{ $preview['metal_type'] }}</p>
-                </div>
-                <div class="rounded-xl bg-gray-50 p-4">
-                    <p class="text-xs text-gray-500">قیمت پایه تابلو</p>
-                    <p class="mt-1 font-semibold">{{ number_format($preview['base_price']) }}</p>
-                </div>
-                <div class="rounded-xl bg-gray-50 p-4">
-                    <p class="text-xs text-gray-500">وزن (گرم)</p>
-                    <p class="mt-1 font-semibold">{{ $preview['weight'] }}</p>
-                </div>
-                <div class="rounded-xl bg-gray-50 p-4">
-                    <p class="text-xs text-gray-500">ضریب اجرت</p>
-                    <p class="mt-1 font-semibold">{{ $preview['coefficient'] }}</p>
-                </div>
-                <div class="rounded-xl bg-gray-50 p-4">
-                    <p class="text-xs text-gray-500">نقش / بازه</p>
-                    <p class="mt-1 font-semibold">{{ $preview['user_role'] }} / {{ $preview['time_period'] }}</p>
-                </div>
-                <div class="rounded-xl bg-primary-50 p-4 ring-1 ring-primary-600/20">
-                    <p class="text-xs text-primary-700">قیمت نهایی</p>
-                    <p class="mt-1 text-xl font-bold text-primary-700">
-                        {{ number_format($preview['calculated_price']) }}
-                        <span class="text-sm font-normal">تومان</span>
-                    </p>
-                </div>
-            </div>
+        @foreach($livePrices as $livePrice)
+            <span @class([
+                'rounded-lg border px-3 py-2 text-sm',
+                'border-amber-500 bg-amber-50 text-amber-800' => $livePrice['kind'] === 'gold',
+                'border-gray-400 bg-gray-100 text-gray-700' => $livePrice['kind'] === 'silver',
+            ])>
+                <strong>{{ $livePrice['label'] }}:</strong>
+                {{ $livePrice['value'] !== null ? number_format($livePrice['value']) : '—' }}
+            </span>
+        @endforeach
+    </div>
+
+    @if(count($rows) === 0)
+        <div class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            محصولی با قیمت‌گذاری پویا یافت نشد. برای دیدن این صفحه، قیمت‌گذاری پویا را روی محصولات فعال کنید.
         </div>
-    @elseif(($data['product_id'] ?? null))
-        <p class="mt-6 text-sm text-gray-500">برای این محصول داده کافی (کلید تابلو / وزن) موجود نیست.</p>
+    @else
+        <div class="overflow-x-auto rounded-2xl ring-1 ring-gray-950/5">
+            <table class="w-full min-w-[1100px] border-collapse text-sm">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-700">
+                        <th rowspan="2" class="border-e border-gray-200 px-3 py-2 text-start">محصول</th>
+                        <th rowspan="2" class="border-e border-gray-200 px-3 py-2 text-start">نوع</th>
+                        <th rowspan="2" class="border-e border-gray-200 px-3 py-2 text-start">وزن (گرم)</th>
+
+                        @foreach($periods as $period)
+                            <th colspan="{{ count($roles) }}" class="border-e-2 border-gray-300 bg-gray-200 px-3 py-2 text-center">
+                                {{ $period['name'] }}
+                                <span class="block text-xs font-normal text-gray-500">
+                                    {{ $period['start'] }} - {{ $period['end'] }}
+                                </span>
+                            </th>
+                        @endforeach
+                    </tr>
+
+                    <tr class="bg-gray-50">
+                        @foreach($periods as $period)
+                            @foreach($roles as $role)
+                                <th class="px-2 py-1.5 text-center text-[11px] font-normal text-gray-600">
+                                    {{ $role['name'] }}
+                                </th>
+                            @endforeach
+                        @endforeach
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach($rows as $row)
+                        <tr class="border-t border-gray-100 odd:bg-white even:bg-gray-50">
+                            <td class="px-3 py-2">
+                                <a href="{{ $row['edit_url'] }}" class="font-semibold text-primary-600 hover:underline">
+                                    {{ $row['name'] }}
+                                </a>
+                            </td>
+                            <td class="px-3 py-2 text-gray-600">{{ $row['metal_label'] }}</td>
+                            <td class="px-3 py-2 text-gray-600">{{ $row['weight'] }}</td>
+
+                            @foreach($row['cells'] as $cell)
+                                <td class="border-e border-gray-100 px-1 py-2 text-center align-top">
+                                    @if($cell)
+                                        <span class="block text-xs text-gray-500">ضریب: {{ $cell['coefficient'] }}</span>
+                                        <span class="block text-[13px] text-amber-700">اجرت: {{ number_format($cell['labor_cost']) }}</span>
+                                        <span class="block text-sm font-bold text-blue-800">نهایی: {{ number_format($cell['final_price']) }}</span>
+                                    @else
+                                        <span class="text-gray-400">—</span>
+                                    @endif
+                                </td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        <p class="mt-3 text-sm text-gray-500">
+            {{ number_format($productCount) }} محصول — قیمت‌ها بر حسب تومان است.
+        </p>
     @endif
 </x-filament-panels::page>

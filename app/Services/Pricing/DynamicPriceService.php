@@ -31,6 +31,8 @@ class DynamicPriceService
         'Silver9999_Buy' => 'قیمت خرید نقره ۹۹۹.۹',
     ];
 
+    private ?array $boardMemo = null;
+
     public function __construct(
         private readonly LaborCalculator $labor,
         private readonly PriceBoardService $priceBoard,
@@ -111,9 +113,20 @@ class DynamicPriceService
         return ! empty($product->price_board_item) && ! empty($product->weight);
     }
 
+    /**
+     * Full board map, memoized for the lifetime of the instance so pricing many
+     * products (or a preview matrix) only reads the cache once.
+     *
+     * @return array<string, array>
+     */
+    public function boardPrices(): array
+    {
+        return $this->boardMemo ??= $this->priceBoard->getBoardPrices();
+    }
+
     public function boardValue(string $metalKey): ?float
     {
-        $prices = $this->priceBoard->getBoardPrices();
+        $prices = $this->boardPrices();
 
         if (! isset($prices[$metalKey]['value'])) {
             return null;
@@ -167,6 +180,56 @@ class DynamicPriceService
         ];
     }
 
+    /**
+     * Coefficient / labor cost / final price for every time period × role.
+     *
+     * Same math as priceFor() but returned in Toman (the unit shown on the
+     * preview page) and computed with a single board lookup per product.
+     *
+     * @param  list<array{slug: string}>  $periods
+     * @param  list<array{slug: string}>  $roles
+     * @return array<string, array<string, array{coefficient: float, labor_cost: float, final_price: float}>>
+     */
+    public function previewMatrix(object $product, array $periods, array $roles): array
+    {
+        $metalType = $product->price_board_item ?? null;
+        $weight = (float) ($product->weight ?? 0);
+
+        if ($metalType === null || $metalType === '' || $weight <= 0) {
+            return [];
+        }
+
+        $basePrice = $this->boardValue($metalType);
+        if ($basePrice === null) {
+            return [];
+        }
+
+        $rawCost = $weight * $basePrice;
+        $matrix = [];
+
+        foreach ($periods as $period) {
+            $periodSlug = $period['slug'];
+            $matrix[$periodSlug] = [];
+
+            foreach ($roles as $role) {
+                $roleSlug = $role['slug'];
+                $coefficient = $this->labor->coefficientFor($product, $periodSlug, $roleSlug);
+
+                $finalPrice = round($rawCost * (1 + $coefficient));
+                $finalPrice = $this->applyTax($product, $finalPrice);
+                $finalPrice = $this->applyStepRounding($finalPrice);
+
+                $matrix[$periodSlug][$roleSlug] = [
+                    'coefficient' => $coefficient,
+                    'labor_cost' => round($rawCost * $coefficient),
+                    'final_price' => $finalPrice,
+                ];
+            }
+        }
+
+        return $matrix;
+    }
+
     private function applyTax(object $product, float $price): float
     {
         $boardItem = $product->price_board_item ?? '';
@@ -199,6 +262,8 @@ class DynamicPriceService
 
     public function clearBoardMemo(): void
     {
+        $this->boardMemo = null;
+
         Cache::forget('priceboard:prices');
     }
 }
