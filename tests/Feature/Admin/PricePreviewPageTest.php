@@ -69,7 +69,7 @@ class PricePreviewPageTest extends TestCase
             ->assertSee('قیمت لحظه‌ای هر گرم (تومان)')
             ->assertSee('طلای ۷۵۰:')
             ->assertSee('1,000')
-            ->assertSee('ضریب: 1')
+            ->assertSee('درصد اجرت: 100٪')
             ->assertSee('اجرت: 2,000')
             ->assertSee('نهایی: 4,000')
             ->assertSee('1 محصول')
@@ -78,7 +78,7 @@ class PricePreviewPageTest extends TestCase
             ->assertDontSee('18:00 - 11:00');
 
         // Only the active period's role columns are rendered.
-        $this->assertSame(4, substr_count($component->html(), 'ضریب:'));
+        $this->assertSame(4, substr_count($component->html(), 'درصد اجرت:'));
         $this->assertSame(4, substr_count($component->html(), 'مشتری سطح '));
     }
 

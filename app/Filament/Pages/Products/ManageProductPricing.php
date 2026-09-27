@@ -71,7 +71,7 @@ class ManageProductPricing extends Page
                     foreach ($periods as $period) {
                         foreach ($roles as $role) {
                             $key = "coef_{$period['slug']}_{$role['slug']}";
-                            $state[$key] = $matrix[$period['slug']][$role['slug']] ?? 1.0;
+                            $state[$key] = round(((float) ($matrix[$period['slug']][$role['slug']] ?? 1.0)) * 100, 4);
                         }
                     }
 
@@ -92,11 +92,12 @@ class ManageProductPricing extends Page
             foreach ($roles as $role) {
                 $matrixFields[] = Forms\Components\TextInput::make("coef_{$period['slug']}_{$role['slug']}")
                     ->label("{$period['name']} · {$role['name']}")
+                    ->suffix('٪')
                     ->numeric()
                     ->minValue(0)
-                    ->maxValue(100)
+                    ->maxValue(1000)
                     ->step(0.01)
-                    ->default(1.0)
+                    ->default(100)
                     ->disabled(fn () => ! $this->isEditing)
                     ->dehydrated();
             }
@@ -105,6 +106,7 @@ class ManageProductPricing extends Page
         return $schema
             ->schema([
                 Forms\Components\Repeater::make('products')
+                    ->helperText('فیلدهای «دوره · نقش» درصد اجرت محصول هستند؛ مقدار ۷.۷ یعنی ۷.۷٪ (ضریب داخلی ۰.۰۷۷).')
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->label('نام محصول')
@@ -173,7 +175,7 @@ class ManageProductPricing extends Page
             foreach ($periods as $period) {
                 foreach ($roles as $role) {
                     $key = "coef_{$period['slug']}_{$role['slug']}";
-                    $matrix[$period['slug']][$role['slug']] = (float) ($item[$key] ?? 1.0);
+                    $matrix[$period['slug']][$role['slug']] = ((float) ($item[$key] ?? 100)) / 100;
                 }
             }
 

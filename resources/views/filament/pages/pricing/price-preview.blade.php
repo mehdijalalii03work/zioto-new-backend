@@ -84,7 +84,7 @@
                             @foreach($row['cells'][$activePeriod] ?? [] as $cell)
                                 <td class="border-e border-gray-100 px-1 py-2 text-center align-top">
                                     @if($cell)
-                                        <span class="block text-xs text-gray-500">ضریب: {{ $cell['coefficient'] }}</span>
+                                        <span class="block text-xs text-gray-500">درصد اجرت: {{ round($cell['coefficient'] * 100, 4) }}٪</span>
                                         <span class="block text-[13px] text-amber-700">اجرت: {{ number_format($cell['labor_cost']) }}</span>
                                         <span class="block text-sm font-bold text-blue-800">نهایی: {{ number_format($cell['final_price']) }}</span>
                                     @else

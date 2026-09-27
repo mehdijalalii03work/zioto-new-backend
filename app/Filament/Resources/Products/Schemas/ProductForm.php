@@ -238,14 +238,14 @@ class ProductForm
                             ->afterStateHydrated(function ($state, $set, $record) {
                                 $matrix = $record?->labor_coefficients ?? [];
                                 if ($matrix === []) {
-                                    $set('labor_coefficients_preview', 'پیش‌فرض: همه سلول‌ها ۱.۰ — از صفحه «مدیریت قیمت‌گذاری» قابل ویرایش است.');
+                                    $set('labor_coefficients_preview', 'پیش‌فرض: همه سلول‌ها ۱۰۰٪ — از صفحه «مدیریت قیمت‌گذاری» قابل ویرایش است.');
 
                                     return;
                                 }
                                 $lines = [];
                                 foreach ($matrix as $period => $roles) {
                                     foreach ($roles as $role => $value) {
-                                        $lines[] = "{$period}/{$role}: {$value}";
+                                        $lines[] = "{$period}/{$role}: ".round(((float) $value) * 100, 4).'٪';
                                     }
                                 }
                                 $set('labor_coefficients_preview', implode("\n", $lines));
