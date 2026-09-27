@@ -121,7 +121,7 @@ class UserForm
                 ->collapsible()
                 ->schema([
                     Select::make('labor_role')
-                        ->label('سطح لابور (قیمت‌گذاری)')
+                        ->label('سطح اجرت (قیمت‌گذاری)')
                         ->options([
                             'basic' => 'پایه',
                             'pro' => 'پرو',

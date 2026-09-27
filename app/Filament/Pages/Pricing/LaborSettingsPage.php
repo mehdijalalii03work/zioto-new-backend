@@ -50,7 +50,7 @@ class LaborSettingsPage extends Page
     {
         return $schema
             ->components([
-                Section::make('نقش‌های لابور مشتریان')
+                Section::make('نقش‌های اجرت مشتریان')
                     ->icon('heroicon-o-user-group')
                     ->schema([
                         Repeater::make('labor_roles')
@@ -129,7 +129,7 @@ class LaborSettingsPage extends Page
             'value' => json_encode($roles),
             'type' => 'json',
             'category' => 'pricing',
-            'label' => 'نقش‌های لابور',
+            'label' => 'نقش‌های اجرت',
         ]);
 
         Setting::updateOrCreate(['key' => 'zioto_pricing_time_periods'], [

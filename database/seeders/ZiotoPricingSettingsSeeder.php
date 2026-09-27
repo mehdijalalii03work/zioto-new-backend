@@ -47,7 +47,7 @@ class ZiotoPricingSettingsSeeder extends Seeder
             ['key' => 'zioto_pricing_tala_api_enabled', 'value' => 'true', 'type' => 'boolean', 'label' => 'فعال‌سازی Tala.ir', 'sort_order' => 51],
 
             // Labor roles / periods
-            ['key' => 'zioto_pricing_labor_roles', 'value' => json_encode(PricingSettings::DEFAULT_LABOR_ROLES), 'type' => 'json', 'label' => 'نقش‌های لابور', 'sort_order' => 60],
+            ['key' => 'zioto_pricing_labor_roles', 'value' => json_encode(PricingSettings::DEFAULT_LABOR_ROLES), 'type' => 'json', 'label' => 'نقش‌های اجرت', 'sort_order' => 60],
             ['key' => 'zioto_pricing_time_periods', 'value' => json_encode(PricingSettings::DEFAULT_TIME_PERIODS), 'type' => 'json', 'label' => 'بازه‌های زمانی', 'sort_order' => 61],
         ];
 

@@ -26,7 +26,7 @@
                     <p class="mt-1 font-semibold">{{ $preview['weight'] }}</p>
                 </div>
                 <div class="rounded-xl bg-gray-50 p-4">
-                    <p class="text-xs text-gray-500">ضریب لابور</p>
+                    <p class="text-xs text-gray-500">ضریب اجرت</p>
                     <p class="mt-1 font-semibold">{{ $preview['coefficient'] }}</p>
                 </div>
                 <div class="rounded-xl bg-gray-50 p-4">

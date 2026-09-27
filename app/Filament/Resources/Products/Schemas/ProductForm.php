@@ -214,7 +214,7 @@ class ProductForm
                                     ->disabled()
                                     ->dehydrated()
                                     ->placeholder('مثلاً 5')
-                                    ->helperText('فقط برای سازگاری — از ماتریس لابور استفاده می‌شود'),
+                                    ->helperText('فقط برای سازگاری — از ماتریس اجرت استفاده می‌شود'),
 
                                 TextInput::make('fee_off_hours')
                                     ->label('اجرت قدیمی (ساعت ۱۸ تا ۸:۵۹)')
@@ -227,11 +227,11 @@ class ProductForm
                                     ->disabled()
                                     ->dehydrated()
                                     ->placeholder('مثلاً 3.5')
-                                    ->helperText('فقط برای سازگاری — از ماتریس لابور استفاده می‌شود'),
+                                    ->helperText('فقط برای سازگاری — از ماتریس اجرت استفاده می‌شود'),
                             ]),
 
                         Textarea::make('labor_coefficients_preview')
-                            ->label('ماتریس ضرایب لابور')
+                            ->label('ماتریس ضرایب اجرت')
                             ->rows(4)
                             ->disabled()
                             ->dehydrated(false)

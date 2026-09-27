@@ -93,7 +93,7 @@ class DiscountCodeForm
                                 ->visible(fn ($get): bool => (bool) $get('is_user_specific')),
 
                             Select::make('allowed_labor_roles')
-                                ->label('نقش‌های لابور مجاز')
+                                ->label('نقش‌های اجرت مجاز')
                                 ->multiple()
                                 ->options($roleOptions->toArray()),
 

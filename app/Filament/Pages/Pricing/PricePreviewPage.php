@@ -69,7 +69,7 @@ class PricePreviewPage extends Page
                         ->live(),
 
                     Select::make('role')
-                        ->label('نقش لابور')
+                        ->label('نقش اجرت')
                         ->options($roleOptions->toArray())
                         ->required()
                         ->live(),
