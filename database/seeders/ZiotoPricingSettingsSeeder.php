@@ -30,7 +30,7 @@ class ZiotoPricingSettingsSeeder extends Seeder
 
             // Features
             ['key' => 'zioto_pricing_enable_dynamic_pricing', 'value' => 'true', 'type' => 'boolean', 'label' => 'فعال‌سازی قیمت‌گذاری پویا', 'sort_order' => 30],
-            ['key' => 'zioto_pricing_round_prices', 'value' => 'false', 'type' => 'boolean', 'label' => 'گردکردن قیمت نهایی', 'sort_order' => 31],
+            ['key' => 'zioto_pricing_round_prices', 'value' => 'false', 'type' => 'boolean', 'label' => 'گردکردن قیمت محصول نهایی', 'sort_order' => 31],
             ['key' => 'zioto_pricing_round_to', 'value' => '1000', 'type' => 'integer', 'label' => 'گردکردن به مضرب', 'sort_order' => 32],
             ['key' => 'zioto_pricing_metal_categories', 'value' => '[]', 'type' => 'json', 'label' => 'دسته‌های فلزی (خالی = همه)', 'sort_order' => 33],
             ['key' => 'zioto_pricing_show_discount', 'value' => 'false', 'type' => 'boolean', 'label' => 'نمایش نشان تخفیف روی محصول', 'sort_order' => 34],

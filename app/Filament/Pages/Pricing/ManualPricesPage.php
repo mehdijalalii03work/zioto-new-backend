@@ -11,6 +11,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 
 class ManualPricesPage extends Page
 {
@@ -48,16 +49,32 @@ class ManualPricesPage extends Page
         return $schema
             ->components([
                 Section::make('قیمت‌های دستی')
-                    ->description('در صورت وجود، بر قیمت API اولویت دارند')
+                    ->description('مقادیر به تومان به ازای هر گرم وارد شوند. در صورت وجود، بر قیمت API اولویت دارند')
                     ->icon('heroicon-o-banknotes')
                     ->schema([
                         Grid::make(2)->schema([
-                            TextInput::make('manual_gold750_sell')->label('قیمت دستی فروش طلای ۷۵۰')->numeric()->nullable(),
-                            TextInput::make('manual_silver9999_sell')->label('قیمت دستی فروش نقره ۹۹۹.۹')->numeric()->nullable(),
+                            $this->moneyInput('manual_gold750_sell', 'قیمت دستی فروش طلای ۷۵۰'),
+                            $this->moneyInput('manual_silver9999_sell', 'قیمت دستی فروش نقره ۹۹۹.۹'),
                         ]),
                     ])->columnSpanFull(),
             ])
             ->statePath('data');
+    }
+
+    /**
+     * Money field with thousands separators while typing; the raw digits are
+     * what gets validated, dehydrated and stored.
+     */
+    private function moneyInput(string $name, string $label): TextInput
+    {
+        return TextInput::make($name)
+            ->label($label)
+            ->suffix('تومان')
+            ->mask(RawJs::make('$money($input)'))
+            ->stripCharacters(',')
+            ->dehydrateStateUsing(fn (mixed $state): mixed => is_string($state) ? str_replace(',', '', $state) : $state)
+            ->numeric()
+            ->nullable();
     }
 
     public function save(): void

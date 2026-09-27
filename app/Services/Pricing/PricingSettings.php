@@ -193,10 +193,22 @@ class PricingSettings
         return (array) self::get('last_successful_raw_time', []);
     }
 
+    /**
+     * Last time each raw base price actually changed value, keyed by "{source}.{metal}".
+     *
+     * @return array<string, int>
+     */
+    public static function lastRawPriceChanges(): array
+    {
+        return (array) self::get('last_raw_price_changes', []);
+    }
+
     public static function storeLastSuccessfulRaw(string $source, array $data): void
     {
         $allData = self::lastSuccessfulRaw();
         $allTime = self::lastSuccessfulRawTimes();
+
+        $changes = self::detectRawPriceChanges($source, $data, (array) ($allData[$source] ?? []));
 
         $allData[$source] = $data;
         $allTime[$source] = now()->timestamp;
@@ -209,6 +221,52 @@ class PricingSettings
             ['key' => 'zioto_pricing_last_successful_raw_time'],
             ['value' => json_encode($allTime), 'type' => 'json', 'category' => 'pricing', 'label' => 'زمان آخرین داده خام موفق'],
         );
+
+        if ($changes !== []) {
+            $allChanges = self::lastRawPriceChanges();
+
+            foreach ($changes as $path => $time) {
+                $allChanges[$path] = $time;
+            }
+
+            Setting::updateOrCreate(
+                ['key' => 'zioto_pricing_last_raw_price_changes'],
+                ['value' => json_encode($allChanges), 'type' => 'json', 'category' => 'pricing', 'label' => 'زمان آخرین تغییر قیمت پایه'],
+            );
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $previous
+     * @return array<string, int>
+     */
+    private static function detectRawPriceChanges(string $source, array $current, array $previous): array
+    {
+        $now = now()->timestamp;
+        $changes = [];
+
+        foreach ($current as $key => $value) {
+            $newValue = (string) $value;
+
+            if (! array_key_exists($key, $previous)) {
+                $changes["{$source}.{$key}"] = $now;
+
+                continue;
+            }
+
+            $oldValue = (string) $previous[$key];
+
+            $unchanged = is_numeric($newValue) && is_numeric($oldValue)
+                ? bccomp($newValue, $oldValue, 8) === 0
+                : $newValue === $oldValue;
+
+            if (! $unchanged) {
+                $changes["{$source}.{$key}"] = $now;
+            }
+        }
+
+        return $changes;
     }
 
     public static function invalidateBoardCache(): void

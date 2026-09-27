@@ -17,11 +17,11 @@ class PricingSettingsPage extends Page
 {
     protected static ?string $slug = 'pricing/settings';
 
-    protected static ?string $title = 'تنظیمات';
+    protected static ?string $title = 'تنظیمات تابلو';
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
 
-    protected static ?string $navigationLabel = 'تنظیمات';
+    protected static ?string $navigationLabel = 'تنظیمات تابلو';
 
     protected static string|\UnitEnum|null $navigationGroup = 'تابلو قیمت زیوتو';
 
@@ -39,17 +39,10 @@ class PricingSettingsPage extends Page
     public function mount(): void
     {
         $this->form->fill([
-            'enable_dynamic_pricing' => PricingSettings::enableDynamicPricing(),
-            'round_prices' => PricingSettings::roundPrices(),
-            'round_to' => PricingSettings::roundTo(),
             'trend_threshold' => PricingSettings::trendThreshold(),
             'cache_duration_seconds' => PricingSettings::cacheDurationSeconds(),
             'stale_max_age_seconds' => PricingSettings::staleMaxAgeSeconds(),
             'stale_block' => PricingSettings::staleBlock(),
-            'show_discount' => PricingSettings::showDiscountBadge(),
-            'enable_sales_hours' => PricingSettings::enableSalesHours(),
-            'sales_start_time' => PricingSettings::salesStartTime(),
-            'sales_end_time' => PricingSettings::salesEndTime(),
             'persian_api_enabled' => (bool) PricingSettings::get('persian_api_enabled', true),
             'tala_api_enabled' => (bool) PricingSettings::get('tala_api_enabled', true),
         ]);
@@ -59,28 +52,14 @@ class PricingSettingsPage extends Page
     {
         return $schema
             ->components([
-                Section::make('ویژگی‌ها')
+                Section::make('کش و روند تابلو')
                     ->icon('heroicon-o-adjustments-horizontal')
                     ->schema([
-                        Grid::make(3)->schema([
-                            Toggle::make('enable_dynamic_pricing')->label('قیمت‌گذاری پویا')->inline(false),
-                            Toggle::make('round_prices')->label('گردکردن قیمت')->inline(false),
-                            TextInput::make('round_to')->label('مضرب گردکردن')->numeric()->default(1000),
+                        Grid::make(2)->schema([
                             TextInput::make('trend_threshold')->label('آستانه روند (تومان)')->numeric(),
-                            TextInput::make('cache_duration_seconds')->label('مدت کش (ثانیه)')->numeric(),
+                            TextInput::make('cache_duration_seconds')->label('مدت کش تابلو (ثانیه)')->numeric(),
                             TextInput::make('stale_max_age_seconds')->label('حداکثر سن داده (ثانیه)')->numeric(),
                             Toggle::make('stale_block')->label('مسدودسازی داده کهنه')->inline(false),
-                            Toggle::make('show_discount')->label('نمایش نشان تخفیف')->inline(false),
-                        ]),
-                    ])->columnSpanFull(),
-
-                Section::make('ساعات فروش')
-                    ->icon('heroicon-o-clock')
-                    ->schema([
-                        Grid::make(3)->schema([
-                            Toggle::make('enable_sales_hours')->label('فعال‌سازی محدودیت ساعات')->inline(false),
-                            TextInput::make('sales_start_time')->label('شروع')->placeholder('09:00'),
-                            TextInput::make('sales_end_time')->label('پایان')->placeholder('23:00'),
                         ]),
                     ])->columnSpanFull(),
 
@@ -106,15 +85,7 @@ class PricingSettingsPage extends Page
 
         $data = $this->form->getState();
 
-        $booleans = [
-            'enable_dynamic_pricing',
-            'round_prices',
-            'stale_block',
-            'show_discount',
-            'enable_sales_hours',
-            'persian_api_enabled',
-            'tala_api_enabled',
-        ];
+        $booleans = ['stale_block', 'persian_api_enabled', 'tala_api_enabled'];
 
         foreach ($booleans as $key) {
             Setting::updateOrCreate(['key' => "zioto_pricing_{$key}"], [
@@ -125,17 +96,7 @@ class PricingSettingsPage extends Page
             ]);
         }
 
-        $strings = ['sales_start_time', 'sales_end_time'];
-        foreach ($strings as $key) {
-            Setting::updateOrCreate(['key' => "zioto_pricing_{$key}"], [
-                'value' => (string) ($data[$key] ?? ''),
-                'type' => 'string',
-                'category' => 'pricing',
-                'label' => $key,
-            ]);
-        }
-
-        $ints = ['round_to', 'trend_threshold', 'cache_duration_seconds', 'stale_max_age_seconds'];
+        $ints = ['trend_threshold', 'cache_duration_seconds', 'stale_max_age_seconds'];
         foreach ($ints as $key) {
             Setting::updateOrCreate(['key' => "zioto_pricing_{$key}"], [
                 'value' => (string) (int) ($data[$key] ?? 0),
@@ -148,7 +109,7 @@ class PricingSettingsPage extends Page
         PricingSettings::invalidateBoardCache();
 
         Notification::make()
-            ->title('تنظیمات قیمت‌گذاری ذخیره شد')
+            ->title('تنظیمات تابلو ذخیره شد')
             ->success()
             ->send();
     }

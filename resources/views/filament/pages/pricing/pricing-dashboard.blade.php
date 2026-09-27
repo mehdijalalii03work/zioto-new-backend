@@ -7,7 +7,7 @@
                 return '—';
             }
 
-            return \Morilog\Jalali\Jalalian::forge((int) $timestamp)->format('Y-m-d H:i');
+            return \Morilog\Jalali\Jalalian::forge((int) $timestamp, new \DateTimeZone((string) config('app.timezone')))->format('H:i Y-m-d');
         };
 
         $trendBadge = function (?string $trend) {
@@ -42,16 +42,35 @@
                 $latestTs = $time;
             }
         }
-        $agoLabel = '—';
-        if ($latestTs > 0) {
-            $diff = max(0, time() - $latestTs);
-            $agoLabel = match (true) {
+        $agoFrom = function (int $ts): string {
+            if ($ts <= 0) {
+                return '—';
+            }
+
+            $diff = max(0, time() - $ts);
+
+            return match (true) {
                 $diff < 60 => 'همین حالا',
                 $diff < 3600 => floor($diff / 60).' دقیقه پیش',
                 $diff < 86400 => floor($diff / 3600).' ساعت پیش',
                 default => floor($diff / 86400).' روز پیش',
             };
-        }
+        };
+
+        $agoLabel = $agoFrom($latestTs);
+        $requestAgoLabel = $agoFrom($lastRequestTimes === [] ? 0 : max($lastRequestTimes));
+        $changeAgoLabel = $agoFrom($lastPriceChangeTimes === [] ? 0 : max($lastPriceChangeTimes));
+
+        $changeLabels = [
+            'persian.Gold750' => 'طلای ۷۵۰ — PersianAPI',
+            'tala.Gold750' => 'طلای ۷۵۰ — Tala.ir',
+            'persian.Silver999' => 'نقره ۹۹۹ — PersianAPI',
+        ];
+        $changeDots = [
+            'persian.Gold750' => 'bg-emerald-500',
+            'tala.Gold750' => 'bg-amber-500',
+            'persian.Silver999' => 'bg-slate-400',
+        ];
 
         $priceGroups = [
             'Gold750' => ['label' => 'طلای ۷۵۰', 'dot' => 'bg-emerald-500'],
@@ -118,7 +137,7 @@
         </div>
 
         {{-- آخرین بروزرسانی موفق --}}
-        <div class="rounded-xl bg-white p-4 ring-1 ring-gray-950/5">
+        {{-- <div class="rounded-xl bg-white p-4 ring-1 ring-gray-950/5">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-medium text-gray-500">آخرین بروزرسانی موفق</span>
                 <x-filament::icon icon="heroicon-o-clock" class="size-4 text-gray-400" />
@@ -135,6 +154,70 @@
                 <div class="mt-2 text-2xl font-bold text-red-500">ثبت نشده</div>
                 <div class="mt-1 text-xs text-gray-500">اتصال API را بررسی کنید.</div>
             @endif
+        </div> --}}
+
+        {{-- آخرین درخواست موفق API (ذخیره‌شده در دیتابیس؛ با انقضای کش از بین نمی‌رود) --}}
+        <div class="rounded-xl bg-white p-4 ring-1 ring-gray-950/5">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-gray-500">آخرین درخواست موفق API</span>
+                <x-filament::icon icon="heroicon-o-signal" class="size-4 text-gray-400" />
+            </div>
+
+            @if($lastRequestAt)
+                <div class="mt-2 text-2xl font-bold tabular-nums text-gray-900">{{ $lastRequestAt }}</div>
+                <div class="mt-1 text-xs text-gray-500">{{ $requestAgoLabel }}</div>
+
+                <div class="mt-2 space-y-1 border-t border-gray-100 pt-2">
+                    @foreach($lastRequestTimes as $source => $ts)
+                        <div class="flex items-center justify-between gap-2 text-xs">
+                            <span class="flex items-center gap-1.5 font-medium text-gray-700">
+                                <span class="size-1.5 shrink-0 rounded-full bg-emerald-500"></span>
+                                {{ $sourceLabels[$source] ?? $source }}
+                            </span>
+                            <span class="tabular-nums text-gray-500">{{ $jalali($ts) }}</span>
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="mt-2 rounded-md bg-slate-50 px-2 py-1 text-[11px] leading-4 text-slate-600">
+                    فقط زمان دریافت پاسخ موفق از منبع؛ فرقی نمی‌کند قیمت تغییر کرده باشد یا نه.
+                </div>
+            @else
+                <div class="mt-2 text-2xl font-bold text-red-500">ثبت نشده</div>
+                <div class="mt-1 text-xs text-gray-500">هنوز درخواست موفقی ثبت نشده است.</div>
+            @endif
+        </div>
+
+        {{-- آخرین تغییر قیمت پایه --}}
+        <div class="rounded-xl bg-white p-4 ring-1 ring-gray-950/5">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-gray-500">آخرین تغییر قیمت پایه</span>
+                <x-filament::icon icon="heroicon-o-arrow-trending-up" class="size-4 text-gray-400" />
+            </div>
+
+            @if($lastPriceChangeAt)
+                <div class="mt-2 text-2xl font-bold tabular-nums text-gray-900">{{ $lastPriceChangeAt }}</div>
+                <div class="mt-1 text-xs text-gray-500">{{ $changeAgoLabel }}</div>
+            @else
+                <div class="mt-2 text-2xl font-bold text-red-500">ثبت نشده</div>
+                <div class="mt-1 text-xs text-gray-500">هنوز تغییری ثبت نشده است.</div>
+            @endif
+
+            <div class="mt-2 space-y-1 border-t border-gray-100 pt-2">
+                @foreach($lastPriceChangeTimes as $path => $ts)
+                    <div class="flex items-center justify-between gap-2 text-xs">
+                        <span class="flex items-center gap-1.5 font-medium text-gray-700">
+                            <span class="size-1.5 shrink-0 rounded-full {{ $changeDots[$path] ?? 'bg-gray-400' }}"></span>
+                            {{ $changeLabels[$path] ?? $path }}
+                        </span>
+                        <span class="tabular-nums {{ $ts > 0 ? 'text-gray-500' : 'text-gray-300' }}">{{ $ts > 0 ? $jalali($ts) : '—' }}</span>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="mt-2 rounded-md bg-slate-50 px-2 py-1 text-[11px] leading-4 text-slate-600">
+                لحظه‌ای که مقدار خام این قیمت نسبت به نمونه قبلی عوض شده است.
+            </div>
         </div>
 
         {{-- طلای ۷۵۰ --}}
@@ -492,7 +575,7 @@
 
             <p class="mt-4 rounded-lg border-s-4 border-amber-500 bg-amber-50 p-3 text-sm text-amber-800">
                 <strong>نکته:</strong>
-                تمام ضرایب از تب «ضرایب محاسبه قیمت» قابل تغییر هستند. هر تغییری در ضرایب بلافاصله در محاسبات قیمت اعمال می‌شود.
+                تمام ضرایب از صفحه «ضرایب تابلو» قابل تغییر هستند. هر تغییری در ضرایب بلافاصله در محاسبات قیمت اعمال می‌شود.
             </p>
         </section>
     </div>

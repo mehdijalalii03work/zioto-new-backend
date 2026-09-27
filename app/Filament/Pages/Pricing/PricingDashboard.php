@@ -12,6 +12,17 @@ use Morilog\Jalali\Jalalian;
 
 class PricingDashboard extends Page
 {
+    /**
+     * Raw base prices whose last change time is surfaced on the dashboard.
+     *
+     * @var list<string>
+     */
+    public const PRICE_CHANGE_TRACKED = [
+        'persian.Gold750',
+        'tala.Gold750',
+        'persian.Silver999',
+    ];
+
     protected static ?string $slug = 'pricing/dashboard';
 
     protected static ?string $title = 'داشبورد قیمت‌گذاری';
@@ -37,6 +48,26 @@ class PricingDashboard extends Page
     public ?string $updatedAt = null;
 
     public ?string $lastSuccessAt = null;
+
+    /**
+     * Persistent per-source timestamps of the last API response that carried data.
+     * Read from settings, so it survives cache expiry and never depends on a price change.
+     *
+     * @var array<string, int>
+     */
+    public array $lastRequestTimes = [];
+
+    public ?string $lastRequestAt = null;
+
+    /**
+     * Persistent per-source timestamps of the last time a tracked raw base price
+     * actually changed value. Keyed by "{source}.{metal}".
+     *
+     * @var array<string, int>
+     */
+    public array $lastPriceChangeTimes = [];
+
+    public ?string $lastPriceChangeAt = null;
 
     public int $cacheDuration = 0;
 
@@ -101,8 +132,65 @@ class PricingDashboard extends Page
 
         $this->updatedAt = app(PriceBoardService::class)->getLastSyncAt()?->toDateTimeString();
         $this->lastSuccessAt = $this->resolveLastSuccess();
+        $this->lastRequestTimes = $this->resolveLastRequestTimes();
+        $this->lastRequestAt = $this->resolveLastRequestAt();
+        $this->lastPriceChangeTimes = $this->resolveLastPriceChangeTimes();
+        $this->lastPriceChangeAt = $this->resolveLastPriceChangeAt();
         $this->cacheDuration = PricingSettings::cacheDurationSeconds();
         $this->formula = $this->computeFormula($this->basePrices);
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function resolveLastRequestTimes(): array
+    {
+        $times = [];
+
+        foreach (PricingSettings::lastSuccessfulRawTimes() as $source => $time) {
+            $time = (int) $time;
+
+            if ($time > 0) {
+                $times[$source] = $time;
+            }
+        }
+
+        return $times;
+    }
+
+    private function resolveLastRequestAt(): ?string
+    {
+        if ($this->lastRequestTimes === []) {
+            return null;
+        }
+
+        return $this->jalaliFormat(max($this->lastRequestTimes));
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function resolveLastPriceChangeTimes(): array
+    {
+        $all = PricingSettings::lastRawPriceChanges();
+        $times = [];
+
+        foreach (self::PRICE_CHANGE_TRACKED as $path) {
+            $times[$path] = max(0, (int) ($all[$path] ?? 0));
+        }
+
+        return $times;
+    }
+
+    private function resolveLastPriceChangeAt(): ?string
+    {
+        $known = array_filter($this->lastPriceChangeTimes);
+
+        if ($known === []) {
+            return null;
+        }
+
+        return $this->jalaliFormat(max($known));
     }
 
     private function resolveLastSuccess(): ?string
@@ -121,7 +209,12 @@ class PricingDashboard extends Page
             return null;
         }
 
-        return Jalalian::forge($latest)->format('Y-m-d H:i');
+        return $this->jalaliFormat($latest);
+    }
+
+    private function jalaliFormat(int $timestamp): string
+    {
+        return Jalalian::forge($timestamp, new \DateTimeZone((string) config('app.timezone')))->format('Y-m-d H:i');
     }
 
     /**
