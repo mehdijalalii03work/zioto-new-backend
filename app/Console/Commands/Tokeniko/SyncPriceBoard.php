@@ -51,29 +51,53 @@ class SyncPriceBoard extends Command
             $this->warn('Using cached prices (API unavailable).');
         }
 
-        broadcast(new PriceBoardUpdated($prices));
-
         $updated = $this->recalculateProductPrices();
 
         $this->info("Recalculated prices for {$updated} products.");
 
-        if ($updated > 0) {
-            $this->broadcastProducts();
-            $redis = Cache::getStore()->getRedis();
-            $keys = $redis->keys('api:products:*');
-            if ($keys) {
-                $redis->del($keys);
-            }
-            // Do NOT clear priceboard cache here — API controller relies on it.
+        $tapsi = $sync->syncTapsi();
+
+        if (($tapsi['tapsi_sent'] ?? 0) > 0) {
+            $outcome = ($tapsi['tapsi_success'] ?? false) ? 'success' : 'failed';
+            $this->info("Sent {$tapsi['tapsi_sent']} products to Tapsi Shop ({$outcome}).");
+        } elseif (! config('tapsi.enabled')) {
+            $this->warn('Tapsi sync disabled — skipped sending to Tapsi.');
         }
+
+        $this->broadcastProducts();
+        $this->clearProductApiCache();
+
+        broadcast(new PriceBoardUpdated($prices));
 
         Log::info('[PriceBoard] Sync completed', [
             'products_updated' => $updated,
             'from_cache' => ! $fromApi,
             'source' => 'zioto',
+            'tapsi_sent' => $tapsi['tapsi_sent'] ?? 0,
         ]);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Drop the cached product list consumed by the storefront API.
+     */
+    private function clearProductApiCache(): void
+    {
+        $store = Cache::getStore();
+
+        if (! method_exists($store, 'getRedis')) {
+            return;
+        }
+
+        $redis = $store->getRedis();
+        $keys = $redis->keys('api:products:*');
+
+        if ($keys) {
+            $redis->del($keys);
+        }
+
+        // Do NOT clear priceboard cache here — API controller relies on it.
     }
 
     private function recalculateProductPrices(): int
@@ -120,6 +144,10 @@ class SyncPriceBoard extends Command
         $products = $query->get()
             ->map(fn (Product $p) => $this->formatProduct($p))
             ->toArray();
+
+        if ($products === []) {
+            return;
+        }
 
         broadcast(new ProductsUpdated($products));
     }

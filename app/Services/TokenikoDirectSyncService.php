@@ -18,6 +18,22 @@ class TokenikoDirectSyncService
 
     public function sync(): array
     {
+        return $this->guarded(fn (): array => $this->run(updatePrices: true));
+    }
+
+    /**
+     * Push the already-computed product prices and stock to Tapsi.
+     *
+     * Used by the dynamic flow, where products.price is owned by the price board
+     * (PersianAPI + Tala) and must not be overwritten from the Tokeniko shop API.
+     */
+    public function syncTapsi(): array
+    {
+        return $this->guarded(fn (): array => $this->run(updatePrices: false));
+    }
+
+    private function guarded(callable $callback): array
+    {
         $lock = Cache::lock('tokeniko:direct-sync', 300);
 
         if (! $lock->get()) {
@@ -27,17 +43,17 @@ class TokenikoDirectSyncService
         }
 
         try {
-            return $this->run();
+            return $callback();
         } finally {
             $lock->release();
         }
     }
 
-    private function run(): array
+    private function run(bool $updatePrices): array
     {
-        $prices = $this->tokenikoShop->fetchAndStore();
+        $prices = $updatePrices ? $this->tokenikoShop->fetchAndStore() : [];
 
-        if (empty($prices)) {
+        if ($updatePrices && empty($prices)) {
             Log::warning('[TokenikoDirectSync] No prices received from Tokeniko API.');
 
             return $this->result(status: 'failure');
@@ -55,15 +71,13 @@ class TokenikoDirectSyncService
         foreach ($products as $product) {
             $sku = mb_strtolower(trim($product->tokeniko_sku));
 
-            if (! isset($prices[$sku])) {
+            if ($updatePrices && ! isset($prices[$sku])) {
                 continue;
             }
 
-            $newPrice = (float) $prices[$sku];
-            $currentPrice = (float) $product->price;
-            $priceChanged = $currentPrice !== $newPrice;
+            $newPrice = $updatePrices ? (float) $prices[$sku] : (float) $product->price;
 
-            if ($priceChanged) {
+            if ($updatePrices && (float) $product->price !== $newPrice) {
                 $updates[$product->id] = ['price' => $newPrice];
             }
 
@@ -96,9 +110,13 @@ class TokenikoDirectSyncService
         }
 
         $this->clearProductCache();
-        $this->broadcastProducts();
+
+        if ($updatePrices) {
+            $this->broadcastProducts();
+        }
 
         Log::info('[TokenikoDirectSync] Completed', [
+            'mode' => $updatePrices ? 'direct' : 'tapsi',
             'products_updated' => count($updates),
             'tapsi_sent' => count($tapsiProducts),
             'tapsi_success' => $tapsiSuccess,

@@ -9,10 +9,17 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Computes per-user dynamic product prices using labor coefficients.
  *
- * price = weight × board(metal) × (1 + coefficient)  → round → tax → optional step rounding
+ * board is stored in Toman, products.price is stored in Rial:
+ *
+ * price(Rial) = weight × board(metal, Toman) × (1 + coefficient)  → round → tax → step rounding → ×10
  */
 class DynamicPriceService
 {
+    /**
+     * products.price is Rial while the price board (and the admin preview) is Toman.
+     */
+    public const RIAL_PER_TOMAN = 10;
+
     public const METAL_OPTIONS = [
         'Gold750_Sell' => 'قیمت فروش طلای ۷۵۰ (۱۸ عیار)',
         'Gold750_Buy' => 'قیمت خرید طلای ۷۵۰ (۱۸ عیار)',
@@ -65,7 +72,7 @@ class DynamicPriceService
         $calculated = $this->applyTax($product, $calculated);
         $calculated = $this->applyStepRounding($calculated);
 
-        return (float) $calculated;
+        return (float) ($calculated * self::RIAL_PER_TOMAN);
     }
 
     /**
@@ -118,7 +125,8 @@ class DynamicPriceService
     }
 
     /**
-     * Pricing details for admin preview.
+     * Price breakdown for the admin preview page.
+     * Returns Toman (the unit shown on the board), not Rial like priceFor().
      *
      * @return array<string, mixed>|null
      */
