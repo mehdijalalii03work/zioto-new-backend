@@ -25,7 +25,7 @@ class LaborSettingsPage extends Page
 
     protected static string|\UnitEnum|null $navigationGroup = 'قیمت‌گذاری زیوتو';
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 2;
 
     protected string $view = 'filament.pages.pricing.labor-settings';
 

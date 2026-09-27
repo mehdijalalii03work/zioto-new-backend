@@ -30,7 +30,7 @@ class ManageProductPricing extends Page
 
     public static function getNavigationLabel(): string
     {
-        return 'تنظیمات ضریب';
+        return 'ضریب محصولات';
     }
 
     public static function getNavigationGroup(): string

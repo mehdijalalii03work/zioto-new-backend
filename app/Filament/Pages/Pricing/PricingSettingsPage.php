@@ -25,7 +25,7 @@ class PricingSettingsPage extends Page
 
     protected static string|\UnitEnum|null $navigationGroup = 'تابلو قیمت زیوتو';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 4;
 
     protected string $view = 'filament.pages.pricing.pricing-settings';
 

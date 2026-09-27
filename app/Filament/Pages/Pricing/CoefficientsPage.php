@@ -20,11 +20,11 @@ class CoefficientsPage extends Page
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-calculator';
 
-    protected static ?string $navigationLabel = 'ضرایب تابلو';
+    protected static ?string $navigationLabel = 'ضرایب';
 
     protected static string|\UnitEnum|null $navigationGroup = 'تابلو قیمت زیوتو';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 2;
 
     protected string $view = 'filament.pages.pricing.coefficients';
 

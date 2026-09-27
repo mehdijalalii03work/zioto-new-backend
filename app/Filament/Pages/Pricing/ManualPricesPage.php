@@ -21,11 +21,11 @@ class ManualPricesPage extends Page
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
 
-    protected static ?string $navigationLabel = 'قیمت‌های دستی تابلو';
+    protected static ?string $navigationLabel = 'قیمت‌های دستی';
 
     protected static string|\UnitEnum|null $navigationGroup = 'تابلو قیمت زیوتو';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 3;
 
     protected string $view = 'filament.pages.pricing.manual-prices';
 

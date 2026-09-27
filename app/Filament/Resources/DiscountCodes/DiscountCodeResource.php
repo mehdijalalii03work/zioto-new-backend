@@ -27,7 +27,7 @@ class DiscountCodeResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'قیمت‌گذاری زیوتو';
 
-    protected static ?int $navigationSort = 8;
+    protected static ?int $navigationSort = 4;
 
     public static function canViewAny(): bool
     {
