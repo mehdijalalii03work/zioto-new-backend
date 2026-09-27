@@ -5,6 +5,10 @@ namespace App\Filament\Resources\Orders\Exports;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Response;
+use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Common\Entity\Row as OpenSpoutRow;
+use OpenSpout\Writer\XLSX\Options as XlsxOptions;
+use OpenSpout\Writer\XLSX\Writer as XlsxWriter;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -43,26 +47,38 @@ class OrderExcelExport
 
     public function exportFromQuery(Builder $query): StreamedResponse
     {
-        $spreadsheet = new Spreadsheet;
-        $ordersData = [];
-
-        $query->with(['user', 'items', 'shipping.shippingMethod', 'address.city', 'address.province'])
-            ->chunk(100, function ($orders) use (&$ordersData) {
-                foreach ($orders as $order) {
-                    $ordersData[] = $this->prepareOrderData($order);
-                }
-            });
-
-        $this->createDataSheet($spreadsheet, $ordersData);
-        $this->createLabelSheet($spreadsheet, $ordersData);
-
-        $spreadsheet->setActiveSheetIndexByName('گزارش');
+        $headers = [
+            'ردیف', 'وضعیت', 'درگاه پرداخت', 'تاریخ و ساعت', 'شماره فاکتور',
+            'نام خریدار', 'موبایل خریدار', 'کد ملی', 'کد پیگیری', 'اقلام خریداری شده',
+            'تعداد اقلام', 'روش ارسال', 'نوع تحویل', 'نوع پرداخت', 'مبلغ پرداخت شده',
+            'شهر', 'آدرس', 'نام گیرنده', 'موبایل گیرنده',
+        ];
 
         $filename = 'orders-export-'.now()->format('Y-m-d-H-i').'.xlsx';
 
-        return Response::stream(function () use ($spreadsheet) {
-            $writer = new Xlsx($spreadsheet);
-            $writer->save('php://output');
+        return Response::stream(function () use ($query, $headers) {
+            $options = new XlsxOptions;
+            $options->setShouldCreateNewSheets(false);
+
+            $writer = new XlsxWriter($options);
+            $writer->openToStream(fopen('php://output', 'w', false));
+
+            $headerRow = new OpenSpoutRow(array_map(fn ($h) => Cell::fromValue($h), $headers));
+            $writer->addRow($headerRow);
+
+            $index = 1;
+            $query->with(['user', 'items', 'shipping.shippingMethod', 'address.city', 'address.province'])
+                ->chunk(100, function ($orders) use ($writer, &$index) {
+                    foreach ($orders as $order) {
+                        $data = $this->prepareOrderData($order);
+                        $rowData = array_merge([$index], $data);
+                        $row = new OpenSpoutRow(array_map(fn ($v) => Cell::fromValue($v), $rowData));
+                        $writer->addRow($row);
+                        $index++;
+                    }
+                });
+
+            $writer->close();
         }, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => "attachment;filename=\"{$filename}\"",
