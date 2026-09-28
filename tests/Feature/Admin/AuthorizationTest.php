@@ -11,6 +11,7 @@ use App\Filament\Resources\Products\Pages\ListProducts;
 use App\Filament\Resources\Roles\RoleResource;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Models\User;
+use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,6 +51,36 @@ class AuthorizationTest extends TestCase
 
         $admin = RoleModel::where('name', Role::Admin->value)->first();
         $this->assertCount(count(Permission::cases()), $admin->permissions);
+    }
+
+    public function test_permission_seeder_only_adds_missing_permissions(): void
+    {
+        $custom = PermissionModel::create(['name' => 'manage-custom', 'guard_name' => 'web']);
+        $operator = RoleModel::where('name', Role::Operator->value)->first();
+        $operator->givePermissionTo($custom);
+        $financial = RoleModel::create(['name' => Role::Financial->value, 'guard_name' => 'web']);
+
+        PermissionModel::where('name', Permission::PricingView->value)->delete();
+        PermissionModel::where('name', Permission::PricingEdit->value)->delete();
+
+        $this->seed(PermissionSeeder::class);
+
+        $this->assertNotNull(PermissionModel::where('name', Permission::PricingView->value)->first());
+        $this->assertNotNull(PermissionModel::where('name', 'manage-custom')->first());
+
+        $admin = RoleModel::where('name', Role::Admin->value)->first();
+        $this->assertTrue($admin->hasPermissionTo(Permission::PricingView->value));
+
+        $this->assertTrue($operator->fresh()->hasPermissionTo('manage-custom'));
+        $this->assertFalse($operator->fresh()->hasPermissionTo(Permission::PricingView->value));
+        $this->assertCount(0, $financial->fresh()->permissions);
+
+        $count = PermissionModel::count();
+
+        $this->seed(PermissionSeeder::class);
+
+        $this->assertSame($count, PermissionModel::count());
+        $this->assertTrue($admin->fresh()->hasPermissionTo(Permission::PricingView->value));
     }
 
     public function test_financial_and_content_roles_can_access_panel(): void

@@ -33,50 +33,59 @@ class RolePermissionSeeder extends Seeder
         }
     }
 
+    /**
+     * Roles and the permissions this application expects them to hold.
+     * Single source of truth shared with PermissionSeeder.
+     *
+     * @return array<string, list<Permission>>
+     */
+    public static function rolePermissions(): array
+    {
+        return [
+            Role::Admin->value => Permission::cases(),
+            Role::Manager->value => [
+                Permission::DashboardView,
+                ...self::crud(Permission::ProductView, Permission::ProductCreate, Permission::ProductEdit, Permission::ProductDelete),
+                Permission::ProductPricing,
+                ...self::crud(Permission::CategoryView, Permission::CategoryCreate, Permission::CategoryEdit, Permission::CategoryDelete),
+                ...self::crud(Permission::BrandView, Permission::BrandCreate, Permission::BrandEdit, Permission::BrandDelete),
+                ...self::crud(Permission::OrderView, Permission::OrderCreate, Permission::OrderEdit, Permission::OrderDelete),
+                ...self::crud(Permission::PaymentView, Permission::PaymentCreate, Permission::PaymentEdit, Permission::PaymentDelete),
+                ...self::crud(Permission::CustomerView, Permission::CustomerCreate, Permission::CustomerEdit, Permission::CustomerDelete),
+                ...self::crud(Permission::ShippingView, Permission::ShippingCreate, Permission::ShippingEdit, Permission::ShippingDelete),
+                ...self::crud(Permission::BlogPostView, Permission::BlogPostCreate, Permission::BlogPostEdit, Permission::BlogPostDelete),
+                ...self::crud(Permission::BlogCategoryView, Permission::BlogCategoryCreate, Permission::BlogCategoryEdit, Permission::BlogCategoryDelete),
+                ...self::crud(Permission::BlogTagView, Permission::BlogTagCreate, Permission::BlogTagEdit, Permission::BlogTagDelete),
+                ...self::crud(Permission::ContactMessageView, Permission::ContactMessageEdit, Permission::ContactMessageDelete),
+                Permission::ManagementReportView,
+                Permission::PricingView,
+                Permission::PricingEdit,
+                Permission::DiscountView,
+                Permission::DiscountEdit,
+            ],
+            Role::Operator->value => [
+                Permission::DashboardView,
+                Permission::OrderView,
+                Permission::OrderEdit,
+                Permission::CustomerView,
+            ],
+        ];
+    }
+
     private function seedRoles(): void
     {
-        $this->seedRole(Role::Admin, Permission::cases());
-        $this->seedRole(Role::Manager, [
-            Permission::DashboardView,
-            ...$this->crud(Permission::ProductView, Permission::ProductCreate, Permission::ProductEdit, Permission::ProductDelete),
-            Permission::ProductPricing,
-            ...$this->crud(Permission::CategoryView, Permission::CategoryCreate, Permission::CategoryEdit, Permission::CategoryDelete),
-            ...$this->crud(Permission::BrandView, Permission::BrandCreate, Permission::BrandEdit, Permission::BrandDelete),
-            ...$this->crud(Permission::OrderView, Permission::OrderCreate, Permission::OrderEdit, Permission::OrderDelete),
-            ...$this->crud(Permission::PaymentView, Permission::PaymentCreate, Permission::PaymentEdit, Permission::PaymentDelete),
-            ...$this->crud(Permission::CustomerView, Permission::CustomerCreate, Permission::CustomerEdit, Permission::CustomerDelete),
-            ...$this->crud(Permission::ShippingView, Permission::ShippingCreate, Permission::ShippingEdit, Permission::ShippingDelete),
-            ...$this->crud(Permission::BlogPostView, Permission::BlogPostCreate, Permission::BlogPostEdit, Permission::BlogPostDelete),
-            ...$this->crud(Permission::BlogCategoryView, Permission::BlogCategoryCreate, Permission::BlogCategoryEdit, Permission::BlogCategoryDelete),
-            ...$this->crud(Permission::BlogTagView, Permission::BlogTagCreate, Permission::BlogTagEdit, Permission::BlogTagDelete),
-            ...$this->crud(Permission::ContactMessageView, Permission::ContactMessageEdit, Permission::ContactMessageDelete),
-            Permission::ManagementReportView,
-            Permission::PricingView,
-            Permission::PricingEdit,
-            Permission::DiscountView,
-            Permission::DiscountEdit,
-        ]);
-        $this->seedRole(Role::Operator, [
-            Permission::DashboardView,
-            Permission::OrderView,
-            Permission::OrderEdit,
-            Permission::CustomerView,
-        ]);
+        foreach (self::rolePermissions() as $roleName => $permissions) {
+            $model = RoleModel::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
+            $model->syncPermissions(array_map(
+                static fn (Permission $permission): string => $permission->value,
+                $permissions,
+            ));
+        }
     }
 
     /** @param list<Permission> $permissions */
-    private function crud(Permission ...$permissions): array
+    private static function crud(Permission ...$permissions): array
     {
         return $permissions;
-    }
-
-    /** @param array<int, Permission> $permissions */
-    private function seedRole(Role $role, array $permissions): void
-    {
-        $model = RoleModel::firstOrCreate(['name' => $role->value, 'guard_name' => 'web']);
-        $model->syncPermissions(array_map(
-            static fn (Permission $permission): string => $permission->value,
-            $permissions,
-        ));
     }
 }
