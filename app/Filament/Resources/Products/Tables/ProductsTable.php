@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Products\Tables;
 
+use App\Services\Pricing\DynamicPriceService;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -97,6 +98,12 @@ class ProductsTable
                     ->numeric()
                     ->sortable()
                     ->formatStateUsing(fn ($state): string => number_format((int) $state / 10)),
+
+                IconColumn::make('dynamic_pricing')
+                    ->label('قیمت‌گذاری پویای اجرت')
+                    ->state(fn ($record): bool => app(DynamicPriceService::class)->isEligibleProduct($record))
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('stock_quantity')
                     ->label('موجودی')

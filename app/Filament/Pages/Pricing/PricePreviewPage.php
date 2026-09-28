@@ -34,7 +34,7 @@ class PricePreviewPage extends Page
     /**
      * Short board labels, shared by the live price strip and the «نوع» column.
      */
-    private const BOARD_LABELS = [
+    public const BOARD_LABELS = [
         'Gold750_Sell' => 'طلای ۷۵۰',
         // 'Gold750_Buy' => 'طلای ۷۵۰ (خرید)',
         'Gold995_Sell' => 'طلای ۹۹۵',

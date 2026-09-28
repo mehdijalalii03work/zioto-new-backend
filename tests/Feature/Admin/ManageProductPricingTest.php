@@ -24,9 +24,9 @@ class ManageProductPricingTest extends TestCase
         Filament::setCurrentPanel('admin');
     }
 
-    public function test_labor_percent_is_shown_and_saved_as_coefficient(): void
+    private function product(): Product
     {
-        $product = Product::create([
+        return Product::create([
             'name' => 'شمش طلا ۰/۵ گرم',
             'slug' => 'gold-bar-05',
             'price_type' => 'dynamic',
@@ -34,19 +34,24 @@ class ManageProductPricingTest extends TestCase
             'weight' => '0.50',
             'price' => 1,
         ]);
+    }
+
+    public function test_labor_percent_is_shown_and_saved_as_coefficient(): void
+    {
+        $product = $this->product();
         $user = User::factory()->create()->assignRole(Role::Admin->value);
 
         $component = Livewire::actingAs($user, 'web')
             ->test(ManageProductPricing::class)
-            ->assertSuccessful();
-
-        $itemKey = array_key_first($component->get('data.products'));
-
-        $component
+            ->assertSuccessful()
             // The default coefficient (1.0) is presented as 100%.
-            ->assertSet("data.products.{$itemKey}.coef_daily_basic", 100)
+            ->assertSet("values.{$product->id}.daily.basic", 100)
+            ->assertSee("wire:model=\"values.{$product->id}.daily.basic\"", false)
+            ->call('setPeriod', 'nightly')
+            ->assertSet('activePeriod', 'nightly')
+            ->call('setPeriod', 'daily')
             ->call('toggleEdit')
-            ->set("data.products.{$itemKey}.coef_daily_basic", 7.7)
+            ->set("values.{$product->id}.daily.basic", 7.7)
             ->call('save');
 
         $matrix = $product->fresh()->labor_coefficients;
@@ -55,5 +60,40 @@ class ManageProductPricingTest extends TestCase
         // Cells left untouched keep the 100% default.
         $this->assertEqualsWithDelta(1.0, $matrix['daily']['pro'] ?? null, 1e-9);
         $this->assertEqualsWithDelta(1.0, $matrix['nightly']['basic'] ?? null, 1e-9);
+        $this->assertFalse($component->get('isEditing'));
+    }
+
+    public function test_page_renders_the_matrix_table(): void
+    {
+        $this->product();
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        $this->actingAs($user, 'web')
+            ->get('/admin/products/manage-pricing')
+            ->assertOk()
+            ->assertSee('درصد اجرت هر محصول')
+            ->assertSee('وزن (گرم)')
+            ->assertSee('شمش طلا ۰/۵ گرم')
+            ->assertSee('روزانه')
+            ->assertSee('مشتری سطح پایه')
+            ->assertSee('٪');
+    }
+
+    public function test_non_numeric_values_keep_the_stored_coefficient(): void
+    {
+        $product = $this->product();
+        $product->update(['labor_coefficients' => ['daily' => ['basic' => 0.077]]]);
+
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        Livewire::actingAs($user, 'web')
+            ->test(ManageProductPricing::class)
+            ->call('toggleEdit')
+            ->set("values.{$product->id}.daily.basic", '')
+            ->call('save');
+
+        $matrix = $product->fresh()->labor_coefficients;
+
+        $this->assertEqualsWithDelta(0.077, $matrix['daily']['basic'] ?? null, 1e-9);
     }
 }
