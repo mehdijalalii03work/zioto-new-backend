@@ -1,6 +1,7 @@
 <x-filament-panels::page>
     <p class="mb-4 text-sm text-gray-500">
-        قیمت نهایی بر اساس وزن، قیمت فلز و ضرایب اجرت محاسبه می‌شود.
+        قیمت نهایی بر اساس وزن، قیمت فلز، ضرایب اجرت و مالیات محاسبه می‌شود.
+        مالیات نقره روی کل قیمت (شامل اجرت) و مالیات طلا فقط روی اجرت می‌رود.
     </p>
 
     <div class="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100 p-4">
@@ -86,6 +87,11 @@
                                     @if($cell)
                                         <span class="block text-xs text-gray-500">درصد اجرت: {{ round($cell['coefficient'] * 100, 4) }}٪</span>
                                         <span class="block text-[13px] text-amber-700">اجرت: {{ number_format($cell['labor_cost']) }}</span>
+                                        @foreach($cell['taxes'] ?? [] as $tax)
+                                            <span class="block text-[13px] text-rose-700">
+                                                مالیات {{ $tax['scope'] === 'labor' ? 'اجرت' : 'روی کل' }} ({{ $tax['rate'] }}٪): {{ number_format($tax['amount']) }}
+                                            </span>
+                                        @endforeach
                                         <span class="block text-sm font-bold text-blue-800">نهایی: {{ number_format($cell['final_price']) }}</span>
                                     @else
                                         <span class="text-gray-400">—</span>

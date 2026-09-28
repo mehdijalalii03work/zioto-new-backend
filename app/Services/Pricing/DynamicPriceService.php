@@ -68,12 +68,9 @@ class DynamicPriceService
         $role = $roleSlug ?? $this->labor->getUserLaborRole($userId);
         $coefficient = $this->labor->coefficientFor($product, $period, $role);
 
-        $calculated = $weight * $boardPrice * (1 + $coefficient);
-        $calculated = round($calculated);
-
-        $calculated = $this->applyTax($product, $calculated);
-        $calculated = $this->applyLaborTax($product, $calculated, $weight * $boardPrice * $coefficient);
-        $calculated = $this->applyStepRounding($calculated);
+        $labor = $weight * $boardPrice * $coefficient;
+        $withTaxes = $this->priceWithTaxes($product, round($weight * $boardPrice * (1 + $coefficient)), $labor);
+        $calculated = $this->applyStepRounding($withTaxes['price']);
 
         return (float) ($calculated * self::RIAL_PER_TOMAN);
     }
@@ -162,10 +159,9 @@ class DynamicPriceService
         $role = $roleSlug ?? $this->labor->getUserLaborRole();
         $coefficient = $this->labor->coefficientFor($product, $period, $role);
 
-        $calculated = round($weight * $basePrice * (1 + $coefficient));
-        $calculated = $this->applyTax($product, $calculated);
-        $calculated = $this->applyLaborTax($product, $calculated, $weight * $basePrice * $coefficient);
-        $calculated = $this->applyStepRounding($calculated);
+        $labor = $weight * $basePrice * $coefficient;
+        $withTaxes = $this->priceWithTaxes($product, round($weight * $basePrice * (1 + $coefficient)), $labor);
+        $calculated = $this->applyStepRounding($withTaxes['price']);
 
         $prices = $this->priceBoard->getBoardPrices();
 
@@ -177,6 +173,7 @@ class DynamicPriceService
             'user_role' => $role,
             'base_price' => $basePrice,
             'calculated_price' => (float) $calculated,
+            'taxes' => $withTaxes['taxes'],
             'trend' => $prices[$metalType]['trend'] ?? null,
             'updated_at' => $prices[$metalType]['updated_at'] ?? null,
         ];
@@ -190,7 +187,7 @@ class DynamicPriceService
      *
      * @param  list<array{slug: string}>  $periods
      * @param  list<array{slug: string}>  $roles
-     * @return array<string, array<string, array{coefficient: float, labor_cost: float, final_price: float}>>
+     * @return array<string, array<string, array{coefficient: float, labor_cost: float, final_price: float, taxes: list<array{scope: string, rate: float, amount: float>}>}>
      */
     public function previewMatrix(object $product, array $periods, array $roles): array
     {
@@ -216,21 +213,55 @@ class DynamicPriceService
             foreach ($roles as $role) {
                 $roleSlug = $role['slug'];
                 $coefficient = $this->labor->coefficientFor($product, $periodSlug, $roleSlug);
+                $labor = $rawCost * $coefficient;
 
-                $finalPrice = round($rawCost * (1 + $coefficient));
-                $finalPrice = $this->applyTax($product, $finalPrice);
-                $finalPrice = $this->applyLaborTax($product, $finalPrice, $rawCost * $coefficient);
-                $finalPrice = $this->applyStepRounding($finalPrice);
+                $withTaxes = $this->priceWithTaxes($product, round($rawCost * (1 + $coefficient)), $labor);
+                $finalPrice = $this->applyStepRounding($withTaxes['price']);
 
                 $matrix[$periodSlug][$roleSlug] = [
                     'coefficient' => $coefficient,
-                    'labor_cost' => round($rawCost * $coefficient),
+                    'labor_cost' => round($labor),
                     'final_price' => $finalPrice,
+                    'taxes' => $withTaxes['taxes'],
                 ];
             }
         }
 
         return $matrix;
+    }
+
+    /**
+     * Applies every tax that belongs to the product and reports what it added.
+     *
+     * Gold: `tax_gold` on the whole price (usually 0) plus `tax_gold_labor` on
+     * the labor only. Silver: `tax_silver` on the whole price, labor included.
+     *
+     * @return array{price: float, taxes: list<array{scope: string, rate: float, amount: float}>}
+     */
+    private function priceWithTaxes(object $product, float $price, float $labor): array
+    {
+        $isGold = $this->isGold($product);
+        $taxes = [];
+
+        $metalRate = (float) Setting::getValue($isGold ? 'tax_gold' : 'tax_silver', 0);
+
+        if ($metalRate > 0) {
+            $taxed = $this->applyTax($product, $price);
+            $taxes[] = ['scope' => 'total', 'rate' => $metalRate, 'amount' => $taxed - $price];
+            $price = $taxed;
+        }
+
+        if ($isGold && $labor > 0) {
+            $laborRate = PricingSettings::taxGoldLabor();
+
+            if ($laborRate > 0) {
+                $taxed = $this->applyLaborTax($product, $price, $labor);
+                $taxes[] = ['scope' => 'labor', 'rate' => $laborRate, 'amount' => $taxed - $price];
+                $price = $taxed;
+            }
+        }
+
+        return ['price' => $price, 'taxes' => $taxes];
     }
 
     private function applyTax(object $product, float $price): float

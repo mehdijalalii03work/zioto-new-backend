@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Enums\Role;
 use App\Filament\Pages\Pricing\PricePreviewPage;
+use App\Models\Setting;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Filament\Facades\Filament;
@@ -34,6 +35,14 @@ class PricePreviewPageTest extends TestCase
                     'value' => $value,
                     'price_type' => 'sell',
                     'base_metal' => 'Gold750',
+                    'trend' => 'stable',
+                    'updated_at' => now()->timestamp,
+                ],
+                'Silver9999_Sell' => [
+                    'name' => 'قیمت فروش نقره ۹۹۹.۹',
+                    'value' => $value,
+                    'price_type' => 'sell',
+                    'base_metal' => 'Silver9999',
                     'trend' => 'stable',
                     'updated_at' => now()->timestamp,
                 ],
@@ -80,6 +89,56 @@ class PricePreviewPageTest extends TestCase
         // Only the active period's role columns are rendered.
         $this->assertSame(4, substr_count($component->html(), 'درصد اجرت:'));
         $this->assertSame(4, substr_count($component->html(), 'مشتری سطح '));
+    }
+
+    public function test_preview_shows_tax_on_labor_for_gold_and_on_total_for_silver(): void
+    {
+        Setting::create([
+            'key' => 'tax_silver',
+            'value' => '10',
+            'type' => 'number',
+            'category' => 'tax',
+            'label' => 'درصد مالیات نقره',
+        ]);
+        Setting::create([
+            'key' => 'tax_gold_labor',
+            'value' => '10',
+            'type' => 'number',
+            'category' => 'tax',
+            'label' => 'درصد مالیات اجرت طلا',
+        ]);
+
+        $this->seedBoard();
+
+        Product::create([
+            'name' => 'انگشتر طلا',
+            'slug' => 'gold-ring-with-tax',
+            'price_type' => 'dynamic',
+            'price_board_item' => 'Gold750_Sell',
+            'weight' => '2.00',
+            'price' => 1,
+        ]);
+
+        Product::create([
+            'name' => 'دستبند نقره',
+            'slug' => 'silver-bracelet',
+            'price_type' => 'dynamic',
+            'price_board_item' => 'Silver9999_Sell',
+            'weight' => '2.00',
+            'price' => 1,
+        ]);
+
+        $html = Livewire::actingAs($this->admin(), 'web')
+            ->test(PricePreviewPage::class)
+            ->assertSuccessful()
+            ->assertSee('مالیات اجرت (10٪): 200')
+            ->assertSee('مالیات روی کل (10٪): 400')
+            ->html();
+
+        // Gold: 10% of the 2,000 Toman labor only, so 4,000 → 4,200.
+        $this->assertStringContainsString('نهایی: 4,200', $html);
+        // Silver: 10% on the whole 4,000 Toman price.
+        $this->assertStringContainsString('نهایی: 4,400', $html);
     }
 
     public function test_preview_shows_empty_state_without_dynamic_products(): void

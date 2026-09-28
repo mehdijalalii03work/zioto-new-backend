@@ -68,7 +68,7 @@ class PricePreviewPage extends Page
     /**
      * One row per product, cells keyed by period slug then role order to match the header.
      *
-     * @var list<array{id: int, name: string, edit_url: string, metal_label: string, weight: float, cells: array<string, list<array{coefficient: float, labor_cost: float, final_price: float}|null>>}>
+     * @var list<array{id: int, name: string, edit_url: string, metal_label: string, weight: float, cells: array<string, list<array{coefficient: float, labor_cost: float, final_price: float, taxes: list<array{scope: string, rate: float, amount: float>}>|null>>}>
      */
     public array $rows = [];
 
@@ -144,7 +144,7 @@ class PricePreviewPage extends Page
     }
 
     /**
-     * @return list<array{id: int, name: string, edit_url: string, metal_label: string, weight: float, cells: array<string, list<array{coefficient: float, labor_cost: float, final_price: float}|null>>}>
+     * @return list<array{id: int, name: string, edit_url: string, metal_label: string, weight: float, cells: array<string, list<array{coefficient: float, labor_cost: float, final_price: float, taxes: list<array{scope: string, rate: float, amount: float>}>|null>>}>
      */
     private function buildRows(DynamicPriceService $service): array
     {

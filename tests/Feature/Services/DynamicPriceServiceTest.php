@@ -136,6 +136,13 @@ class DynamicPriceServiceTest extends TestCase
         $matrix = app(DynamicPriceService::class)->previewMatrix($product, [['slug' => 'daily']], [['slug' => 'basic']]);
 
         $this->assertSame(4200.0, (float) $matrix['daily']['basic']['final_price']);
+
+        $taxes = $matrix['daily']['basic']['taxes'];
+
+        $this->assertCount(1, $taxes);
+        $this->assertSame('labor', $taxes[0]['scope']);
+        $this->assertSame(10.0, $taxes[0]['rate']);
+        $this->assertSame(200.0, $taxes[0]['amount']);
     }
 
     public function test_gold_labor_tax_is_skipped_for_silver_and_static_products(): void
@@ -152,6 +159,10 @@ class DynamicPriceServiceTest extends TestCase
         $silver = $this->product(['price_board_item' => 'Silver9999_Sell']);
 
         $this->assertSame(40000.0, app(DynamicPriceService::class)->priceFor($silver));
+
+        $silverMatrix = app(DynamicPriceService::class)->previewMatrix($silver, [['slug' => 'daily']], [['slug' => 'basic']]);
+
+        $this->assertSame([], $silverMatrix['daily']['basic']['taxes']);
 
         $this->seedBoard('Gold750_Sell', 1000);
         $static = $this->product(['price_type' => 'fixed']);
