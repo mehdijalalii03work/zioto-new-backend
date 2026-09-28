@@ -57,26 +57,70 @@ class SyncPriceBoard extends Command
 
         $tapsi = $sync->syncTapsi();
 
-        if (($tapsi['tapsi_sent'] ?? 0) > 0) {
-            $outcome = ($tapsi['tapsi_success'] ?? false) ? 'success' : 'failed';
-            $this->info("Sent {$tapsi['tapsi_sent']} products to Tapsi Shop ({$outcome}).");
-        } elseif (! config('tapsi.enabled')) {
-            $this->warn('Tapsi sync disabled — skipped sending to Tapsi.');
-        }
+        $this->reportTapsiOutcome($tapsi);
 
         $this->broadcastProducts();
         $this->clearProductApiCache();
 
-        broadcast(new PriceBoardUpdated($prices));
+        $this->safeBroadcast(new PriceBoardUpdated($prices));
 
         Log::info('[PriceBoard] Sync completed', [
             'products_updated' => $updated,
             'from_cache' => ! $fromApi,
             'source' => 'zioto',
             'tapsi_sent' => $tapsi['tapsi_sent'] ?? 0,
+            'tapsi_skipped' => $tapsi['tapsi_skipped'] ?? null,
         ]);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Translate the Tapsi sync result into a single console line.
+     *
+     * @param  array<string, mixed>  $tapsi
+     */
+    private function reportTapsiOutcome(array $tapsi): void
+    {
+        if (($tapsi['status'] ?? null) === 'skipped') {
+            $this->warn('Previous sync job is still active — skipped pushing to Tapsi.');
+
+            return;
+        }
+
+        if (! empty($tapsi['tapsi_skipped'])) {
+            $this->warn($tapsi['tapsi_skipped'] === 'disabled'
+                ? 'Tapsi sync disabled — skipped sending to Tapsi.'
+                : 'Tapsi auth token missing — skipped sending to Tapsi.');
+
+            return;
+        }
+
+        if (($tapsi['tapsi_sent'] ?? 0) > 0) {
+            $outcome = ($tapsi['tapsi_success'] ?? false) ? 'success' : 'failed';
+            $this->info("Sent {$tapsi['tapsi_sent']} products to Tapsi Shop ({$outcome}).");
+
+            return;
+        }
+
+        $this->info('No product price/stock changes to push to Tapsi Shop.');
+    }
+
+    /**
+     * Broadcasting must never abort a sync — the price board and product
+     * prices are already persisted by the time we push.
+     */
+    private function safeBroadcast(object $event): void
+    {
+        try {
+            $pending = broadcast($event);
+            unset($pending);
+        } catch (\Throwable $e) {
+            Log::warning('[PriceBoard] Broadcast failed; sync continues.', [
+                'event' => $event::class,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -149,7 +193,7 @@ class SyncPriceBoard extends Command
             return;
         }
 
-        broadcast(new ProductsUpdated($products));
+        $this->safeBroadcast(new ProductsUpdated($products));
     }
 
     private function formatProduct(Product $p): array
@@ -209,8 +253,10 @@ class SyncPriceBoard extends Command
         if ($result['tapsi_sent'] > 0) {
             $outcome = $result['tapsi_success'] ? 'success' : 'failed';
             $this->info("Sent {$result['tapsi_sent']} products to Tapsi Shop ({$outcome}).");
-        } elseif (! config('tapsi.enabled')) {
-            $this->warn('Tapsi sync disabled — skipped sending to Tapsi.');
+        } elseif (! empty($result['tapsi_skipped'])) {
+            $this->warn($result['tapsi_skipped'] === 'disabled'
+                ? 'Tapsi sync disabled — skipped sending to Tapsi.'
+                : 'Tapsi auth token missing — skipped sending to Tapsi.');
         }
 
         Log::info('[PriceBoard] Direct sync completed', [

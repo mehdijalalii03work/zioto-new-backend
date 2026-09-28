@@ -11,6 +11,12 @@ use Modules\Product\Models\Product;
 
 class TokenikoDirectSyncService
 {
+    /**
+     * Cache key holding the payload we last delivered to Tapsi, so the next
+     * dynamic run only pushes products whose price or stock actually changed.
+     */
+    private const LAST_PUSHED_CACHE_KEY = 'tapsi:last_pushed_payload';
+
     public function __construct(
         private readonly TokenikoShopService $tokenikoShop,
         private readonly TapsiShopService $tapsiShop,
@@ -26,6 +32,9 @@ class TokenikoDirectSyncService
      *
      * Used by the dynamic flow, where products.price is owned by the price board
      * (PersianAPI + Tala) and must not be overwritten from the Tokeniko shop API.
+     *
+     * Only products whose price or stock differs from the last delivered payload
+     * are sent; an emergency status flip changes every stock and therefore pushes all.
      */
     public function syncTapsi(): array
     {
@@ -66,7 +75,7 @@ class TokenikoDirectSyncService
             ->get();
 
         $updates = [];
-        $tapsiProducts = [];
+        $candidates = [];
 
         foreach ($products as $product) {
             $sku = mb_strtolower(trim($product->tokeniko_sku));
@@ -85,7 +94,7 @@ class TokenikoDirectSyncService
                 $tapsiPrice = $this->tapsiShop->calculateTapsiPrice($newPrice);
                 $availableStock = $emergencyActive ? 0 : ($product->sellable_stock ?? $product->stock_quantity ?? 0);
 
-                $tapsiProducts[] = [
+                $candidates[$product->id] = [
                     'id' => $product->tapsi_product_id,
                     'price' => $tapsiPrice,
                     'specialprice' => $tapsiPrice,
@@ -103,10 +112,22 @@ class TokenikoDirectSyncService
             });
         }
 
+        $tapsiSkipped = $this->tapsiSkipReason();
+        $tapsiProducts = [];
         $tapsiSuccess = null;
 
-        if (! empty($tapsiProducts) && config('tapsi.enabled')) {
-            $tapsiSuccess = $this->tapsiShop->sendBatch($tapsiProducts);
+        if ($tapsiSkipped === null && $candidates !== []) {
+            $tapsiProducts = $updatePrices
+                ? array_values($candidates)
+                : $this->changedSinceLastPush($candidates);
+
+            if ($tapsiProducts !== []) {
+                $tapsiSuccess = $this->tapsiShop->sendBatch($tapsiProducts);
+
+                if ($tapsiSuccess === true) {
+                    $this->rememberPushedPayload($candidates);
+                }
+            }
         }
 
         $this->clearProductCache();
@@ -120,6 +141,7 @@ class TokenikoDirectSyncService
             'products_updated' => count($updates),
             'tapsi_sent' => count($tapsiProducts),
             'tapsi_success' => $tapsiSuccess,
+            'tapsi_skipped' => $tapsiSkipped,
             'emergency_active' => $emergencyActive,
         ]);
 
@@ -130,7 +152,71 @@ class TokenikoDirectSyncService
             tapsiSuccess: $tapsiSuccess,
             emergencyActive: $emergencyActive,
             directPrices: $prices,
+            tapsiSkipped: $tapsiSkipped,
         );
+    }
+
+    /**
+     * Why nothing may be delivered to Tapsi right now, or null when we may send.
+     */
+    private function tapsiSkipReason(): ?string
+    {
+        if (! config('tapsi.enabled')) {
+            return 'disabled';
+        }
+
+        if (! $this->tapsiShop->hasToken()) {
+            return 'token_missing';
+        }
+
+        return null;
+    }
+
+    /**
+     * Products whose Tapsi price or stock differs from the last delivered payload.
+     *
+     * @param  array<int, array<string, mixed>>  $candidates
+     * @return array<int, array<string, mixed>>
+     */
+    private function changedSinceLastPush(array $candidates): array
+    {
+        $lastPushed = Cache::get(self::LAST_PUSHED_CACHE_KEY)['products'] ?? [];
+
+        $changed = [];
+
+        foreach ($candidates as $productId => $payload) {
+            $previous = $lastPushed[$productId] ?? null;
+
+            if ($previous === null
+                || (int) $previous['price'] !== (int) $payload['price']
+                || (int) $previous['stock'] !== (int) $payload['stock']) {
+                $changed[] = $payload;
+            }
+        }
+
+        return $changed;
+    }
+
+    /**
+     * Remember the payload Tapsi now holds so the next run only sends deltas.
+     *
+     * @param  array<int, array<string, mixed>>  $candidates
+     */
+    private function rememberPushedPayload(array $candidates): void
+    {
+        $products = [];
+
+        foreach ($candidates as $productId => $payload) {
+            $products[$productId] = [
+                'price' => (int) $payload['price'],
+                'stock' => (int) $payload['stock'],
+            ];
+        }
+
+        Cache::forever(self::LAST_PUSHED_CACHE_KEY, [
+            'products' => $products,
+            'pushed_at' => now()->toIso8601String(),
+        ]);
     }
 
     private function result(
@@ -140,12 +226,14 @@ class TokenikoDirectSyncService
         ?bool $tapsiSuccess = null,
         bool $emergencyActive = false,
         array $directPrices = [],
+        ?string $tapsiSkipped = null,
     ): array {
         return [
             'status' => $status,
             'updated' => $updated,
             'tapsi_sent' => $tapsiSent,
             'tapsi_success' => $tapsiSuccess,
+            'tapsi_skipped' => $tapsiSkipped,
             'emergency_active' => $emergencyActive,
             'direct_prices' => $directPrices,
         ];
@@ -160,8 +248,17 @@ class TokenikoDirectSyncService
             ->map(fn (Product $p) => $this->formatProduct($p))
             ->toArray();
 
-        if (! empty($products)) {
-            broadcast(new ProductsUpdated($products));
+        if ($products === []) {
+            return;
+        }
+
+        try {
+            $pending = broadcast(new ProductsUpdated($products));
+            unset($pending);
+        } catch (\Throwable $e) {
+            Log::warning('[TokenikoDirectSync] Broadcast failed; sync continues.', [
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

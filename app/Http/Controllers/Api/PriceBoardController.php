@@ -18,7 +18,7 @@ class PriceBoardController extends Controller
 
         return response()->json([
             'data' => [
-                'prices' => $payload['prices'] ?? [],
+                'products' => $payload['prices'] ?? [],
                 'source_status' => $payload['source_status'] ?? [],
                 'updated_at' => $this->priceBoard->getLastSyncAt()?->toIso8601String(),
             ],
@@ -32,7 +32,7 @@ class PriceBoardController extends Controller
         return response()->json([
             'message' => 'تخته قیمت بروزرسانی شد',
             'data' => [
-                'prices' => $payload['prices'] ?? [],
+                'products' => $payload['prices'] ?? [],
                 'source_status' => $payload['source_status'] ?? [],
                 'updated_at' => $this->priceBoard->getLastSyncAt()?->toIso8601String(),
             ],

@@ -43,8 +43,10 @@ class SyncTokenikoPrices extends Command
         if ($result['tapsi_sent'] > 0) {
             $outcome = $result['tapsi_success'] ? 'success' : 'failed';
             $this->info("Sent {$result['tapsi_sent']} products to Tapsi Shop ({$outcome}).");
-        } elseif (! config('tapsi.enabled')) {
-            $this->warn('Tapsi sync disabled — skipped sending to Tapsi.');
+        } elseif (! empty($result['tapsi_skipped'])) {
+            $this->warn($result['tapsi_skipped'] === 'disabled'
+                ? 'Tapsi sync disabled — skipped sending to Tapsi.'
+                : 'Tapsi auth token missing — skipped sending to Tapsi.');
         }
 
         return self::SUCCESS;

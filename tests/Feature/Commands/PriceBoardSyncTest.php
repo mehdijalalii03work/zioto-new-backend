@@ -6,6 +6,7 @@ use App\Services\PriceBoardService;
 use App\Services\PriceHistoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Mockery;
 use Modules\Product\Models\Product;
@@ -136,5 +137,118 @@ class PriceBoardSyncTest extends TestCase
 
         $this->assertDatabaseHas('products', ['id' => $product->id, 'price' => 300_000_000]);
         $this->assertCount(1, $tapsiRequests);
+    }
+
+    public function test_dynamic_mode_pushes_only_products_whose_price_or_stock_changed(): void
+    {
+        config(['pricing.mode' => 'dynamic']);
+
+        $this->fakeBoard();
+        app()->instance(PriceHistoryService::class, Mockery::spy(PriceHistoryService::class));
+
+        $product = $this->product();
+
+        $tapsiRequests = [];
+        Http::fake([
+            '*vendorgw.tapsi.shop/*' => function (Request $request) use (&$tapsiRequests) {
+                $tapsiRequests[] = $request;
+
+                return Http::response(['success' => true], 200);
+            },
+        ]);
+
+        $this->artisan('priceboard:sync')->assertExitCode(0);
+        $this->assertCount(1, $tapsiRequests);
+
+        $this->artisan('priceboard:sync')
+            ->expectsOutputToContain('No product price/stock changes to push to Tapsi Shop.')
+            ->assertExitCode(0);
+        $this->assertCount(1, $tapsiRequests);
+
+        Product::where('id', $product->id)->update(['hesabfa_physical_stock' => 9]);
+
+        $this->artisan('priceboard:sync')->assertExitCode(0);
+        $this->assertCount(2, $tapsiRequests);
+
+        $payload = $tapsiRequests[1]->data()['products'];
+        $this->assertCount(1, $payload);
+        $this->assertSame($product->tapsi_product_id, $payload[0]['id']);
+        $this->assertSame(9, $payload[0]['stock']);
+    }
+
+    public function test_dynamic_mode_skips_tapsi_when_auth_token_is_missing(): void
+    {
+        config(['pricing.mode' => 'dynamic', 'tapsi.auth_token' => '']);
+
+        $this->fakeBoard();
+        app()->instance(PriceHistoryService::class, Mockery::spy(PriceHistoryService::class));
+        $this->product();
+
+        Http::fake();
+
+        $this->artisan('priceboard:sync')
+            ->expectsOutputToContain('Tapsi auth token missing — skipped sending to Tapsi.')
+            ->assertExitCode(0);
+
+        $this->assertCount(0, Http::recorded()->filter(
+            fn (array $pair) => str_contains($pair[0]->url(), 'vendorgw.tapsi.shop')
+        ));
+    }
+
+    public function test_dynamic_mode_skips_tapsi_when_sync_is_disabled(): void
+    {
+        config(['pricing.mode' => 'dynamic', 'tapsi.enabled' => false]);
+
+        $this->fakeBoard();
+        app()->instance(PriceHistoryService::class, Mockery::spy(PriceHistoryService::class));
+        $this->product();
+
+        Http::fake();
+
+        $this->artisan('priceboard:sync')
+            ->expectsOutputToContain('Tapsi sync disabled — skipped sending to Tapsi.')
+            ->assertExitCode(0);
+
+        $this->assertCount(0, Http::recorded()->filter(
+            fn (array $pair) => str_contains($pair[0]->url(), 'vendorgw.tapsi.shop')
+        ));
+    }
+
+    public function test_dynamic_mode_reports_a_skipped_tapsi_push_when_the_lock_is_held(): void
+    {
+        config(['pricing.mode' => 'dynamic']);
+
+        $this->fakeBoard();
+        app()->instance(PriceHistoryService::class, Mockery::spy(PriceHistoryService::class));
+        $this->product();
+
+        Http::fake();
+
+        $lock = Cache::lock('tokeniko:direct-sync', 300);
+        $lock->get();
+
+        $this->artisan('priceboard:sync')
+            ->expectsOutputToContain('Previous sync job is still active — skipped pushing to Tapsi.')
+            ->assertExitCode(0);
+
+        $lock->release();
+    }
+
+    public function test_dynamic_mode_completes_when_the_broadcast_connection_is_broken(): void
+    {
+        config(['pricing.mode' => 'dynamic', 'broadcasting.default' => 'bogus-driver']);
+
+        $this->fakeBoard();
+        app()->instance(PriceHistoryService::class, Mockery::spy(PriceHistoryService::class));
+
+        $product = $this->product(['price' => 1]);
+
+        Http::fake([
+            '*vendorgw.tapsi.shop/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $this->artisan('priceboard:sync')->assertExitCode(0);
+
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'price' => 40000]);
     }
 }

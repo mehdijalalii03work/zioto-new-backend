@@ -12,6 +12,14 @@ class TapsiShopService
 {
     private string $token = '';
 
+    /**
+     * Whether an outgoing auth token is configured (setting or env).
+     */
+    public function hasToken(): bool
+    {
+        return $this->getToken() !== '';
+    }
+
     public function sendBatch(array $products): bool
     {
         if (empty($products)) {

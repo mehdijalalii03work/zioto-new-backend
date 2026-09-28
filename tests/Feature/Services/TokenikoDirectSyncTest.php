@@ -3,6 +3,7 @@
 namespace Tests\Feature\Services;
 
 use App\Models\Setting;
+use App\Services\PriceBoardService;
 use App\Services\TokenikoDirectSyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -219,6 +220,115 @@ class TokenikoDirectSyncTest extends TestCase
 
         $this->assertDatabaseHas('products', ['price' => 300_000_000]);
         $this->assertNotEmpty(Cache::get('priceboard:prices'));
+        $this->assertIsString(Cache::get('priceboard:last_sync_at'));
+        $this->assertNotNull(app(PriceBoardService::class)->getLastSyncAt());
         $this->assertCount(1, $tapsiRequests);
+    }
+
+    public function test_sync_tapsi_sends_only_products_whose_price_or_stock_changed(): void
+    {
+        $stockChanging = $this->product('zioto-gold-bar-1gram-995', 'ZGB5-0001-0', 300_000_000, physical: 5, reserved: 1);
+        $this->product('zioto-silver-bar-5gram', 'ZSB9-0005-0', 26_950_000, physical: 5, reserved: 0);
+
+        $tapsiRequests = [];
+        $this->fakeTapsiOnly($tapsiRequests);
+
+        $result = $this->service->syncTapsi();
+        $this->assertSame(2, $result['tapsi_sent']);
+        $this->assertTrue($result['tapsi_success']);
+        $this->assertCount(1, $tapsiRequests);
+
+        $result = $this->service->syncTapsi();
+        $this->assertSame(0, $result['tapsi_sent']);
+        $this->assertNull($result['tapsi_success']);
+        $this->assertNull($result['tapsi_skipped']);
+        $this->assertCount(1, $tapsiRequests);
+
+        Product::where('id', $stockChanging->id)->update(['hesabfa_physical_stock' => 3]);
+
+        $result = $this->service->syncTapsi();
+        $this->assertSame(1, $result['tapsi_sent']);
+        $this->assertCount(2, $tapsiRequests);
+
+        $payload = $tapsiRequests[1]->data()['products'];
+        $this->assertCount(1, $payload);
+        $this->assertSame('ZGB5-0001-0', $payload[0]['id']);
+        $this->assertSame(2, $payload[0]['stock']);
+    }
+
+    public function test_sync_tapsi_pushes_zero_stock_when_emergency_closes(): void
+    {
+        $this->product('zioto-gold-bar-1gram-995', 'ZGB5-0001-0', 300_000_000, physical: 5, reserved: 1);
+
+        $tapsiRequests = [];
+        $this->fakeTapsiOnly($tapsiRequests);
+
+        $this->service->syncTapsi();
+        $this->assertCount(1, $tapsiRequests);
+        $this->assertSame(4, $tapsiRequests[0]->data()['products'][0]['stock']);
+
+        Setting::create([
+            'key' => 'tapsi_emergency_status',
+            'value' => 'closed',
+            'type' => 'string',
+            'category' => 'tapsi',
+            'label' => 'Tapsi Emergency Status',
+        ]);
+
+        $result = $this->service->syncTapsi();
+
+        $this->assertSame(1, $result['tapsi_sent']);
+        $this->assertCount(2, $tapsiRequests);
+        $this->assertSame(0, $tapsiRequests[1]->data()['products'][0]['stock']);
+    }
+
+    public function test_sync_tapsi_skips_when_disabled(): void
+    {
+        config(['tapsi.enabled' => false]);
+
+        $this->product('zioto-gold-bar-1gram-995', 'ZGB5-0001-0', 300_000_000);
+
+        Http::fake();
+
+        $result = $this->service->syncTapsi();
+
+        $this->assertSame('disabled', $result['tapsi_skipped']);
+        $this->assertSame(0, $result['tapsi_sent']);
+        $this->assertNull($result['tapsi_success']);
+        $this->assertSame(0, $this->recordedTapsiRequests());
+    }
+
+    public function test_sync_tapsi_skips_when_auth_token_is_missing(): void
+    {
+        config(['tapsi.auth_token' => '']);
+
+        $this->product('zioto-gold-bar-1gram-995', 'ZGB5-0001-0', 300_000_000);
+
+        Http::fake();
+
+        $result = $this->service->syncTapsi();
+
+        $this->assertSame('token_missing', $result['tapsi_skipped']);
+        $this->assertSame(0, $result['tapsi_sent']);
+        $this->assertNull($result['tapsi_success']);
+        $this->assertSame(0, $this->recordedTapsiRequests());
+    }
+
+    private function fakeTapsiOnly(array &$tapsiRequests): void
+    {
+        Http::fake([
+            '*vendorgw.tapsi.shop/*' => function (Request $request) use (&$tapsiRequests) {
+                $tapsiRequests[] = $request;
+
+                return Http::response(['success' => true], 200);
+            },
+        ]);
+    }
+
+    private function recordedTapsiRequests(): int
+    {
+        return Http::recorded()->filter(
+            fn (array $pair) => str_contains($pair[0]->url(), 'vendorgw.tapsi.shop')
+        )->count();
     }
 }

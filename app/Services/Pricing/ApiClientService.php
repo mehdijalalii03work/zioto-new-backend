@@ -82,7 +82,10 @@ class ApiClientService
         Cache::put('zioto:raw', $payload['raw'], $ttl);
         Cache::put('zioto:payload', $payload, $ttl);
         Cache::put('priceboard:prices', $payload, $ttl);
-        Cache::put('priceboard:last_sync_at', now(), $ttl);
+        // Plain string: a serialized Carbon object can fail to unserialize on
+        // some environments, which made getLastSyncAt() return null and the
+        // sync command falsely report "API unavailable".
+        Cache::put('priceboard:last_sync_at', now()->toIso8601String(), $ttl);
 
         if (! $this->usedFallback && $prices !== []) {
             PricingSettings::storeLastSuccessfulData($prices);
