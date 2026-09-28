@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
  *
  * board is stored in Toman, products.price is stored in Rial:
  *
- * price(Rial) = weight × board(metal, Toman) × (1 + coefficient)  → round → tax → step rounding → ×10
+ * price(Rial) = weight × board(metal, Toman) × (1 + coefficient)  → round → tax → labor tax (gold) → step rounding → ×10
  */
 class DynamicPriceService
 {
@@ -72,6 +72,7 @@ class DynamicPriceService
         $calculated = round($calculated);
 
         $calculated = $this->applyTax($product, $calculated);
+        $calculated = $this->applyLaborTax($product, $calculated, $weight * $boardPrice * $coefficient);
         $calculated = $this->applyStepRounding($calculated);
 
         return (float) ($calculated * self::RIAL_PER_TOMAN);
@@ -163,6 +164,7 @@ class DynamicPriceService
 
         $calculated = round($weight * $basePrice * (1 + $coefficient));
         $calculated = $this->applyTax($product, $calculated);
+        $calculated = $this->applyLaborTax($product, $calculated, $weight * $basePrice * $coefficient);
         $calculated = $this->applyStepRounding($calculated);
 
         $prices = $this->priceBoard->getBoardPrices();
@@ -217,6 +219,7 @@ class DynamicPriceService
 
                 $finalPrice = round($rawCost * (1 + $coefficient));
                 $finalPrice = $this->applyTax($product, $finalPrice);
+                $finalPrice = $this->applyLaborTax($product, $finalPrice, $rawCost * $coefficient);
                 $finalPrice = $this->applyStepRounding($finalPrice);
 
                 $matrix[$periodSlug][$roleSlug] = [
@@ -232,10 +235,7 @@ class DynamicPriceService
 
     private function applyTax(object $product, float $price): float
     {
-        $boardItem = $product->price_board_item ?? '';
-        $taxKey = str_starts_with((string) $boardItem, 'Gold') || ($product->metal_type?->value ?? null) === 'gold'
-            ? 'tax_gold'
-            : 'tax_silver';
+        $taxKey = $this->isGold($product) ? 'tax_gold' : 'tax_silver';
 
         $taxPercentage = (float) Setting::getValue($taxKey, 0);
 
@@ -244,6 +244,32 @@ class DynamicPriceService
         }
 
         return round($price * (1 + $taxPercentage / 100));
+    }
+
+    /**
+     * VAT charged on the labor (making) fee only, added on top of the price
+     * built from the board. Used for gold while `tax_gold` is zero, so the
+     * metal itself stays untaxed.
+     */
+    private function applyLaborTax(object $product, float $price, float $labor): float
+    {
+        if ($labor <= 0 || ! $this->isGold($product)) {
+            return $price;
+        }
+
+        $taxPercentage = PricingSettings::taxGoldLabor();
+
+        if ($taxPercentage <= 0) {
+            return $price;
+        }
+
+        return round($price + $labor * $taxPercentage / 100);
+    }
+
+    private function isGold(object $product): bool
+    {
+        return str_starts_with((string) ($product->price_board_item ?? ''), 'Gold')
+            || ($product->metal_type?->value ?? null) === 'gold';
     }
 
     private function applyStepRounding(float $price): float

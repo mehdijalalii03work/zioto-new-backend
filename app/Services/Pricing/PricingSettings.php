@@ -64,6 +64,17 @@ class PricingSettings
         return (int) self::get('round_to', 1000);
     }
 
+    /**
+     * VAT charged on the labor (making) fee of gold products, in percent.
+     *
+     * Kept unprefixed like the other tax keys (`tax_gold`, `tax_silver`) and
+     * only applied to dynamic (price board) products.
+     */
+    public static function taxGoldLabor(): float
+    {
+        return (float) Setting::getValue('tax_gold_labor', 0);
+    }
+
     public static function trendThreshold(): int
     {
         return max(1, (int) self::get('trend_threshold', 100));

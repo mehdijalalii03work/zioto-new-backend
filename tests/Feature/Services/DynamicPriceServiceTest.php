@@ -112,4 +112,50 @@ class DynamicPriceServiceTest extends TestCase
         // 4000 Toman → +10% tax = 4400 → step 1000 = 4000 Toman → 40000 Rial
         $this->assertSame(40000.0, app(DynamicPriceService::class)->priceFor($product));
     }
+
+    public function test_gold_labor_tax_is_added_on_the_labor_of_dynamic_products(): void
+    {
+        Setting::create([
+            'key' => 'tax_gold_labor',
+            'value' => '10',
+            'type' => 'number',
+            'category' => 'tax',
+            'label' => 'درصد مالیات اجرت طلا',
+        ]);
+
+        $this->seedBoard('Gold750_Sell', 1000);
+        $product = $this->product();
+
+        // 4000 Toman, labor = 2000 → +10% labor tax = 200 → 4200 Toman → 42000 Rial
+        $this->assertSame(42000.0, app(DynamicPriceService::class)->priceFor($product));
+
+        $details = app(DynamicPriceService::class)->detailsFor($product, 'basic', 'daily');
+
+        $this->assertSame(4200.0, (float) $details['calculated_price']);
+
+        $matrix = app(DynamicPriceService::class)->previewMatrix($product, [['slug' => 'daily']], [['slug' => 'basic']]);
+
+        $this->assertSame(4200.0, (float) $matrix['daily']['basic']['final_price']);
+    }
+
+    public function test_gold_labor_tax_is_skipped_for_silver_and_static_products(): void
+    {
+        Setting::create([
+            'key' => 'tax_gold_labor',
+            'value' => '10',
+            'type' => 'number',
+            'category' => 'tax',
+            'label' => 'درصد مالیات اجرت طلا',
+        ]);
+
+        $this->seedBoard('Silver9999_Sell', 1000);
+        $silver = $this->product(['price_board_item' => 'Silver9999_Sell']);
+
+        $this->assertSame(40000.0, app(DynamicPriceService::class)->priceFor($silver));
+
+        $this->seedBoard('Gold750_Sell', 1000);
+        $static = $this->product(['price_type' => 'fixed']);
+
+        $this->assertNull(app(DynamicPriceService::class)->priceFor($static));
+    }
 }

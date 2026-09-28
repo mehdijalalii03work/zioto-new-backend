@@ -42,6 +42,7 @@ class ProductSettingsPage extends Page
             'enable_dynamic_pricing' => PricingSettings::enableDynamicPricing(),
             'round_prices' => PricingSettings::roundPrices(),
             'round_to' => PricingSettings::roundTo(),
+            'tax_gold_labor' => PricingSettings::taxGoldLabor(),
             'show_discount' => PricingSettings::showDiscountBadge(),
             'enable_sales_hours' => PricingSettings::enableSalesHours(),
             'sales_start_time' => PricingSettings::salesStartTime(),
@@ -60,6 +61,14 @@ class ProductSettingsPage extends Page
                             Toggle::make('enable_dynamic_pricing')->label('قیمت‌گذاری پویا')->inline(false),
                             Toggle::make('round_prices')->label('گردکردن قیمت محصول')->inline(false),
                             TextInput::make('round_to')->label('مضرب گردکردن')->numeric()->default(1000),
+                            TextInput::make('tax_gold_labor')
+                                ->label('درصد مالیات اجرت طلا')
+                                ->numeric()
+                                ->suffix('٪')
+                                ->default(0)
+                                ->minValue(0)
+                                ->maxValue(100)
+                                ->helperText('فقط روی اجرتِ محصولاتِ قیمت‌گذاری پویا (از تابلو) اعمال می‌شود.'),
                             Toggle::make('show_discount')->label('نمایش نشان تخفیف')->inline(false),
                         ]),
                     ])->columnSpanFull(),
@@ -117,6 +126,13 @@ class ProductSettingsPage extends Page
                 'label' => $key,
             ]);
         }
+
+        Setting::updateOrCreate(['key' => 'tax_gold_labor'], [
+            'value' => (string) (float) ($data['tax_gold_labor'] ?? 0),
+            'type' => 'number',
+            'category' => 'tax',
+            'label' => 'درصد مالیات اجرت طلا',
+        ]);
 
         Notification::make()
             ->title('تنظیمات محصول ذخیره شد')
