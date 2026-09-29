@@ -493,7 +493,7 @@ class ApiClientService
             }
 
             $targetKey = self::PERSIAN_KEY_MAP[$itemKey];
-            $finalPrice = BcmathHelper::div((string) $item['price'], '10');
+            $finalPrice = (string) $item['price'];
 
             if (isset($mapped[$targetKey])) {
                 $mapped[$targetKey] = BcmathHelper::max($mapped[$targetKey], $finalPrice);
@@ -513,11 +513,11 @@ class ApiClientService
         $mapped = [];
 
         if (isset($data['geram18k']['value'])) {
-            $mapped['Gold750'] = (string) $data['geram18k']['value'];
+            $mapped['Gold750'] = BcmathHelper::mul((string) $data['geram18k']['value'], '10');
         }
 
         if (isset($data['bazartehran']['value'])) {
-            $mapped['Gold705'] = (string) $data['bazartehran']['value'];
+            $mapped['Gold705'] = BcmathHelper::mul((string) $data['bazartehran']['value'], '10');
         }
 
         return $mapped;
