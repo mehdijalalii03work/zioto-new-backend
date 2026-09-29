@@ -249,7 +249,7 @@ class ViewOrder extends ViewRecord
                                                             ->formatStateUsing(fn ($state): string => number_format($state).' ریال'),
                                                     ]),
                                                 Grid::make(6)
-                                                    ->visible(fn ($entry): bool => filled($entry->getState()['price_board_item'] ?? null))
+                                                    ->visible(fn ($entry): bool => $entry?->getState() ? filled($entry->getState()['price_board_item'] ?? null) : false)
                                                     ->schema([
                                                         TextEntry::make('price_board_item')
                                                             ->label('آیتم تابلو قیمت')
@@ -286,7 +286,7 @@ class ViewOrder extends ViewRecord
                                                             ->formatStateUsing(fn ($state): string => $state ? number_format($state, 2).' تومان' : '—'),
                                                     ]),
                                                 Grid::make(1)
-                                                    ->visible(fn ($entry): bool => filled($entry->getState()['taxes'] ?? null))
+                                                    ->visible(fn ($entry): bool => $entry?->getState() ? filled($entry->getState()['taxes'] ?? null) : false)
                                                     ->schema([
                                                         TextEntry::make('taxes')
                                                             ->label('ماليیات‌ها')
