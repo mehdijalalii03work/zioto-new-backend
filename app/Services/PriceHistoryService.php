@@ -45,6 +45,11 @@ class PriceHistoryService
      */
     private function write(array $record): void
     {
+        // Skip if MongoDB extension is not available
+        if (! extension_loaded('mongodb')) {
+            return;
+        }
+
         try {
             PriceHistory::create($record);
         } catch (Throwable $e) {

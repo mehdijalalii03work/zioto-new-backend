@@ -57,6 +57,11 @@ class PriceHistoryPage extends Page
 
     public function getRecords(): LengthAwarePaginator
     {
+        // MongoDB extension not available (e.g., staging)
+        if (! extension_loaded('mongodb')) {
+            return new LengthAwarePaginator([], 0, $this->perPage);
+        }
+
         if ($this->recordsCache !== null) {
             return $this->recordsCache;
         }
@@ -111,6 +116,15 @@ class PriceHistoryPage extends Page
 
     public function pruneOldRecords(): void
     {
+        if (! extension_loaded('mongodb')) {
+            Notification::make()
+                ->title('MongoDB extension not available')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         $deleted = PriceHistory::where('created_at', '<', Carbon::now()->subDays(30))->delete();
 
         Notification::make()

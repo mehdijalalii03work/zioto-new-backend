@@ -16,6 +16,12 @@ class PrunePriceHistory extends Command
 
     public function handle(): int
     {
+        if (! extension_loaded('mongodb')) {
+            $this->warn('MongoDB extension not available. Skipping price history prune.');
+
+            return self::SUCCESS;
+        }
+
         $days = (int) $this->option('days');
         $dryRun = $this->option('dry-run');
         $cutoff = Carbon::now()->subDays($days);

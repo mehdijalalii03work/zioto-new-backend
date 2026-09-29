@@ -433,6 +433,11 @@ class ShahkarService
         bool $success,
         ?string $errorMessage = null,
     ): void {
+        // Skip logging if MongoDB extension is not available (e.g., on staging)
+        if (! extension_loaded('mongodb')) {
+            return;
+        }
+
         try {
             JibitApiLog::create([
                 'endpoint' => $endpoint,
