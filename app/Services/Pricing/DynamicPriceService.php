@@ -132,7 +132,8 @@ class DynamicPriceService
 
         $value = (float) $prices[$metalKey]['value'];
 
-        return $value > 0 ? $value : null;
+        // Price board now returns Rials; convert to Tomans for calculations
+        return $value > 0 ? $value / self::RIAL_PER_TOMAN : null;
     }
 
     /**
