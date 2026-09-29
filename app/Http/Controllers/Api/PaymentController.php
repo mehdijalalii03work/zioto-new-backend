@@ -94,7 +94,7 @@ class PaymentController extends Controller
             return response()->json(['message' => 'سفارش لغو شده یا منقضی شده است', 'error_code' => 'ORDER_NOT_ACTIVE'], 422);
         }
 
-        $order->load('items.product:id,name,price,is_nopay,weight,price_board_item,price_type,labor_coefficients,dynamic_pricing_enabled,category_id,metal_type');
+        $order->load('items.product:id,name,price,is_nopay,weight,price_board_item,price_type,labor_coefficients,category_id,metal_type');
 
         foreach ($order->items as $orderItem) {
             $product = $orderItem->product;

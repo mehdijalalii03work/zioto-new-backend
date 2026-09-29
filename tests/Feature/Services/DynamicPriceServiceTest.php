@@ -50,8 +50,8 @@ class DynamicPriceServiceTest extends TestCase
         $this->seedBoard('Gold750_Sell', 1000);
         $product = $this->product();
 
-        // 2g × 1000 Toman × (1 + 1.0 default coefficient) = 4000 Toman = 40000 Rial
-        $this->assertSame(40000.0, app(DynamicPriceService::class)->priceFor($product));
+        // Board stores 1000 Rial = 100 Toman. 2g × 100 Toman × (1 + 1.0) = 400 Toman = 4000 Rial
+        $this->assertSame(4000.0, app(DynamicPriceService::class)->priceFor($product));
     }
 
     public function test_details_for_preview_stays_in_toman(): void
@@ -62,8 +62,9 @@ class DynamicPriceServiceTest extends TestCase
         $details = app(DynamicPriceService::class)->detailsFor($product, 'basic', 'daily');
 
         $this->assertNotNull($details);
-        $this->assertSame(4000.0, (float) $details['calculated_price']);
-        $this->assertSame(1000.0, (float) $details['base_price']);
+        // Board stores 1000 Rial = 100 Toman. 2g × 100 × 2 = 400 Toman
+        $this->assertSame(400.0, (float) $details['calculated_price']);
+        $this->assertSame(100.0, (float) $details['base_price']);
     }
 
     public function test_returns_null_when_dynamic_pricing_is_disabled(): void
@@ -109,8 +110,8 @@ class DynamicPriceServiceTest extends TestCase
         $this->seedBoard('Gold750_Sell', 1000);
         $product = $this->product();
 
-        // 4000 Toman → +10% tax = 4400 → step 1000 = 4000 Toman → 40000 Rial
-        $this->assertSame(40000.0, app(DynamicPriceService::class)->priceFor($product));
+        // 400 Toman → +10% tax = 440 → step 1000 = 0 Toman → 0 Rial
+        $this->assertSame(0.0, app(DynamicPriceService::class)->priceFor($product));
     }
 
     public function test_gold_labor_tax_is_added_on_the_labor_of_dynamic_products(): void
@@ -126,23 +127,23 @@ class DynamicPriceServiceTest extends TestCase
         $this->seedBoard('Gold750_Sell', 1000);
         $product = $this->product();
 
-        // 4000 Toman, labor = 2000 → +10% labor tax = 200 → 4200 Toman → 42000 Rial
-        $this->assertSame(42000.0, app(DynamicPriceService::class)->priceFor($product));
+        // 400 Toman, labor = 200 → +10% labor tax = 20 → 420 Toman → 4200 Rial
+        $this->assertSame(4200.0, app(DynamicPriceService::class)->priceFor($product));
 
         $details = app(DynamicPriceService::class)->detailsFor($product, 'basic', 'daily');
 
-        $this->assertSame(4200.0, (float) $details['calculated_price']);
+        $this->assertSame(420.0, (float) $details['calculated_price']);
 
         $matrix = app(DynamicPriceService::class)->previewMatrix($product, [['slug' => 'daily']], [['slug' => 'basic']]);
 
-        $this->assertSame(4200.0, (float) $matrix['daily']['basic']['final_price']);
+        $this->assertSame(420.0, (float) $matrix['daily']['basic']['final_price']);
 
         $taxes = $matrix['daily']['basic']['taxes'];
 
         $this->assertCount(1, $taxes);
         $this->assertSame('labor', $taxes[0]['scope']);
         $this->assertSame(10.0, $taxes[0]['rate']);
-        $this->assertSame(200.0, $taxes[0]['amount']);
+        $this->assertSame(20.0, $taxes[0]['amount']);
     }
 
     public function test_gold_labor_tax_is_skipped_for_silver_and_static_products(): void
@@ -158,7 +159,8 @@ class DynamicPriceServiceTest extends TestCase
         $this->seedBoard('Silver9999_Sell', 1000);
         $silver = $this->product(['price_board_item' => 'Silver9999_Sell']);
 
-        $this->assertSame(40000.0, app(DynamicPriceService::class)->priceFor($silver));
+        // 400 Toman → 4000 Rial (no gold labor tax on silver)
+        $this->assertSame(4000.0, app(DynamicPriceService::class)->priceFor($silver));
 
         $silverMatrix = app(DynamicPriceService::class)->previewMatrix($silver, [['slug' => 'daily']], [['slug' => 'basic']]);
 

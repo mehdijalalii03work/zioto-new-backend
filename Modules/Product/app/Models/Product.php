@@ -35,7 +35,6 @@ class Product extends Model implements HasMedia
         'tokeniko_sku',
         'tapsi_product_id',
         'price_type',
-        'dynamic_pricing_enabled',
         'description',
         'metal_type',
         'form',
@@ -77,7 +76,6 @@ class Product extends Model implements HasMedia
             'hesabfa_stock_synced_at' => 'datetime',
             'contact_only' => 'boolean',
             'is_nopay' => 'boolean',
-            'dynamic_pricing_enabled' => 'boolean',
             'labor_coefficients' => 'array',
         ];
     }
@@ -117,7 +115,7 @@ class Product extends Model implements HasMedia
      */
     public function calculatePrice(): ?float
     {
-        if ($this->price_type !== 'dynamic' && ! $this->dynamic_pricing_enabled) {
+        if ($this->price_type !== 'dynamic') {
             return null;
         }
 

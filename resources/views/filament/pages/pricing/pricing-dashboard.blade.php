@@ -1,7 +1,9 @@
 <x-filament-panels::page>
     @php
         $fmt = fn ($value) => is_numeric($value) ? number_format((float) $value, 0) : '—';
-        $toman = fn ($value) => is_numeric($value) ? number_format((float) $value, 0).' تومان' : '—';
+        // Board prices are stored in Rials; convert to Tomans for display
+        $toToman = fn ($value) => is_numeric($value) ? number_format((float) $value / 10, 0) : '—';
+        $toman = fn ($value) => is_numeric($value) ? number_format((float) $value / 10, 0).' تومان' : '—';
         $jalali = function ($timestamp) {
             if (! $timestamp) {
                 return '—';
@@ -227,12 +229,12 @@
 {{--                <x-filament::icon icon="heroicon-o-banknotes" class="size-4 text-gray-400" />--}}
 {{--            </div>--}}
 {{--            <div class="mt-2 flex items-center justify-between gap-2">--}}
-{{--                <span class="text-2xl font-bold tabular-nums text-gray-900">{{ $fmt($g750['sell'] ?? null) }}</span>--}}
+{{--                <span class="text-2xl font-bold tabular-nums text-gray-900">{{ $toToman($g750['sell'] ?? null) }}</span>--}}
 {{--                {!! $trendBadge($board['Gold750_Sell']['trend'] ?? null) !!}--}}
 {{--            </div>--}}
 {{--            <div class="mt-1 text-xs text-gray-500">--}}
 {{--                فروش (تومان) <span class="mx-1 text-gray-300">•</span>--}}
-{{--                خرید: <span class="font-medium text-gray-700">{{ $fmt($g750['buy'] ?? null) }}</span>--}}
+{{--                خرید: <span class="font-medium text-gray-700">{{ $toToman($g750['buy'] ?? null) }}</span>--}}
 {{--            </div>--}}
 {{--        </div>--}}
 
@@ -243,12 +245,12 @@
 {{--                <x-filament::icon icon="heroicon-o-banknotes" class="size-4 text-gray-400" />--}}
 {{--            </div>--}}
 {{--            <div class="mt-2 flex items-center justify-between gap-2">--}}
-{{--                <span class="text-2xl font-bold tabular-nums text-gray-900">{{ $fmt($s9999['sell'] ?? null) }}</span>--}}
+{{--                <span class="text-2xl font-bold tabular-nums text-gray-900">{{ $toToman($s9999['sell'] ?? null) }}</span>--}}
 {{--                {!! $trendBadge($board['Silver9999_Sell']['trend'] ?? null) !!}--}}
 {{--            </div>--}}
 {{--            <div class="mt-1 text-xs text-gray-500">--}}
 {{--                فروش (تومان) <span class="mx-1 text-gray-300">•</span>--}}
-{{--                خرید: <span class="font-medium text-gray-700">{{ $fmt($s9999['buy'] ?? null) }}</span>--}}
+{{--                خرید: <span class="font-medium text-gray-700">{{ $toToman($s9999['buy'] ?? null) }}</span>--}}
 {{--            </div>--}}
 {{--        </div>--}}
 
@@ -286,8 +288,8 @@
                                             {{ $meta['label'] }}
                                         </span>
                                     </td>
-                                    <td class="px-5 py-3 font-semibold tabular-nums text-gray-900">{{ $fmt($sellRow['value'] ?? null) }}</td>
-                                    <td class="px-5 py-3 tabular-nums text-gray-600">{{ $fmt($buyRow['value'] ?? null) }}</td>
+                                    <td class="px-5 py-3 font-semibold tabular-nums text-gray-900">{{ $toToman($sellRow['value'] ?? null) }}</td>
+                                    <td class="px-5 py-3 tabular-nums text-gray-600">{{ $toToman($buyRow['value'] ?? null) }}</td>
                                     <td class="px-5 py-3 text-xs text-gray-500">{{ $jalali($sellRow['updated_at'] ?? ($buyRow['updated_at'] ?? null)) }}</td>
                                 </tr>
                             @endforeach
@@ -312,7 +314,7 @@
                         <span class="text-xs font-medium text-gray-500">طلای ۷۵۰</span>
                         <span class="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">PersianAPI</span>
                     </div>
-                    <div class="mt-2 text-lg font-bold tabular-nums text-gray-900">{{ $fmt($basePrices['persian']['Gold750'] ?? null) }}</div>
+                    <div class="mt-2 text-lg font-bold tabular-nums text-gray-900">{{ $toToman($basePrices['persian']['Gold750'] ?? null) }}</div>
                     <div class="mt-0.5 text-xs text-gray-500">تومان</div>
                 </div>
 
@@ -321,7 +323,7 @@
                         <span class="text-xs font-medium text-gray-500">طلای ۷۵۰</span>
                         <span class="rounded bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">Tala.ir</span>
                     </div>
-                    <div class="mt-2 text-lg font-bold tabular-nums text-gray-900">{{ $fmt($basePrices['tala']['Gold750'] ?? null) }}</div>
+                    <div class="mt-2 text-lg font-bold tabular-nums text-gray-900">{{ $toToman($basePrices['tala']['Gold750'] ?? null) }}</div>
                     <div class="mt-0.5 text-xs text-gray-500">تومان</div>
                 </div>
 
@@ -330,7 +332,7 @@
                         <span class="text-xs font-medium text-gray-500">نقره ۹۹۹</span>
                         <span class="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">PersianAPI</span>
                     </div>
-                    <div class="mt-2 text-lg font-bold tabular-nums text-gray-900">{{ $fmt($basePrices['persian']['Silver999'] ?? null) }}</div>
+                    <div class="mt-2 text-lg font-bold tabular-nums text-gray-900">{{ $toToman($basePrices['persian']['Silver999'] ?? null) }}</div>
                     <div class="mt-0.5 text-xs text-gray-500">تومان</div>
                 </div>
             </div>
@@ -352,8 +354,8 @@
                             <span class="font-semibold text-gray-900">۱. طلای ۷۵۰ (۱۸ عیار)</span>
                         </span>
                         <span class="flex items-center gap-4 text-sm tabular-nums">
-                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $fmt($g750['sell'] ?? null) }}</strong></span>
-                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $fmt($g750['buy'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $toToman($g750['sell'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $toToman($g750['buy'] ?? null) }}</strong></span>
                             <x-filament::icon icon="heroicon-m-chevron-down" class="size-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
                         </span>
                     </summary>
@@ -364,23 +366,23 @@
                                 <dl class="space-y-2">
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">PersianAPI — طلای ۷۵۰</dt>
-                                        <dd class="font-mono tabular-nums text-blue-700">{{ $fmt($g750['persian'] ?? null) }}</dd>
+                                        <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($g750['persian'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">Tala.ir — طلای ۷۵۰</dt>
-                                        <dd class="font-mono tabular-nums text-amber-600">{{ $fmt($g750['talaDirect'] ?? null) }}</dd>
+                                        <dd class="font-mono tabular-nums text-amber-600">{{ $toToman($g750['talaDirect'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">قیمت دستی</dt>
-                                        <dd class="font-mono tabular-nums text-red-600">{{ $fmt($g750['manual'] ?? null) }}</dd>
+                                        <dd class="font-mono tabular-nums text-red-600">{{ $toToman($g750['manual'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
                                         <dt class="text-gray-600">Max(Persian, Tala)</dt>
-                                        <dd class="font-mono tabular-nums">{{ $fmt($g750['maxApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g750['maxSource'] ?? '—' }})</span></dd>
+                                        <dd class="font-mono tabular-nums">{{ $toToman($g750['maxApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g750['maxSource'] ?? '—' }})</span></dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">Min(Persian, Tala)</dt>
-                                        <dd class="font-mono tabular-nums">{{ $fmt($g750['minApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g750['minSource'] ?? '—' }})</span></dd>
+                                        <dd class="font-mono tabular-nums">{{ $toToman($g750['minApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g750['minSource'] ?? '—' }})</span></dd>
                                     </div>
                                 </dl>
                             </div>
@@ -418,8 +420,8 @@
                             <span class="font-semibold text-gray-900">۲. طلای ۹۹۵ (۲۴ عیار)</span>
                         </span>
                         <span class="flex items-center gap-4 text-sm tabular-nums">
-                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $fmt($g995['sell'] ?? null) }}</strong></span>
-                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $fmt($g995['buy'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $toToman($g995['sell'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $toToman($g995['buy'] ?? null) }}</strong></span>
                             <x-filament::icon icon="heroicon-m-chevron-down" class="size-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
                         </span>
                     </summary>
@@ -430,11 +432,11 @@
                                 <dl class="space-y-2">
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">قیمت فروش طلای ۷۵۰</dt>
-                                        <dd class="font-mono tabular-nums text-blue-700">{{ $fmt($g750['sell'] ?? null) }}</dd>
+                                        <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($g750['sell'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">قیمت خرید طلای ۷۵۰</dt>
-                                        <dd class="font-mono tabular-nums text-emerald-700">{{ $fmt($g750['buy'] ?? null) }}</dd>
+                                        <dd class="font-mono tabular-nums text-emerald-700">{{ $toToman($g750['buy'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">ضریب تبدیل ۷۵۰ به ۹۹۵</dt>
@@ -470,8 +472,8 @@
                             <span class="font-semibold text-gray-900">۳. طلای ۹۹۹.۹ (۲۴ عیار)</span>
                         </span>
                         <span class="flex items-center gap-4 text-sm tabular-nums">
-                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $fmt($g9999['sell'] ?? null) }}</strong></span>
-                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $fmt($g9999['buy'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $toToman($g9999['sell'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $toToman($g9999['buy'] ?? null) }}</strong></span>
                             <x-filament::icon icon="heroicon-m-chevron-down" class="size-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
                         </span>
                     </summary>
@@ -482,11 +484,11 @@
                                 <dl class="space-y-2">
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">قیمت فروش طلای ۷۵۰</dt>
-                                        <dd class="font-mono tabular-nums text-blue-700">{{ $fmt($g750['sell'] ?? null) }}</dd>
+                                        <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($g750['sell'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">قیمت خرید طلای ۷۵۰</dt>
-                                        <dd class="font-mono tabular-nums text-emerald-700">{{ $fmt($g750['buy'] ?? null) }}</dd>
+                                        <dd class="font-mono tabular-nums text-emerald-700">{{ $toToman($g750['buy'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">ضریب تبدیل ۷۵۰ به ۹۹۹.۹</dt>
@@ -522,8 +524,8 @@
                             <span class="font-semibold text-gray-900">۴. نقره ۹۹۹.۹</span>
                         </span>
                         <span class="flex items-center gap-4 text-sm tabular-nums">
-                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $fmt($s9999['sell'] ?? null) }}</strong></span>
-                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $fmt($s9999['buy'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $toToman($s9999['sell'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $toToman($s9999['buy'] ?? null) }}</strong></span>
                             <x-filament::icon icon="heroicon-m-chevron-down" class="size-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
                         </span>
                     </summary>
@@ -534,7 +536,7 @@
                                 <dl class="space-y-2">
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">PersianAPI — نقره ۹۹۹</dt>
-                                        <dd class="font-mono tabular-nums text-blue-700">{{ $fmt($s9999['persian999'] ?? null) }}</dd>
+                                        <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($s9999['persian999'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">ضریب تبدیل ۹۹۹ به ۹۹۹.۹</dt>
@@ -542,11 +544,11 @@
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">نقره ۹۹۹.۹ محاسبه‌شده</dt>
-                                        <dd class="font-mono tabular-nums">{{ $fmt($s9999['converted'] ?? null) }}</dd>
+                                        <dd class="font-mono tabular-nums">{{ $toToman($s9999['converted'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">قیمت دستی</dt>
-                                        <dd class="font-mono tabular-nums text-red-600">{{ $fmt($s9999['manual'] ?? null) }}</dd>
+                                        <dd class="font-mono tabular-nums text-red-600">{{ $toToman($s9999['manual'] ?? null) }}</dd>
                                     </div>
                                 </dl>
                             </div>

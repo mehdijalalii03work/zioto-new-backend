@@ -9,7 +9,6 @@ use App\Enums\Product\ProductShape;
 use App\Services\Pricing\DynamicPriceService;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -196,62 +195,7 @@ class ProductForm
                                     ->options(DynamicPriceService::METAL_OPTIONS)
                                     ->placeholder('انتخاب آیتم')
                                     ->searchable(),
-
-                                Toggle::make('dynamic_pricing_enabled')
-                                    ->label('قیمت‌گذاری پویای اجرت')
-                                    ->helperText('بر اساس نقش کاربر و بازه زمانی')
-                                    ->inline(false)
-                                    ->default(true),
-
-                                TextInput::make('fee_business_hours')
-                                    ->label('اجرت قدیمی (ساعت ۹ تا ۱۷:۵۹)')
-                                    ->numeric()
-                                    ->suffix('٪')
-                                    ->minValue(0)
-                                    ->maxValue(100)
-                                    ->step(0.01)
-                                    ->nullable()
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->placeholder('مثلاً 5')
-                                    ->helperText('فقط برای سازگاری — از ماتریس اجرت استفاده می‌شود'),
-
-                                TextInput::make('fee_off_hours')
-                                    ->label('اجرت قدیمی (ساعت ۱۸ تا ۸:۵۹)')
-                                    ->numeric()
-                                    ->suffix('٪')
-                                    ->minValue(0)
-                                    ->maxValue(100)
-                                    ->step(0.01)
-                                    ->nullable()
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->placeholder('مثلاً 3.5')
-                                    ->helperText('فقط برای سازگاری — از ماتریس اجرت استفاده می‌شود'),
                             ]),
-
-                        Textarea::make('labor_coefficients_preview')
-                            ->label('ماتریس ضرایب اجرت')
-                            ->rows(4)
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->afterStateHydrated(function ($state, $set, $record) {
-                                $matrix = $record?->labor_coefficients ?? [];
-                                if ($matrix === []) {
-                                    $set('labor_coefficients_preview', 'پیش‌فرض: همه سلول‌ها ۱۰۰٪ — از صفحه «مدیریت قیمت‌گذاری» قابل ویرایش است.');
-
-                                    return;
-                                }
-                                $lines = [];
-                                foreach ($matrix as $period => $roles) {
-                                    foreach ($roles as $role => $value) {
-                                        $lines[] = "{$period}/{$role}: ".round(((float) $value) * 100, 4).'٪';
-                                    }
-                                }
-                                $set('labor_coefficients_preview', implode("\n", $lines));
-                            })
-                            ->helperText('ماتریس کامل از صفحه مدیریت قیمت‌گذاری محصولات ویرایش می‌شود')
-                            ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
 

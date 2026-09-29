@@ -181,7 +181,7 @@ class DiscountService
     public function cartSnapshot(int $userId): array
     {
         $cartItems = Cart::where('user_id', $userId)
-            ->with('product:id,name,price,weight,price_board_item,price_type,labor_coefficients,dynamic_pricing_enabled,category_id,metal_type')
+            ->with('product:id,name,price,weight,price_board_item,price_type,labor_coefficients,category_id,metal_type')
             ->get();
 
         $items = [];

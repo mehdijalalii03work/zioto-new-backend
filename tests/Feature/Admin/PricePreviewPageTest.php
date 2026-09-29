@@ -77,10 +77,10 @@ class PricePreviewPageTest extends TestCase
             ->assertSuccessful()
             ->assertSee('قیمت لحظه‌ای هر گرم (تومان)')
             ->assertSee('طلای ۷۵۰:')
-            ->assertSee('1,000')
+            ->assertSee('100')
             ->assertSee('درصد اجرت: 100٪')
-            ->assertSee('اجرت: 2,000')
-            ->assertSee('نهایی: 4,000')
+            ->assertSee('اجرت: 200')
+            ->assertSee('نهایی: 400')
             ->assertSee('1 محصول')
             ->call('setPeriod', 'daily')
             ->assertSee('11:00 - 18:00')
@@ -131,14 +131,14 @@ class PricePreviewPageTest extends TestCase
         $html = Livewire::actingAs($this->admin(), 'web')
             ->test(PricePreviewPage::class)
             ->assertSuccessful()
-            ->assertSee('مالیات اجرت (10٪): 200')
-            ->assertSee('مالیات روی کل (10٪): 400')
+            ->assertSee('مالیات اجرت (10٪): 20')
+            ->assertSee('مالیات روی کل (10٪): 40')
             ->html();
 
-        // Gold: 10% of the 2,000 Toman labor only, so 4,000 → 4,200.
-        $this->assertStringContainsString('نهایی: 4,200', $html);
-        // Silver: 10% on the whole 4,000 Toman price.
-        $this->assertStringContainsString('نهایی: 4,400', $html);
+        // Gold: 10% of the 200 Toman labor only, so 400 → 420.
+        $this->assertStringContainsString('نهایی: 420', $html);
+        // Silver: 10% on the whole 400 Toman price.
+        $this->assertStringContainsString('نهایی: 440', $html);
     }
 
     public function test_preview_shows_empty_state_without_dynamic_products(): void

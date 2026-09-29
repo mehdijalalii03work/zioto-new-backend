@@ -74,7 +74,7 @@ class OrderSubmitController extends Controller
         $validated = $request->validated();
 
         $cartItems = Cart::where('user_id', $user->id)
-            ->with('product:id,name,price,is_nopay,weight,price_board_item,price_type,labor_coefficients,dynamic_pricing_enabled,category_id,metal_type')
+            ->with('product:id,name,price,is_nopay,weight,price_board_item,price_type,labor_coefficients,category_id,metal_type')
             ->get();
 
         if ($cartItems->isEmpty()) {

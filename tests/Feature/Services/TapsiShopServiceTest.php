@@ -31,6 +31,12 @@ class TapsiShopServiceTest extends TestCase
 
     public function test_calculate_tapsi_price_applies_markup(): void
     {
+        config([
+            'tapsi.markup_threshold' => 50_000_000,
+            'tapsi.markup_below_threshold' => 2,
+            'tapsi.markup_above_threshold' => 1,
+        ]);
+
         $belowThreshold = $this->service->calculateTapsiPrice(10_000_000);
         $this->assertSame(10_200_000, $belowThreshold);
 
@@ -39,6 +45,13 @@ class TapsiShopServiceTest extends TestCase
 
         $atThreshold = $this->service->calculateTapsiPrice(50_000_000);
         $this->assertSame(50_500_000, $atThreshold);
+
+        // Reset config to defaults
+        config([
+            'tapsi.markup_threshold' => 500_000_000,
+            'tapsi.markup_below_threshold' => 2,
+            'tapsi.markup_above_threshold' => 1,
+        ]);
     }
 
     public function test_send_batch_splits_products_into_chunks(): void

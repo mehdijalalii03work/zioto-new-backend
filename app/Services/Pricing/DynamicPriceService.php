@@ -85,10 +85,6 @@ class DynamicPriceService
 
     public function isEligibleProduct(object $product): bool
     {
-        if (isset($product->dynamic_pricing_enabled) && $product->dynamic_pricing_enabled) {
-            return true;
-        }
-
         if (($product->price_type ?? null) === 'dynamic') {
             return true;
         }

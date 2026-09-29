@@ -24,7 +24,7 @@ class CartController extends Controller
         $userId = Auth::id();
 
         $items = Cart::where('user_id', $userId)
-            ->with('product:id,name,price,weight,stock_quantity,price_board_item,price_type,labor_coefficients,dynamic_pricing_enabled,category_id,metal_type')
+            ->with('product:id,name,price,weight,stock_quantity,price_board_item,price_type,labor_coefficients,category_id,metal_type')
             ->get();
 
         return response()->json([

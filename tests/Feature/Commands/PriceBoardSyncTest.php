@@ -97,8 +97,8 @@ class PriceBoardSyncTest extends TestCase
 
         $this->artisan('priceboard:sync')->assertExitCode(0);
 
-        // 2g × 1000 Toman × (1 + 1.0) = 4000 Toman = 40000 Rial
-        $this->assertDatabaseHas('products', ['id' => $product->id, 'price' => 40000]);
+        // Board stores 1000 Rial = 100 Toman. 2g × 100 Toman × (1 + 1.0) = 400 Toman = 4000 Rial
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'price' => 4000]);
 
         $this->assertCount(0, Http::recorded()->filter(
             fn (array $pair) => str_contains($pair[0]->url(), 'apigateway.tokeniko.com')
@@ -106,7 +106,7 @@ class PriceBoardSyncTest extends TestCase
 
         $this->assertCount(1, $tapsiRequests);
         $payload = $tapsiRequests[0]->data()['products'];
-        $this->assertSame(40800, $payload[0]['price']);
+        $this->assertSame(4080, $payload[0]['price']);
         $this->assertSame(5, $payload[0]['stock']);
 
         $history->shouldHaveReceived('logBoardPrices');
@@ -249,6 +249,7 @@ class PriceBoardSyncTest extends TestCase
 
         $this->artisan('priceboard:sync')->assertExitCode(0);
 
-        $this->assertDatabaseHas('products', ['id' => $product->id, 'price' => 40000]);
+        // Board stores 1000 Rial = 100 Toman. 2g × 100 Toman × (1 + 1.0) = 400 Toman = 4000 Rial
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'price' => 4000]);
     }
 }

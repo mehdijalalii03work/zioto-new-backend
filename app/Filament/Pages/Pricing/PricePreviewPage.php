@@ -133,10 +133,13 @@ class PricePreviewPage extends Page
         foreach (self::BOARD_LABELS as $key => $label) {
             $value = isset($prices[$key]['value']) ? (float) $prices[$key]['value'] : null;
 
+            // Price board stores Rials; convert to Tomans for display
+            $value = $value !== null && $value > 0 ? $value / DynamicPriceService::RIAL_PER_TOMAN : null;
+
             $items[] = [
                 'label' => $label,
                 'kind' => str_starts_with($key, 'Gold') ? 'gold' : 'silver',
-                'value' => ($value !== null && $value > 0) ? $value : null,
+                'value' => $value,
             ];
         }
 
