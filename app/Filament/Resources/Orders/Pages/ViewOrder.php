@@ -248,6 +248,61 @@ class ViewOrder extends ViewRecord
                                                             ->label('قیمت کل')
                                                             ->formatStateUsing(fn ($state): string => number_format($state).' ریال'),
                                                     ]),
+                                                Grid::make(6)
+                                                    ->visible(fn ($entry): bool => filled($entry->getState()['price_board_item'] ?? null))
+                                                    ->schema([
+                                                        TextEntry::make('price_board_item')
+                                                            ->label('آیتم تابلو قیمت')
+                                                            ->formatStateUsing(fn ($state): string => match ($state) {
+                                                                'Gold750_Sell' => 'طلای ۷۵۰ (فروش)',
+                                                                'Gold750_Buy' => 'طلای ۷۵۰ (خرید)',
+                                                                'Gold995_Sell' => 'طلای ۹۹۵ (فروش)',
+                                                                'Gold995_Buy' => 'طلای ۹۹۵ (خرید)',
+                                                                'Gold9999_Sell' => 'طلای ۹۹۹.۹ (فروش)',
+                                                                'Gold9999_Buy' => 'طلای ۹۹۹.۹ (خرید)',
+                                                                'Silver9999_Sell' => 'نقره ۹۹۹.۹ (فروش)',
+                                                                'Silver9999_Buy' => 'نقره ۹۹۹.۹ (خرید)',
+                                                                default => $state,
+                                                            }),
+
+                                                        TextEntry::make('board_price')
+                                                            ->label('قیمت تابلو (تومان/گرم)')
+                                                            ->formatStateUsing(fn ($state): string => $state ? number_format($state, 2).' تومان' : '—'),
+
+                                                        TextEntry::make('weight')
+                                                            ->label('وزن (گرم)')
+                                                            ->formatStateUsing(fn ($state): string => $state ? number_format($state, 2) : '—'),
+
+                                                        TextEntry::make('labor_coefficient')
+                                                            ->label('ضریب اجرت')
+                                                            ->formatStateUsing(fn ($state): string => $state ? (number_format($state * 100, 4).'٪') : '—'),
+
+                                                        TextEntry::make('labor_cost')
+                                                            ->label('مبلغ اجرت (تومان)')
+                                                            ->formatStateUsing(fn ($state): string => $state ? number_format($state, 2).' تومان' : '—'),
+
+                                                        TextEntry::make('final_price')
+                                                            ->label('قیمت نهایی واحد (تومان)')
+                                                            ->formatStateUsing(fn ($state): string => $state ? number_format($state, 2).' تومان' : '—'),
+                                                    ]),
+                                                Grid::make(1)
+                                                    ->visible(fn ($entry): bool => filled($entry->getState()['taxes'] ?? null))
+                                                    ->schema([
+                                                        TextEntry::make('taxes')
+                                                            ->label('ماليیات‌ها')
+                                                            ->formatStateUsing(function ($state): HtmlString {
+                                                                if (! is_array($state) || empty($state)) {
+                                                                    return new HtmlString('<span class="text-muted-foreground">—</span>');
+                                                                }
+                                                                $lines = [];
+                                                                foreach ($state as $tax) {
+                                                                    $scope = $tax['scope'] === 'labor' ? 'اجرت' : 'روی کل';
+                                                                    $lines[] = "مالیات {$scope} ({$tax['rate']}٪): ".number_format($tax['amount']).' تومان';
+                                                                }
+
+                                                                return new HtmlString(implode('<br>', $lines));
+                                                            }),
+                                                    ]),
                                             ])
                                             ->columnSpanFull(),
                                     ]),

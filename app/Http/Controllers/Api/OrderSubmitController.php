@@ -197,12 +197,41 @@ class OrderSubmitController extends Controller
             $unitPrice = $this->dynamicPrice->priceFor($product, $userId) ?? (float) $product->price;
             $subtotal = $unitPrice * $cartItem->quantity;
             $baseAmount += $subtotal;
+
+            // Get pricing breakdown for dynamic products
+            $priceBoardItem = $product->price_board_item;
+            $weight = $product->weight;
+            $boardPrice = null;
+            $laborCoefficient = null;
+            $laborCost = null;
+            $taxes = null;
+            $finalPrice = $unitPrice;
+
+            if ($priceBoardItem && $weight > 0 && $this->dynamicPrice->isEligibleProduct($product)) {
+                $details = $this->dynamicPrice->detailsFor($product);
+                if ($details) {
+                    $boardPrice = $details['base_price']; // in Toman
+                    $weight = (float) $weight;
+                    $laborCoefficient = $details['coefficient'];
+                    $laborCost = $details['coefficient'] * $weight * $details['base_price'];
+                    $taxes = $details['taxes'] ?? [];
+                    $finalPrice = $details['calculated_price'];
+                }
+            }
+
             $orderItems[] = [
                 'product_id' => $product->id,
                 'product_name' => $product->name,
                 'product_price' => $unitPrice,
                 'quantity' => $cartItem->quantity,
                 'subtotal' => $subtotal,
+                'price_board_item' => $priceBoardItem,
+                'board_price' => $boardPrice,
+                'weight' => $weight,
+                'labor_coefficient' => $laborCoefficient,
+                'labor_cost' => $laborCost,
+                'taxes' => $taxes,
+                'final_price' => $finalPrice,
             ];
         }
 
