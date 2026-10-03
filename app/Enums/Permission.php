@@ -102,6 +102,8 @@ enum Permission: string
 
     case ManagementReportView = 'management-report.view';
 
+    case AnalyticsReportView = 'analytics-report.view';
+
     case PricingView = 'pricing.view';
 
     case PricingEdit = 'pricing.edit';
@@ -162,6 +164,7 @@ enum Permission: string
             self::HesabfaView => 'مشاهده حسابفا',
             self::HesabfaSync => 'همگام‌سازی با حسابفا',
             self::ManagementReportView => 'مشاهده گزارشات مدیریتی',
+            self::AnalyticsReportView => 'مشاهده گزارش ترافیک (گوگل آنالیتیکس)',
             self::PricingView => 'مشاهده تنظیمات قیمت‌گذاری',
             self::PricingEdit => 'ویرایش تنظیمات قیمت‌گذاری',
             self::DiscountView => 'مشاهده کدهای تخفیف',
@@ -186,7 +189,7 @@ enum Permission: string
             self::BlogTagView, self::BlogTagCreate, self::BlogTagEdit, self::BlogTagDelete => 'برچسب‌های وبلاگ',
             self::ContactMessageView, self::ContactMessageEdit, self::ContactMessageDelete => 'پیام‌های تماس',
             self::HesabfaView, self::HesabfaSync => 'حسابفا',
-            self::ManagementReportView => 'گزارشات مدیریتی',
+            self::ManagementReportView, self::AnalyticsReportView => 'گزارشات مدیریتی',
             self::PricingView, self::PricingEdit => 'قیمت‌گذاری',
             self::DiscountView, self::DiscountEdit => 'کدهای تخفیف',
         };

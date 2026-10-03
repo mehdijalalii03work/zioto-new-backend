@@ -11,6 +11,7 @@
     "nightwatch": false,
     "sail": false,
     "skills": [
+        "infer-conventions",
         "laravel-best-practices",
         "pulse-development",
         "tailwindcss-development"

@@ -58,6 +58,7 @@ class RolePermissionSeeder extends Seeder
                 ...self::crud(Permission::BlogTagView, Permission::BlogTagCreate, Permission::BlogTagEdit, Permission::BlogTagDelete),
                 ...self::crud(Permission::ContactMessageView, Permission::ContactMessageEdit, Permission::ContactMessageDelete),
                 Permission::ManagementReportView,
+                Permission::AnalyticsReportView,
                 Permission::PricingView,
                 Permission::PricingEdit,
                 Permission::DiscountView,
