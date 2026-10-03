@@ -660,10 +660,7 @@ class PaymentController extends Controller
                 continue;
             }
 
-            $physical = (int) ($product->hesabfa_physical_stock ?? $product->stock_quantity ?? 0);
-            $reserved = (int) ($product->hesabfa_reserved_stock ?? 0);
-            $manualReserved = (int) ($product->hesabfa_manual_reserved ?? 0);
-            $sellable = max(0, $physical - $reserved - $manualReserved);
+            $sellable = $product->sellable_stock;
 
             if ($item->quantity > $sellable) {
                 $insufficient[] = "{$product->name}: موجودی {$sellable}، درخواست {$item->quantity}";

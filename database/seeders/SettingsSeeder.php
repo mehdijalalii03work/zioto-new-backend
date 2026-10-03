@@ -15,6 +15,8 @@ class SettingsSeeder extends Seeder
             ['key' => 'tax_silver', 'value' => '10', 'type' => 'number', 'category' => 'tax', 'label' => 'درصد مالیات نقره', 'sort_order' => 2],
             // Display settings
             ['key' => 'show_price_with_tax', 'value' => 'true', 'type' => 'boolean', 'category' => 'display', 'label' => 'نمایش قیمت با مالیات', 'sort_order' => 1],
+            // Hesabfa stock settings
+            ['key' => 'ignore_reserved_stock', 'value' => 'true', 'type' => 'boolean', 'category' => 'hesabfa', 'label' => 'نادیده گرفتن رزرو موجودی', 'sort_order' => 1],
         ];
 
         foreach ($settings as $setting) {

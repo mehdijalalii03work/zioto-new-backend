@@ -60,6 +60,7 @@ class ManageSettings extends Page
             'hesabfa_enable_reserved_stock' => config('hesabfa.enable_reserved_stock'),
             'hesabfa_webhook_secret' => config('hesabfa.webhook_secret'),
             'show_price_with_tax' => setting('show_price_with_tax', true),
+            'ignore_reserved_stock' => setting('ignore_reserved_stock', true),
             'tapsi_emergency_status' => setting('tapsi_emergency_status', 'open'),
             'tapsi_auth_token' => config('tapsi.auth_token'),
             'tapsi_auth_name' => config('tapsi.auth_name'),
@@ -244,6 +245,17 @@ class ManageSettings extends Page
                     ]),
                 ]),
 
+            Section::make('تنظیمات رزرو موجودی')
+                ->description('رزرو شدن موجودی طبق روال سفارش‌ها همیشه انجام می‌شود؛ با این سوییچ می‌توانید مشخص کنید که رزرو در محاسبه موجودی قابل فروش لحاظ شود یا نه')
+                ->icon('heroicon-o-bookmark-slash')
+                ->collapsible()
+                ->schema([
+                    Toggle::make('ignore_reserved_stock')
+                        ->label('نادیده گرفتن رزرو موجودی')
+                        ->helperText('در حالت روشن، موجودی رزرو شده همچنان ثبت و آزاد می‌شود اما موجودی قابل فروش فقط بر اساس موجودی دریافتی از حسابفا محاسبه می‌شود. رزرو دستی محصول همچنان اعمال می‌شود.')
+                        ->inline(false),
+                ]),
+
             Section::make('وب‌هوک')
                 ->icon('heroicon-o-globe-alt')
                 ->collapsible()
@@ -280,6 +292,13 @@ class ManageSettings extends Page
             'type' => 'boolean',
             'category' => 'display',
             'label' => 'نمایش قیمت با مالیات',
+        ]);
+
+        Setting::updateOrCreate(['key' => 'ignore_reserved_stock'], [
+            'value' => ($data['ignore_reserved_stock'] ?? true) ? 'true' : 'false',
+            'type' => 'boolean',
+            'category' => 'hesabfa',
+            'label' => 'نادیده گرفتن رزرو موجودی',
         ]);
 
         $hesabfaData = collect($data)->filter(fn ($v, $k) => str_starts_with($k, 'hesabfa_'));

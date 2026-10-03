@@ -84,9 +84,7 @@ class StockSyncService
                     ];
 
                     if ($reservedEnabled) {
-                        $reserved = (int) ($product->hesabfa_reserved_stock ?? 0);
-                        $manualReserved = (int) ($product->hesabfa_manual_reserved ?? 0);
-                        $updateData['stock_quantity'] = max(0, $quantity - $reserved - $manualReserved);
+                        $updateData['stock_quantity'] = $product->sellableStockFor($quantity);
                     } else {
                         $updateData['stock_quantity'] = $quantity;
                     }
@@ -142,9 +140,7 @@ class StockSyncService
         ];
 
         if ($reservedEnabled) {
-            $reserved = (int) ($product->hesabfa_reserved_stock ?? 0);
-            $manualReserved = (int) ($product->hesabfa_manual_reserved ?? 0);
-            $updateData['stock_quantity'] = max(0, $quantity - $reserved - $manualReserved);
+            $updateData['stock_quantity'] = $product->sellableStockFor(max(0, $quantity));
         } else {
             $updateData['stock_quantity'] = max(0, $quantity);
         }

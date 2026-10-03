@@ -103,10 +103,30 @@ class Product extends Model implements HasMedia
     public function getSellableStockAttribute(): int
     {
         $physical = (int) ($this->hesabfa_physical_stock ?? $this->stock_quantity ?? 0);
-        $reserved = (int) ($this->hesabfa_reserved_stock ?? 0);
+
+        return $this->sellableStockFor($physical);
+    }
+
+    /**
+     * Single source of truth for "how much can actually be sold".
+     *
+     * `hesabfa_reserved_stock` keeps being written by the order lifecycle
+     * (see StockReservationObserver) no matter what, but when the
+     * `ignore_reserved_stock` setting is on it is left out of the calculation
+     * so only the stock coming from Hesabfa decides availability.
+     * `hesabfa_manual_reserved` is an admin decision and always applies.
+     */
+    public function sellableStockFor(int $physicalStock): int
+    {
+        $reserved = static::ignoresReservedStock() ? 0 : (int) ($this->hesabfa_reserved_stock ?? 0);
         $manualReserved = (int) ($this->hesabfa_manual_reserved ?? 0);
 
-        return max(0, $physical - $reserved - $manualReserved);
+        return max(0, $physicalStock - $reserved - $manualReserved);
+    }
+
+    public static function ignoresReservedStock(): bool
+    {
+        return (bool) setting('ignore_reserved_stock', true);
     }
 
     /**

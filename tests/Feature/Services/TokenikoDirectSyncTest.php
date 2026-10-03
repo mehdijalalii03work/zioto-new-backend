@@ -30,6 +30,16 @@ class TokenikoDirectSyncTest extends TestCase
             'tapsi.delay_between_chunks' => 0,
         ]);
 
+        // These tests assert the "physical - reserved" stock that gets pushed to
+        // Tapsi, so the reservation must be counted (the shipped default ignores it).
+        Setting::create([
+            'key' => 'ignore_reserved_stock',
+            'value' => 'false',
+            'type' => 'boolean',
+            'category' => 'hesabfa',
+            'label' => 'نادیده گرفتن رزرو موجودی',
+        ]);
+
         $this->service = app(TokenikoDirectSyncService::class);
     }
 
