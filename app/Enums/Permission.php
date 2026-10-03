@@ -102,6 +102,7 @@ enum Permission: string
 
     case ManagementReportView = 'management-report.view';
 
+    case AnalyticsReportView = 'analytics-report.view';
     public function label(): string
     {
         return match ($this) {
@@ -154,6 +155,7 @@ enum Permission: string
             self::HesabfaView => 'مشاهده حسابفا',
             self::HesabfaSync => 'همگام‌سازی با حسابفا',
             self::ManagementReportView => 'مشاهده گزارشات مدیریتی',
+            self::AnalyticsReportView => 'مشاهده گزارش ترافیک (گوگل آنالیتیکس)',
         };
     }
 
@@ -174,7 +176,7 @@ enum Permission: string
             self::BlogTagView, self::BlogTagCreate, self::BlogTagEdit, self::BlogTagDelete => 'برچسب‌های وبلاگ',
             self::ContactMessageView, self::ContactMessageEdit, self::ContactMessageDelete => 'پیام‌های تماس',
             self::HesabfaView, self::HesabfaSync => 'حسابفا',
-            self::ManagementReportView => 'گزارشات مدیریتی',
+            self::ManagementReportView, self::AnalyticsReportView => 'گزارشات مدیریتی',
         };
     }
 

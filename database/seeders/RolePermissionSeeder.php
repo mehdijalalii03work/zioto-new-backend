@@ -51,6 +51,7 @@ class RolePermissionSeeder extends Seeder
             ...$this->crud(Permission::BlogTagView, Permission::BlogTagCreate, Permission::BlogTagEdit, Permission::BlogTagDelete),
             ...$this->crud(Permission::ContactMessageView, Permission::ContactMessageEdit, Permission::ContactMessageDelete),
             Permission::ManagementReportView,
+            Permission::AnalyticsReportView,
         ]);
         $this->seedRole(Role::Operator, [
             Permission::DashboardView,
