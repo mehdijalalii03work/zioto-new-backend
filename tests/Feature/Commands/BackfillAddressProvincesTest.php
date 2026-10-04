@@ -53,7 +53,9 @@ class BackfillAddressProvincesTest extends TestCase
             'city_id' => null,
         ]);
 
-        $this->artisan('addresses:backfill-provinces')->assertExitCode(0);
+        $this->artisan('addresses:backfill-provinces')
+            ->expectsOutputToContain('همه آدرس‌ها province_id دارند')
+            ->assertExitCode(0);
 
         $this->assertNull($address->fresh()->province_id);
     }
@@ -63,7 +65,7 @@ class BackfillAddressProvincesTest extends TestCase
         $province = $this->province(21, 'اصفهان', 'isfahan-backfill');
         $city = City::create(['province_id' => $province->id, 'name' => 'اصفهان', 'slug' => 'isfahan-city-backfill']);
         $user = User::factory()->create();
-        $address = UserAddress::factory()->create(['user_id' => $user->id, 'city_id' => null]);
+        $address = UserAddress::factory()->create(['user_id' => $user->id, 'province_id' => null, 'city_id' => null]);
         $address->forceFill(['city_id' => $city->id, 'province_id' => null])->saveQuietly();
 
         $this->artisan('addresses:backfill-provinces --dry-run')
@@ -78,7 +80,7 @@ class BackfillAddressProvincesTest extends TestCase
         $province = $this->province(22, 'فارس', 'fars-backfill');
         $city = City::create(['province_id' => $province->id, 'name' => 'شیراز', 'slug' => 'shiraz-backfill']);
         $user = User::factory()->create();
-        $address = UserAddress::factory()->create(['user_id' => $user->id, 'city_id' => null]);
+        $address = UserAddress::factory()->create(['user_id' => $user->id, 'province_id' => null, 'city_id' => null]);
         $address->forceFill(['city_id' => $city->id, 'province_id' => null])->saveQuietly();
 
         $this->artisan('addresses:backfill-provinces')->assertExitCode(0);
