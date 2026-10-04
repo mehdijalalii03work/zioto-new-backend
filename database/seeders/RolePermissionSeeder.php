@@ -25,11 +25,15 @@ class RolePermissionSeeder extends Seeder
         }
 
         $staleNames = PermissionModel::query()
+            ->where('guard_name', 'web')
             ->pluck('name')
             ->reject(fn (string $name): bool => in_array($name, $validNames, true));
 
         if ($staleNames->isNotEmpty()) {
-            PermissionModel::query()->whereIn('name', $staleNames->all())->delete();
+            PermissionModel::query()
+                ->where('guard_name', 'web')
+                ->whereIn('name', $staleNames->all())
+                ->delete();
         }
     }
 
