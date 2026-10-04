@@ -319,36 +319,36 @@
           @mouseleave="hideTooltip()" />
 
     <g class="iran-province-labels">
-        <text x="229.3" y="163.3" font-size="8.5">{{ $provinceData['alborz']['name'] }}</text>
-        <text x="132.5" y="54.5" font-size="8.5">{{ $provinceData['ardabil']['name'] }}</text>
-        <text x="42.1" y="88.1" font-size="8.5">{{ $provinceData['azarbayjan-e-gharbi']['name'] }}</text>
-        <text x="86.6" y="80.5" font-size="8.5">{{ $provinceData['azarbayjan-e-sharqi']['name'] }}</text>
-        <text x="249.6" y="449.1" font-size="8.5">{{ $provinceData['bushehr']['name'] }}</text>
-        <text x="224.9" y="327.7" font-size="7.6">{{ $provinceData['chahar-mahal-and-bakhtiari']['name'] }}</text>
-        <text x="310.7" y="431.4" font-size="8.5">{{ $provinceData['fars']['name'] }}</text>
-        <text x="184.6" y="108.0" font-size="8.5">{{ $provinceData['gilan']['name'] }}</text>
-        <text x="374.3" y="107.3" font-size="8.5">{{ $provinceData['golestan']['name'] }}</text>
-        <text x="153.9" y="209.0" font-size="8.5">{{ $provinceData['hamadan']['name'] }}</text>
-        <text x="411.0" y="519.9" font-size="8.5">{{ $provinceData['hormozgan']['name'] }}</text>
-        <text x="95.6" y="278.2" font-size="8.5">{{ $provinceData['ilam']['name'] }}</text>
-        <text x="286.5" y="277.7" font-size="8.5">{{ $provinceData['isfahan']['name'] }}</text>
-        <text x="449.3" y="420.3" font-size="8.5">{{ $provinceData['kerman']['name'] }}</text>
-        <text x="88.1" y="226.2" font-size="8.5">{{ $provinceData['kermanshah']['name'] }}</text>
-        <text x="528.2" y="310.7" font-size="8.5">{{ $provinceData['khorasan-e-jonubi']['name'] }}</text>
-        <text x="503.4" y="182.7" font-size="8.5">{{ $provinceData['khorasan-e-razavi']['name'] }}</text>
-        <text x="441.1" y="102.7" font-size="8.5">{{ $provinceData['khorasan-e-shomali']['name'] }}</text>
-        <text x="167.7" y="345.3" font-size="8.5">{{ $provinceData['khuzestan']['name'] }}</text>
-        <text x="227.8" y="372.6" font-size="8.0">{{ $provinceData['kohgiluyeh-and-boyer-ahmad']['name'] }}</text>
-        <text x="99.8" y="173.8" font-size="8.5">{{ $provinceData['kurdistan']['name'] }}</text>
-        <text x="149.0" y="265.8" font-size="8.5">{{ $provinceData['lorestan']['name'] }}</text>
-        <text x="200.6" y="221.3" font-size="8.5">{{ $provinceData['markazi']['name'] }}</text>
-        <text x="283.0" y="146.2" font-size="8.5">{{ $provinceData['mazandaran']['name'] }}</text>
-        <text x="193.7" y="158.2" font-size="8.5">{{ $provinceData['qazvin']['name'] }}</text>
-        <text x="236.3" y="216.2" font-size="8.5">{{ $provinceData['qom']['name'] }}</text>
-        <text x="360.8" y="183.9" font-size="8.5">{{ $provinceData['semnan']['name'] }}</text>
-        <text x="564.3" y="488.4" font-size="8.5">{{ $provinceData['sistan-and-baluchestan']['name'] }}</text>
-        <text x="265.0" y="180.2" font-size="8.5">{{ $provinceData['tehran']['name'] }}</text>
-        <text x="393.0" y="302.1" font-size="8.5">{{ $provinceData['yazd']['name'] }}</text>
-        <text x="147.4" y="140.0" font-size="8.5">{{ $provinceData['zanjan']['name'] }}</text>
+        <text x="229.3" y="163.3" font-size="8.5" class="{{ $provinceData['alborz']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['alborz']['name'] }}</text>
+        <text x="132.5" y="54.5" font-size="8.5" class="{{ $provinceData['ardabil']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['ardabil']['name'] }}</text>
+        <text x="42.1" y="88.1" font-size="8.5" class="{{ $provinceData['azarbayjan-e-gharbi']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['azarbayjan-e-gharbi']['name'] }}</text>
+        <text x="86.6" y="80.5" font-size="8.5" class="{{ $provinceData['azarbayjan-e-sharqi']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['azarbayjan-e-sharqi']['name'] }}</text>
+        <text x="249.6" y="449.1" font-size="8.5" class="{{ $provinceData['bushehr']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['bushehr']['name'] }}</text>
+        <text x="224.9" y="327.7" font-size="7.6" class="{{ $provinceData['chahar-mahal-and-bakhtiari']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['chahar-mahal-and-bakhtiari']['name'] }}</text>
+        <text x="310.7" y="431.4" font-size="8.5" class="{{ $provinceData['fars']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['fars']['name'] }}</text>
+        <text x="184.6" y="108.0" font-size="8.5" class="{{ $provinceData['gilan']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['gilan']['name'] }}</text>
+        <text x="374.3" y="107.3" font-size="8.5" class="{{ $provinceData['golestan']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['golestan']['name'] }}</text>
+        <text x="153.9" y="209.0" font-size="8.5" class="{{ $provinceData['hamadan']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['hamadan']['name'] }}</text>
+        <text x="411.0" y="519.9" font-size="8.5" class="{{ $provinceData['hormozgan']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['hormozgan']['name'] }}</text>
+        <text x="95.6" y="278.2" font-size="8.5" class="{{ $provinceData['ilam']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['ilam']['name'] }}</text>
+        <text x="286.5" y="277.7" font-size="8.5" class="{{ $provinceData['isfahan']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['isfahan']['name'] }}</text>
+        <text x="449.3" y="420.3" font-size="8.5" class="{{ $provinceData['kerman']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['kerman']['name'] }}</text>
+        <text x="88.1" y="226.2" font-size="8.5" class="{{ $provinceData['kermanshah']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['kermanshah']['name'] }}</text>
+        <text x="528.2" y="310.7" font-size="8.5" class="{{ $provinceData['khorasan-e-jonubi']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['khorasan-e-jonubi']['name'] }}</text>
+        <text x="503.4" y="182.7" font-size="8.5" class="{{ $provinceData['khorasan-e-razavi']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['khorasan-e-razavi']['name'] }}</text>
+        <text x="441.1" y="102.7" font-size="8.5" class="{{ $provinceData['khorasan-e-shomali']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['khorasan-e-shomali']['name'] }}</text>
+        <text x="167.7" y="345.3" font-size="8.5" class="{{ $provinceData['khuzestan']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['khuzestan']['name'] }}</text>
+        <text x="227.8" y="372.6" font-size="8.0" class="{{ $provinceData['kohgiluyeh-and-boyer-ahmad']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['kohgiluyeh-and-boyer-ahmad']['name'] }}</text>
+        <text x="99.8" y="173.8" font-size="8.5" class="{{ $provinceData['kurdistan']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['kurdistan']['name'] }}</text>
+        <text x="149.0" y="265.8" font-size="8.5" class="{{ $provinceData['lorestan']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['lorestan']['name'] }}</text>
+        <text x="200.6" y="221.3" font-size="8.5" class="{{ $provinceData['markazi']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['markazi']['name'] }}</text>
+        <text x="283.0" y="146.2" font-size="8.5" class="{{ $provinceData['mazandaran']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['mazandaran']['name'] }}</text>
+        <text x="193.7" y="158.2" font-size="8.5" class="{{ $provinceData['qazvin']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['qazvin']['name'] }}</text>
+        <text x="236.3" y="216.2" font-size="8.5" class="{{ $provinceData['qom']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['qom']['name'] }}</text>
+        <text x="360.8" y="183.9" font-size="8.5" class="{{ $provinceData['semnan']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['semnan']['name'] }}</text>
+        <text x="564.3" y="488.4" font-size="8.5" class="{{ $provinceData['sistan-and-baluchestan']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['sistan-and-baluchestan']['name'] }}</text>
+        <text x="265.0" y="180.2" font-size="8.5" class="{{ $provinceData['tehran']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['tehran']['name'] }}</text>
+        <text x="393.0" y="302.1" font-size="8.5" class="{{ $provinceData['yazd']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['yazd']['name'] }}</text>
+        <text x="147.4" y="140.0" font-size="8.5" class="{{ $provinceData['zanjan']['dark_fill'] ? 'iran-province-labels--on-dark' : '' }}">{{ $provinceData['zanjan']['name'] }}</text>
     </g>
 </svg>

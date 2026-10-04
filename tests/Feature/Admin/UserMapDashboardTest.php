@@ -70,6 +70,18 @@ class UserMapDashboardTest extends TestCase
         return $shapes;
     }
 
+    /**
+     * The three channels of a shape's `fill: rgb(r, g, b)` style.
+     *
+     * @return array{int, int, int}
+     */
+    private function fillChannels(string $fill): array
+    {
+        $this->assertSame(1, preg_match('/^fill: rgb\((\d+), (\d+), (\d+)\)$/', $fill, $channels));
+
+        return [(int) $channels[1], (int) $channels[2], (int) $channels[3]];
+    }
+
     public function test_it_renders_a_shape_with_geometry_for_every_province(): void
     {
         $html = Livewire::actingAs($this->admin(), 'web')
@@ -123,12 +135,66 @@ class UserMapDashboardTest extends TestCase
         $this->assertSame(1, $shapes['alborz']['count']);
         $this->assertSame(0, $shapes['yazd']['count']);
 
-        $this->assertSame('fill: rgb(255, 0, 0)', $shapes['tehran']['fill']);
-        $this->assertSame('fill: rgb(255, 200, 200)', $shapes['yazd']['fill']);
+        $this->assertSame('fill: rgb(92, 0, 0)', $shapes['tehran']['fill']);
+        $this->assertSame('fill: rgb(240, 190, 180)', $shapes['yazd']['fill']);
 
         $this->assertSame(5, substr_count($html, 'background-color: rgb('));
-        $this->assertStringContainsString('background-color: rgb(255, 200, 200)', $html);
-        $this->assertStringContainsString('background-color: rgb(255, 0, 0)', $html);
+        $this->assertStringContainsString('background-color: rgb(240, 190, 180)', $html);
+        $this->assertStringContainsString('background-color: rgb(92, 0, 0)', $html);
+    }
+
+    public function test_the_colour_ramp_darkens_monotonically_with_user_count(): void
+    {
+        UserAddress::factory()->count(4)->create([
+            'province_id' => $this->province('tehran')->id,
+            'city_id' => null,
+        ]);
+
+        UserAddress::factory()->create([
+            'user_id' => User::factory()->create()->id,
+            'province_id' => $this->province('fars')->id,
+            'city_id' => null,
+        ]);
+
+        $html = Livewire::actingAs($this->admin(), 'web')
+            ->test(UserMapDashboard::class)
+            ->assertSuccessful()
+            ->html();
+
+        $shapes = $this->mapShapes($html);
+
+        $this->assertSame(4, $shapes['tehran']['count']);
+        $this->assertSame(1, $shapes['fars']['count']);
+        $this->assertSame(0, $shapes['yazd']['count']);
+
+        $busiest = $this->fillChannels($shapes['tehran']['fill']);
+        $middle = $this->fillChannels($shapes['fars']['fill']);
+        $empty = $this->fillChannels($shapes['yazd']['fill']);
+
+        foreach (['red', 'green', 'blue'] as $index => $channel) {
+            $this->assertLessThan(
+                $middle[$index],
+                $busiest[$index],
+                "Expected the busiest province to be darker in {$channel} than one holding an intermediate count.",
+            );
+
+            $this->assertLessThan(
+                $empty[$index],
+                $middle[$index],
+                "Expected one holding an intermediate count to be darker in {$channel} than an empty province.",
+            );
+        }
+
+        // Only the deepest fill carries the label variant that inverts the halo.
+        $this->assertMatchesRegularExpression(
+            '/<text[^>]*class="iran-province-labels--on-dark"[^>]*>'.preg_quote($shapes['tehran']['name'], '/').'<\/text>/u',
+            $html,
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/<text[^>]*class=""[^>]*>'.preg_quote($shapes['yazd']['name'], '/').'<\/text>/u',
+            $html,
+        );
     }
 
     public function test_it_counts_a_user_once_per_province(): void
@@ -150,7 +216,7 @@ class UserMapDashboardTest extends TestCase
         $shapes = $this->mapShapes($html);
 
         $this->assertSame(1, $shapes['fars']['count']);
-        $this->assertSame('fill: rgb(255, 0, 0)', $shapes['fars']['fill']);
+        $this->assertSame('fill: rgb(92, 0, 0)', $shapes['fars']['fill']);
     }
 
     public function test_it_counts_an_address_that_only_knows_its_city(): void
@@ -176,7 +242,7 @@ class UserMapDashboardTest extends TestCase
         $shapes = $this->mapShapes($component->html());
 
         $this->assertSame(1, $shapes['fars']['count']);
-        $this->assertSame('fill: rgb(255, 0, 0)', $shapes['fars']['fill']);
+        $this->assertSame('fill: rgb(92, 0, 0)', $shapes['fars']['fill']);
 
         $stats = $component->instance()->stats;
 

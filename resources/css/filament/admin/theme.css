@@ -139,4 +139,9 @@
     .dark .iran-province-labels {
         stroke: #111827;
     }
+
+    .iran-province-labels--on-dark {
+        @apply fill-white;
+        stroke: #111827;
+    }
 }

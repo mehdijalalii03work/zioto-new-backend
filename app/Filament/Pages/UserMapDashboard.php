@@ -34,7 +34,7 @@ class UserMapDashboard extends Page
     /**
      * Province name, unique user count and choropleth colour, keyed by province slug.
      *
-     * @var array<string, array{name: string, count: int, color: string}>
+     * @var array<string, array{name: string, count: int, color: string, dark_fill: bool}>
      */
     public array $provinceData = [];
 
@@ -82,12 +82,13 @@ class UserMapDashboard extends Page
                 $topProvince = $province->name;
             }
 
+            $scale = $this->getColorScale($count);
+
             $this->provinceData[$province->slug] = [
                 'name' => $province->name,
                 'count' => $count,
-                'color' => $this->getColorForIntensity(
-                    $this->maxUsers > 0 ? min(1, $count / $this->maxUsers) : 0,
-                ),
+                'color' => $this->getColorForIntensity($scale),
+                'dark_fill' => $scale > 0.5,
             ];
         }
 
@@ -152,12 +153,46 @@ class UserMapDashboard extends Page
             ->whereNull('users.deleted_at');
     }
 
+    /**
+     * Share of the busiest province on a square-root scale. Tehran holds ten
+     * times the next province, so a linear scale flattens every other province
+     * into one indistinguishable pale tone.
+     */
+    private function getColorScale(int $count): float
+    {
+        if ($this->maxUsers < 1) {
+            return 0.0;
+        }
+
+        return min(1.0, sqrt($count / $this->maxUsers));
+    }
+
+    /**
+     * Sequential red ramp: light brick, red, near-black red.
+     *
+     * @var array<int, array{int, int, int}>
+     */
+    private const array COLOR_RAMP = [
+        [240, 190, 180],
+        [198, 40, 40],
+        [92, 0, 0],
+    ];
+
     private function getColorForIntensity(float $intensity): string
     {
-        // Light red to dark red
-        $r = 255;
-        $g = (int) (200 * (1 - $intensity));
-        $b = (int) (200 * (1 - $intensity));
+        $intensity = max(0.0, min(1.0, $intensity));
+
+        [$from, $to] = $intensity <= 0.5
+            ? [self::COLOR_RAMP[0], self::COLOR_RAMP[1]]
+            : [self::COLOR_RAMP[1], self::COLOR_RAMP[2]];
+
+        $ratio = $intensity <= 0.5 ? $intensity * 2 : ($intensity - 0.5) * 2;
+
+        [$r, $g, $b] = array_map(
+            fn (int $start, int $end): int => (int) round($start + ($end - $start) * $ratio),
+            $from,
+            $to,
+        );
 
         return sprintf('rgb(%d, %d, %d)', $r, $g, $b);
     }
