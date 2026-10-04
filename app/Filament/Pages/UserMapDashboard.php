@@ -91,14 +91,18 @@ class UserMapDashboard extends Page
             ];
         }
 
-        $usersWithAddress = $this->distinctUserCount(fn ($query) => $query);
+        $mappedUsers = $this->distinctUserCount(fn ($query) => $query
+            ->where(fn ($address) => $address
+                ->whereNotNull('user_addresses.province_id')
+                ->orWhereNotNull('cities.province_id')));
+
         $unmappedUsers = $this->distinctUserCount(fn ($query) => $query
             ->whereNull('user_addresses.province_id')
             ->whereNull('cities.province_id'));
 
         $this->stats = [
             'total_users' => User::withoutTenantScope()->count(),
-            'mapped_users' => $usersWithAddress - $unmappedUsers,
+            'mapped_users' => $mappedUsers,
             'unmapped_users' => $unmappedUsers,
             'active_provinces' => $activeProvinces,
             'total_provinces' => $provinces->count(),

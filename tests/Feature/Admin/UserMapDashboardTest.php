@@ -169,15 +169,46 @@ class UserMapDashboardTest extends TestCase
         ]);
         $address->forceFill(['province_id' => null, 'city_id' => $city->id])->saveQuietly();
 
-        $html = Livewire::actingAs($this->admin(), 'web')
+        $component = Livewire::actingAs($this->admin(), 'web')
             ->test(UserMapDashboard::class)
-            ->assertSuccessful()
-            ->html();
+            ->assertSuccessful();
 
-        $shapes = $this->mapShapes($html);
+        $shapes = $this->mapShapes($component->html());
 
         $this->assertSame(1, $shapes['fars']['count']);
         $this->assertSame('fill: rgb(255, 0, 0)', $shapes['fars']['fill']);
+
+        $stats = $component->instance()->stats;
+
+        $this->assertSame(1, $stats['mapped_users']);
+        $this->assertSame(0, $stats['unmapped_users']);
+    }
+
+    public function test_a_user_with_both_a_mapped_and_an_unmappable_address_is_counted_as_mapped(): void
+    {
+        $province = $this->province('yazd');
+        $user = User::factory()->create();
+
+        UserAddress::factory()->create([
+            'user_id' => $user->id,
+            'province_id' => $province->id,
+            'city_id' => null,
+        ]);
+
+        UserAddress::withoutEvents(fn () => UserAddress::factory()->create([
+            'user_id' => $user->id,
+            'province_id' => null,
+            'city_id' => null,
+        ]));
+
+        $stats = Livewire::actingAs($this->admin(), 'web')
+            ->test(UserMapDashboard::class)
+            ->assertSuccessful()
+            ->instance()
+            ->stats;
+
+        $this->assertSame(1, $stats['mapped_users']);
+        $this->assertSame(1, $stats['unmapped_users']);
     }
 
     public function test_it_counts_an_address_without_a_city_as_unmapped(): void
