@@ -7,7 +7,8 @@ use App\Models\Province;
 use App\Models\User;
 use App\Models\UserAddress;
 use Filament\Pages\Page;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class UserMapDashboard extends Page
 {
@@ -26,7 +27,7 @@ class UserMapDashboard extends Page
     protected string $view = 'filament.pages.user-map-dashboard';
 
     /**
-     * @var array{total_users: int, active_provinces: int, top_province: ?string, top_province_count: int, total_provinces: int}
+     * @var array{total_users: int, mapped_users: int, unmapped_users: int, active_provinces: int, top_province: ?string, top_province_count: int, total_provinces: int}
      */
     public array $stats = [];
 
@@ -49,8 +50,7 @@ class UserMapDashboard extends Page
 
     public function mount(): void
     {
-        $this->loadStats();
-        $this->loadProvinceData();
+        $this->loadProvinceStats();
 
         $this->legendColors = array_map(
             fn (int $step): string => $this->getColorForIntensity($step / 4),
@@ -58,59 +58,29 @@ class UserMapDashboard extends Page
         );
     }
 
-    private function loadStats(): void
+    private function loadProvinceStats(): void
     {
-        $totalUsers = User::withoutTenantScope()->count();
+        $userCountsByProvince = $this->userCountsByProvince();
 
-        $addressesWithProvince = UserAddress::withoutTenantScope()
-            ->whereNotNull('province_id')
-            ->with('province:id,name')
-            ->get();
+        $provinces = Province::all();
 
-        $provinceUserCounts = $addressesWithProvince
-            ->groupBy('province_id')
-            ->map(fn (Collection $addresses) => $addresses->unique('user_id')->count())
-            ->toArray();
+        $this->maxUsers = $userCountsByProvince->isEmpty() ? 1 : $userCountsByProvince->max();
 
-        $activeProvinces = count($provinceUserCounts);
-        $totalProvinces = Province::count();
-
+        $activeProvinces = 0;
         $topProvince = null;
         $topCount = 0;
 
-        foreach ($provinceUserCounts as $provinceId => $count) {
+        foreach ($provinces as $province) {
+            $count = $userCountsByProvince->get($province->id, 0);
+
+            if ($count > 0) {
+                $activeProvinces++;
+            }
+
             if ($count > $topCount) {
                 $topCount = $count;
-                $province = Province::find($provinceId);
-                $topProvince = $province?->name ?? '—';
+                $topProvince = $province->name;
             }
-        }
-
-        $this->maxUsers = $provinceUserCounts === [] ? 1 : max($provinceUserCounts);
-
-        $this->stats = [
-            'total_users' => $totalUsers,
-            'active_provinces' => $activeProvinces,
-            'top_province' => $topProvince,
-            'top_province_count' => $topCount,
-            'total_provinces' => $totalProvinces,
-        ];
-    }
-
-    private function loadProvinceData(): void
-    {
-        $addressesWithProvince = UserAddress::withoutTenantScope()
-            ->whereNotNull('province_id')
-            ->with('province:id,name')
-            ->get();
-
-        $provinceUserCounts = $addressesWithProvince
-            ->groupBy('province_id')
-            ->map(fn (Collection $addresses) => $addresses->unique('user_id')->count())
-            ->toArray();
-
-        foreach (Province::all() as $province) {
-            $count = $provinceUserCounts[$province->id] ?? 0;
 
             $this->provinceData[$province->slug] = [
                 'name' => $province->name,
@@ -120,6 +90,62 @@ class UserMapDashboard extends Page
                 ),
             ];
         }
+
+        $usersWithAddress = $this->distinctUserCount(fn ($query) => $query);
+        $unmappedUsers = $this->distinctUserCount(fn ($query) => $query
+            ->whereNull('user_addresses.province_id')
+            ->whereNull('cities.province_id'));
+
+        $this->stats = [
+            'total_users' => User::withoutTenantScope()->count(),
+            'mapped_users' => $usersWithAddress - $unmappedUsers,
+            'unmapped_users' => $unmappedUsers,
+            'active_provinces' => $activeProvinces,
+            'total_provinces' => $provinces->count(),
+            'top_province' => $topProvince,
+            'top_province_count' => $topCount,
+        ];
+    }
+
+    /**
+     * Distinct living users per province. The province falls back to the
+     * province of the linked city, because 2,419 addresses imported from
+     * WordPress only carry a city.
+     *
+     * @return Collection<int, int>
+     */
+    private function userCountsByProvince(): Collection
+    {
+        return $this->addressQuery()
+            ->whereRaw('COALESCE(user_addresses.province_id, cities.province_id) IS NOT NULL')
+            ->selectRaw('COALESCE(user_addresses.province_id, cities.province_id) AS resolved_province_id')
+            ->selectRaw('COUNT(DISTINCT user_addresses.user_id) AS users')
+            ->groupBy('resolved_province_id')
+            ->pluck('users', 'resolved_province_id');
+    }
+
+    /**
+     * @param  callable(Builder): void  $constrain
+     */
+    private function distinctUserCount(callable $constrain): int
+    {
+        $query = $this->addressQuery();
+
+        $constrain($query);
+
+        return $query->distinct()->count('user_addresses.user_id');
+    }
+
+    /**
+     * Alive addresses of living users, joined to the city so the province can
+     * be derived when the address itself has none.
+     */
+    private function addressQuery(): Builder
+    {
+        return UserAddress::withoutTenantScope()
+            ->join('users', 'users.id', '=', 'user_addresses.user_id')
+            ->leftJoin('cities', 'cities.id', '=', 'user_addresses.city_id')
+            ->whereNull('users.deleted_at');
     }
 
     private function getColorForIntensity(float $intensity): string
