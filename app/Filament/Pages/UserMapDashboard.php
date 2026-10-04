@@ -27,7 +27,7 @@ class UserMapDashboard extends Page
     protected string $view = 'filament.pages.user-map-dashboard';
 
     /**
-     * @var array{total_users: int, mapped_users: int, unmapped_users: int, active_provinces: int, top_province: ?string, top_province_count: int, total_provinces: int}
+     * @var array{total_users: int, mapped_users: int, hidden_users: int, active_provinces: int, top_province: ?string, top_province_count: int, total_provinces: int}
      */
     public array $stats = [];
 
@@ -92,19 +92,21 @@ class UserMapDashboard extends Page
             ];
         }
 
-        $mappedUsers = $this->distinctUserCount(fn ($query) => $query
-            ->where(fn ($address) => $address
-                ->whereNotNull('user_addresses.province_id')
-                ->orWhereNotNull('cities.province_id')));
+        // Per-user: at least one address resolves to a province, either on the
+        // address itself or on the city it points at. This is the map's denominator.
+        $mappedUsers = $this->distinctUserCount($this->resolvableAddressConstraint(...));
 
-        $unmappedUsers = $this->distinctUserCount(fn ($query) => $query
-            ->whereNull('user_addresses.province_id')
-            ->whereNull('cities.province_id'));
+        // Per-user: nothing resolves for any of their addresses, so the map cannot
+        // place them at all. A per-address test for an unresolvable address is not
+        // this quantity: it also matches a user whose other address does resolve,
+        // who is on the map after all, and the two are not complements. Hence the
+        // exclusion of everyone the map can already place.
+        $hiddenUsers = $this->hiddenUserCount();
 
         $this->stats = [
             'total_users' => User::withoutTenantScope()->count(),
             'mapped_users' => $mappedUsers,
-            'unmapped_users' => $unmappedUsers,
+            'hidden_users' => $hiddenUsers,
             'active_provinces' => $activeProvinces,
             'total_provinces' => $provinces->count(),
             'top_province' => $topProvince,
@@ -139,6 +141,45 @@ class UserMapDashboard extends Page
         $constrain($query);
 
         return $query->distinct()->count('user_addresses.user_id');
+    }
+
+    /**
+     * Alive users that no alive address can resolve, so they are absent from the
+     * map. Every other user with an address reaches the map, which is why this
+     * excludes the resolvable users rather than testing addresses for a null
+     * province: one user can hold both kinds of address and must not be counted
+     * twice, once as mapped and once as hidden.
+     */
+    private function hiddenUserCount(): int
+    {
+        return $this->addressQuery()
+            ->whereNotIn('user_addresses.user_id', $this->resolvableUserIds())
+            ->distinct()
+            ->count('user_addresses.user_id');
+    }
+
+    /**
+     * Ids of the users the map can place: any alive address resolving to a
+     * province, on the address itself or on the city it points at.
+     */
+    private function resolvableUserIds(): Builder
+    {
+        return UserAddress::withoutTenantScope()
+            ->select('user_addresses.user_id')
+            ->leftJoin('cities', 'cities.id', '=', 'user_addresses.city_id')
+            ->tap(fn (Builder $query) => $this->resolvableAddressConstraint($query));
+    }
+
+    /**
+     * Constrains a query to the addresses that resolve to a province. Legacy
+     * addresses imported from WordPress carry a city but no province, so the
+     * province of the linked city counts.
+     */
+    private function resolvableAddressConstraint(Builder $query): void
+    {
+        $query->where(fn ($address) => $address
+            ->whereNotNull('user_addresses.province_id')
+            ->orWhereNotNull('cities.province_id'));
     }
 
     /**

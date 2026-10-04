@@ -263,10 +263,10 @@ class UserMapDashboardTest extends TestCase
         $stats = $component->instance()->stats;
 
         $this->assertSame(1, $stats['mapped_users']);
-        $this->assertSame(0, $stats['unmapped_users']);
+        $this->assertSame(0, $stats['hidden_users']);
     }
 
-    public function test_a_user_with_both_a_mapped_and_an_unmappable_address_is_counted_as_mapped(): void
+    public function test_a_user_with_both_a_mapped_and_an_unmappable_address_is_not_hidden(): void
     {
         $province = $this->province('yazd');
         $user = User::factory()->create();
@@ -290,10 +290,45 @@ class UserMapDashboardTest extends TestCase
             ->stats;
 
         $this->assertSame(1, $stats['mapped_users']);
-        $this->assertSame(1, $stats['unmapped_users']);
+        $this->assertSame(0, $stats['hidden_users']);
     }
 
-    public function test_it_counts_an_address_without_a_city_as_unmapped(): void
+    public function test_the_hidden_count_is_not_the_number_of_unmappable_addresses(): void
+    {
+        $halfMapped = User::factory()->create();
+        $unmappable = User::factory()->create();
+
+        UserAddress::factory()->create([
+            'user_id' => $halfMapped->id,
+            'province_id' => $this->province('yazd')->id,
+            'city_id' => null,
+        ]);
+
+        UserAddress::factory()->create([
+            'user_id' => $halfMapped->id,
+            'province_id' => null,
+            'city_id' => null,
+        ]);
+
+        UserAddress::factory()->create([
+            'user_id' => $unmappable->id,
+            'province_id' => null,
+            'city_id' => null,
+        ]);
+
+        $stats = Livewire::actingAs($this->admin(), 'web')
+            ->test(UserMapDashboard::class)
+            ->assertSuccessful()
+            ->instance()
+            ->stats;
+
+        // Three addresses, two of which cannot be resolved, but only one user is
+        // hidden: the other reaches the map through its own province.
+        $this->assertSame(1, $stats['mapped_users']);
+        $this->assertSame(1, $stats['hidden_users']);
+    }
+
+    public function test_it_counts_a_user_with_no_resolvable_address_as_hidden(): void
     {
         UserAddress::factory()->create([
             'user_id' => User::factory()->create()->id,
@@ -308,7 +343,7 @@ class UserMapDashboardTest extends TestCase
             ->stats;
 
         $this->assertSame(0, $stats['mapped_users']);
-        $this->assertSame(1, $stats['unmapped_users']);
+        $this->assertSame(1, $stats['hidden_users']);
         $this->assertSame(0, $stats['active_provinces']);
     }
 
