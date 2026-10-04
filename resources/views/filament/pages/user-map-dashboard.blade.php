@@ -15,16 +15,34 @@
             </div>
         </div>
 
-        {{-- Active Provinces --}}
+        {{-- Users Placed On The Map --}}
         <div class="relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 dark:bg-gray-900 dark:ring-white/10">
             <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-emerald-400 to-emerald-600"></div>
             <div class="flex items-start justify-between">
                 <div class="space-y-2">
-                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">استان‌های فعال</p>
-                    <p class="text-3xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{{ number_format($stats['active_provinces']) }}</p>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">کاربران روی نقشه</p>
+                    <p class="text-3xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{{ number_format($stats['mapped_users']) }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">از {{ number_format($stats['total_users']) }} کاربر</p>
                 </div>
                 <div class="rounded-2xl bg-emerald-50 p-3 dark:bg-emerald-500/10">
                     <x-heroicon-o-map-pin class="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                </div>
+            </div>
+        </div>
+
+        {{-- Covered Provinces --}}
+        <div class="relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 dark:bg-gray-900 dark:ring-white/10">
+            <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-purple-400 to-purple-600"></div>
+            <div class="flex items-start justify-between">
+                <div class="space-y-2">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">استان‌های دارای کاربر</p>
+                    <p class="text-3xl font-bold tracking-tight text-purple-600 dark:text-purple-400">
+                        {{ number_format($stats['active_provinces']) }}
+                        <span class="text-lg font-medium text-gray-400 dark:text-gray-500">از {{ number_format($stats['total_provinces']) }}</span>
+                    </p>
+                </div>
+                <div class="rounded-2xl bg-purple-50 p-3 dark:bg-purple-500/10">
+                    <x-heroicon-o-squares-2x2 class="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
             </div>
         </div>
@@ -35,25 +53,11 @@
             <div class="flex items-start justify-between">
                 <div class="space-y-2">
                     <p class="text-sm font-medium text-gray-500 dark:text-gray-400">بیشترین کاربر (استان)</p>
-                    <p class="text-2xl font-bold tracking-tight text-amber-700 dark:text-amber-300">{{ $stats['top_province'] }}</p>
+                    <p class="text-2xl font-bold tracking-tight text-amber-700 dark:text-amber-300">{{ $stats['top_province'] ?? '—' }}</p>
                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ number_format($stats['top_province_count']) }} کاربر</p>
                 </div>
                 <div class="rounded-2xl bg-amber-50 p-3 dark:bg-amber-500/10">
                     <x-heroicon-o-trophy class="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                </div>
-            </div>
-        </div>
-
-        {{-- Total Provinces --}}
-        <div class="relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 dark:bg-gray-900 dark:ring-white/10">
-            <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-purple-400 to-purple-600"></div>
-            <div class="flex items-start justify-between">
-                <div class="space-y-2">
-                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">تعداد کل استان‌ها</p>
-                    <p class="text-3xl font-bold tracking-tight text-purple-600 dark:text-purple-400">{{ number_format($stats['total_provinces']) }}</p>
-                </div>
-                <div class="rounded-2xl bg-purple-50 p-3 dark:bg-purple-500/10">
-                    <x-heroicon-o-squares-2x2 class="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
             </div>
         </div>
@@ -149,6 +153,13 @@
                 <span>کم</span>
                 <span class="ml-auto">زیاد</span>
             </div>
+
+            {{-- Coverage Note --}}
+            @if ($stats['unmapped_users'] > 0)
+                <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+                    {{ number_format($stats['unmapped_users']) }} کاربر آدرس ثبت‌شده دارند ولی استانشان مشخص نیست، بنابراین در نقشه نمایش داده نمی‌شوند.
+                </p>
+            @endif
         </div>
     </div>
 </x-filament-panels::page>
