@@ -46,6 +46,10 @@
         font-size: 94%;
     }
 
+    [x-cloak] {
+        display: none !important;
+    }
+
     :root {
         --primary-400: #D0B873;
         --primary-500: #BFA772;
@@ -110,5 +114,29 @@
 
     .fi-simple-header {
         margin-bottom: 2.5rem;
+    }
+
+    .iran-province {
+        @apply cursor-pointer stroke-white transition-[stroke,stroke-width] duration-150 dark:stroke-gray-700;
+        stroke-width: 0.75;
+    }
+
+    .iran-province:hover {
+        @apply stroke-red-900 dark:stroke-red-400;
+        stroke-width: 1.75;
+    }
+
+    .iran-province-labels {
+        @apply pointer-events-none select-none fill-gray-800 dark:fill-gray-100;
+        paint-order: stroke;
+        stroke: #ffffff;
+        stroke-width: 2.5px;
+        stroke-linejoin: round;
+        text-anchor: middle;
+        dominant-baseline: middle;
+    }
+
+    .dark .iran-province-labels {
+        stroke: #111827;
     }
 }

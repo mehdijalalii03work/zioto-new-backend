@@ -25,9 +25,20 @@ class UserMapDashboard extends Page
 
     protected string $view = 'filament.pages.user-map-dashboard';
 
+    /**
+     * @var array{total_users: int, active_provinces: int, top_province: ?string, top_province_count: int, total_provinces: int}
+     */
     public array $stats = [];
 
+    /**
+     * Province name, unique user count and choropleth colour, keyed by province slug.
+     *
+     * @var array<string, array{name: string, count: int, color: string}>
+     */
     public array $provinceData = [];
+
+    /** @var list<string> */
+    public array $legendColors = [];
 
     public int $maxUsers = 0;
 
@@ -40,6 +51,11 @@ class UserMapDashboard extends Page
     {
         $this->loadStats();
         $this->loadProvinceData();
+
+        $this->legendColors = array_map(
+            fn (int $step): string => $this->getColorForIntensity($step / 4),
+            range(0, 4),
+        );
     }
 
     private function loadStats(): void
@@ -70,7 +86,7 @@ class UserMapDashboard extends Page
             }
         }
 
-        $this->maxUsers = max($provinceUserCounts) ?: 1;
+        $this->maxUsers = $provinceUserCounts === [] ? 1 : max($provinceUserCounts);
 
         $this->stats = [
             'total_users' => $totalUsers,
@@ -93,17 +109,15 @@ class UserMapDashboard extends Page
             ->map(fn (Collection $addresses) => $addresses->unique('user_id')->count())
             ->toArray();
 
-        $provinces = Province::all()->keyBy('id');
+        foreach (Province::all() as $province) {
+            $count = $provinceUserCounts[$province->id] ?? 0;
 
-        foreach ($provinces as $id => $province) {
-            $count = $provinceUserCounts[$id] ?? 0;
-            $intensity = $this->maxUsers > 0 ? min(1, $count / $this->maxUsers) : 0;
-
-            $this->provinceData[$id] = [
+            $this->provinceData[$province->slug] = [
                 'name' => $province->name,
                 'count' => $count,
-                'intensity' => $intensity,
-                'color' => $this->getColorForIntensity($intensity),
+                'color' => $this->getColorForIntensity(
+                    $this->maxUsers > 0 ? min(1, $count / $this->maxUsers) : 0,
+                ),
             ];
         }
     }
