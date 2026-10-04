@@ -145,14 +145,18 @@ class UserMapDashboardTest extends TestCase
 
     public function test_the_colour_ramp_darkens_monotonically_with_user_count(): void
     {
-        UserAddress::factory()->count(4)->create([
+        UserAddress::factory()->count(20)->create([
             'province_id' => $this->province('tehran')->id,
             'city_id' => null,
         ]);
 
-        UserAddress::factory()->create([
-            'user_id' => User::factory()->create()->id,
+        UserAddress::factory()->count(5)->create([
             'province_id' => $this->province('fars')->id,
+            'city_id' => null,
+        ]);
+
+        UserAddress::factory()->count(2)->create([
+            'province_id' => $this->province('kerman')->id,
             'city_id' => null,
         ]);
 
@@ -163,12 +167,14 @@ class UserMapDashboardTest extends TestCase
 
         $shapes = $this->mapShapes($html);
 
-        $this->assertSame(4, $shapes['tehran']['count']);
-        $this->assertSame(1, $shapes['fars']['count']);
+        $this->assertSame(20, $shapes['tehran']['count']);
+        $this->assertSame(5, $shapes['fars']['count']);
+        $this->assertSame(2, $shapes['kerman']['count']);
         $this->assertSame(0, $shapes['yazd']['count']);
 
         $busiest = $this->fillChannels($shapes['tehran']['fill']);
         $middle = $this->fillChannels($shapes['fars']['fill']);
+        $tenth = $this->fillChannels($shapes['kerman']['fill']);
         $empty = $this->fillChannels($shapes['yazd']['fill']);
 
         foreach (['red', 'green', 'blue'] as $index => $channel) {
@@ -184,6 +190,16 @@ class UserMapDashboardTest extends TestCase
                 "Expected one holding an intermediate count to be darker in {$channel} than an empty province.",
             );
         }
+
+        // A tenth of the busiest province must land above the halfway point
+        // between empty and the quarter-count province. Only a square-root
+        // scale lifts it there; a linear one leaves it almost as pale as empty.
+        $this->assertLessThan(
+            ($empty[0] + $middle[0]) / 2,
+            $tenth[0],
+            'Expected the square-root colour scale to lift a tenth of the busiest province '
+            .'past the midpoint between an empty province and a quarter-count province.',
+        );
 
         // Only the deepest fill carries the label variant that inverts the halo.
         $this->assertMatchesRegularExpression(
