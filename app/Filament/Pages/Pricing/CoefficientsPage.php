@@ -60,15 +60,13 @@ class CoefficientsPage extends Page
                             TextInput::make('coef_gold750_to_gold9999')->label('طلا ۷۵۰ ← ۹۹۹.۹')->numeric(),
                             TextInput::make('coef_silver999_to_silver9999')->label('نقره ۹۹۹ ← ۹۹۹.۹')->numeric(),
                             TextInput::make('coef_buy_price')->label('ضریب خرید نسبت به فروش (طلا و نقره)')->numeric(),
-                        ]),
-                        Grid::make(2)->schema([
                             TextInput::make('coef_gold750_sell_ratio')
-                                ->label('ضریب فروش طلای ۷۵۰ (HighValueRatio)')
+                                ->label('ضریب فروش طلای ۷۵۰')
                                 ->helperText('ضریب اعمال شده روی Max API برای محاسبه قیمت فروش ۷۵۰')
                                 ->numeric()
                                 ->step(0.0001),
                             TextInput::make('coef_gold750_buy_ratio')
-                                ->label('ضریب خرید طلای ۷۵۰ (LowValueRatio)')
+                                ->label('ضریب خرید طلای ۷۵۰ ')
                                 ->helperText('ضریب اعمال شده روی Min API برای محاسبه قیمت خرید ۷۵۰')
                                 ->numeric()
                                 ->step(0.0001),

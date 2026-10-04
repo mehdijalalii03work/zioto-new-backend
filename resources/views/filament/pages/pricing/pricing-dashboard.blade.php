@@ -384,15 +384,23 @@
                                         <dt class="text-gray-600">Min(Persian, Tala)</dt>
                                         <dd class="font-mono tabular-nums">{{ $toToman($g750['minApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g750['minSource'] ?? '—' }})</span></dd>
                                     </div>
+                                    <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
+                                        <dt class="text-gray-600">HighValueRatio (ضریب فروش)</dt>
+                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold750_sell_ratio'] ?? 1.001), 4) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">LowValueRatio (ضریب خرید)</dt>
+                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold750_buy_ratio'] ?? 0.997), 4) }}</dd>
+                                    </div>
                                 </dl>
                             </div>
 
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
-                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">فروش = بیشترین قیمت بین PersianAPI و Tala.ir و قیمت دستی</code>
-                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = کمترین قیمت بین PersianAPI و Tala.ir یا فروش × {{ $c['buy'] ?? '—' }}</code>
+                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">فروش = Max(Persian, Tala) × HighValueRatio ({{ number_format((float) ($c['gold750_sell_ratio'] ?? 1.001), 4) }})</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = Min(Persian, Tala) × LowValueRatio ({{ number_format((float) ($c['gold750_buy_ratio'] ?? 0.997), 4) }})</code>
                                 <p class="mt-2.5 text-xs leading-6 text-gray-500">
-                                    قیمت خرید فقط وقتی از قیمت فروش × {{ $c['buy'] ?? '—' }} محاسبه می‌شود که قیمت دستی از Max API بیشتر باشد یا دو API برابر باشند.
+                                    قیمت فروش با ضرب ماکزیمم API در HighValueRatio و قیمت خرید با ضرب مینیمم API در LowValueRatio محاسبه می‌شود.
                                 </p>
                             </div>
                         </div>
