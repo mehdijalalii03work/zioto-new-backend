@@ -75,12 +75,21 @@ class RolePermissionSeeder extends Seeder
 
     private function seedRoles(): void
     {
+        $permissionValues = Permission::values();
+
         foreach (self::rolePermissions() as $roleName => $permissions) {
             $model = RoleModel::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
-            $model->syncPermissions(array_map(
+
+            $permissionNames = array_map(
                 static fn (Permission $permission): string => $permission->value,
                 $permissions,
-            ));
+            );
+
+            foreach ($permissionNames as $permissionName) {
+                PermissionModel::firstOrCreate(['name' => $permissionName, 'guard_name' => 'web']);
+            }
+
+            $model->syncPermissions($permissionNames);
         }
     }
 
