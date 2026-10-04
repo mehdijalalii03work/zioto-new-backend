@@ -40,6 +40,20 @@ class UserAddress extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        // Legacy addresses (WordPress import) carry a city but no province. Derive
+        // it on every write so province_id is never a hole for reporting or for
+        // province-scoped shipping rates.
+        static::saving(function (self $address): void {
+            if ($address->province_id !== null || $address->city_id === null) {
+                return;
+            }
+
+            $address->province_id = $address->city?->province_id;
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
