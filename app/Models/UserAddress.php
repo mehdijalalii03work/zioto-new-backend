@@ -50,7 +50,7 @@ class UserAddress extends Model
                 return;
             }
 
-            $address->province_id = $address->city?->province_id;
+            $address->province_id = City::query()->whereKey($address->city_id)->value('province_id');
         });
     }
 
