@@ -27,6 +27,8 @@ class PricingSettings
         'coef_gold750_to_gold9999' => '1.3399665',
         'coef_buy_price' => '0.99',
         'coef_silver999_to_silver9999' => '1.04',
+        'coef_gold750_sell_ratio' => '1.001',
+        'coef_gold750_buy_ratio' => '0.997',
     ];
 
     public static function get(string $key, mixed $default = null): mixed

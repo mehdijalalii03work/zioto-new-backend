@@ -235,6 +235,8 @@ class PricingDashboard extends Page
         $coefGold750To9999 = $coef('coef_gold750_to_gold9999');
         $coefBuy = $coef('coef_buy_price');
         $coefSilver999To9999 = $coef('coef_silver999_to_silver9999');
+        $coefGold750SellRatio = $coef('coef_gold750_sell_ratio');
+        $coefGold750BuyRatio = $coef('coef_gold750_buy_ratio');
 
         $persianGold750 = $num($persian['Gold750'] ?? null);
         $talaGold750Effective = $num($tala['Gold750'] ?? null);
@@ -285,20 +287,20 @@ class PricingDashboard extends Page
 
         $manualGold750 = $num(PricingSettings::manualGold750Sell());
 
-        $gold750Sell = $maxApi;
-        $sellLogic = 'Max API (قیمت دستی وارد نشده)';
+        $gold750Sell = $maxApi !== null ? $maxApi * (float) $coefGold750SellRatio : null;
+        $sellLogic = 'Max API × HighValueRatio ('.number_format((float) $coefGold750SellRatio, 4).')';
         if ($manualGold750 !== null && $manualGold750 > 0 && $maxApi !== null) {
             if ($manualGold750 > $maxApi) {
-                $gold750Sell = $manualGold750;
-                $sellLogic = 'قیمت دستی (چون بیشتر از Max API است)';
+                $gold750Sell = $manualGold750 * (float) $coefGold750SellRatio;
+                $sellLogic = 'قیمت دستی × HighValueRatio (چون بیشتر از Max API است)';
             } else {
-                $gold750Sell = $maxApi;
-                $sellLogic = 'Max API (چون قیمت دستی کوچک‌تر یا برابر است)';
+                $gold750Sell = $maxApi * (float) $coefGold750SellRatio;
+                $sellLogic = 'Max API × HighValueRatio (چون قیمت دستی کوچک‌تر یا برابر است)';
             }
         }
 
-        $gold750Buy = $minApi;
-        $buyLogic = 'Min API';
+        $gold750Buy = $minApi !== null ? $minApi * (float) $coefGold750BuyRatio : null;
+        $buyLogic = 'Min API × LowValueRatio ('.number_format((float) $coefGold750BuyRatio, 4).')';
         if ($manualGold750 !== null && $manualGold750 > 0 && $maxApi !== null && $manualGold750 > $maxApi) {
             $gold750Buy = $gold750Sell !== null ? $gold750Sell * (float) $coefBuy : null;
             $buyLogic = 'قیمت فروش × '.$coefBuy.' (چون قیمت دستی > Max API)';
@@ -337,6 +339,8 @@ class PricingDashboard extends Page
                 'gold750_to_gold9999' => $coefGold750To9999,
                 'buy' => $coefBuy,
                 'silver999_to_silver9999' => $coefSilver999To9999,
+                'gold750_sell_ratio' => $coefGold750SellRatio,
+                'gold750_buy_ratio' => $coefGold750BuyRatio,
             ],
             'gold750' => [
                 'persian' => $persianGold750,
