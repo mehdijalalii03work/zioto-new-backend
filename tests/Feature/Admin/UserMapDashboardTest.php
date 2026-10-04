@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Enums\Permission;
 use App\Enums\Role;
 use App\Filament\Pages\UserMapDashboard;
+use App\Models\City;
 use App\Models\Province;
 use App\Models\User;
 use App\Models\UserAddress;
@@ -150,6 +151,78 @@ class UserMapDashboardTest extends TestCase
 
         $this->assertSame(1, $shapes['fars']['count']);
         $this->assertSame('fill: rgb(255, 0, 0)', $shapes['fars']['fill']);
+    }
+
+    public function test_it_counts_an_address_that_only_knows_its_city(): void
+    {
+        $province = $this->province('fars');
+        $city = City::create([
+            'province_id' => $province->id,
+            'name' => 'شیراز',
+            'slug' => 'shiraz-legacy',
+        ]);
+
+        $address = UserAddress::factory()->create([
+            'user_id' => User::factory()->create()->id,
+            'province_id' => null,
+            'city_id' => null,
+        ]);
+        $address->forceFill(['province_id' => null, 'city_id' => $city->id])->saveQuietly();
+
+        $html = Livewire::actingAs($this->admin(), 'web')
+            ->test(UserMapDashboard::class)
+            ->assertSuccessful()
+            ->html();
+
+        $shapes = $this->mapShapes($html);
+
+        $this->assertSame(1, $shapes['fars']['count']);
+        $this->assertSame('fill: rgb(255, 0, 0)', $shapes['fars']['fill']);
+    }
+
+    public function test_it_counts_an_address_without_a_city_as_unmapped(): void
+    {
+        UserAddress::factory()->create([
+            'user_id' => User::factory()->create()->id,
+            'province_id' => null,
+            'city_id' => null,
+        ]);
+
+        $stats = Livewire::actingAs($this->admin(), 'web')
+            ->test(UserMapDashboard::class)
+            ->assertSuccessful()
+            ->instance()
+            ->stats;
+
+        $this->assertSame(0, $stats['mapped_users']);
+        $this->assertSame(1, $stats['unmapped_users']);
+        $this->assertSame(0, $stats['active_provinces']);
+    }
+
+    public function test_active_provinces_never_exceeds_the_rendered_map(): void
+    {
+        $province = $this->province('tehran');
+
+        UserAddress::factory()->count(2)->create([
+            'user_id' => User::factory()->create()->id,
+            'province_id' => $province->id,
+            'city_id' => null,
+        ]);
+
+        $component = Livewire::actingAs($this->admin(), 'web')
+            ->test(UserMapDashboard::class)
+            ->assertSuccessful();
+
+        $stats = $component->instance()->stats;
+
+        $rendered = count(array_filter(
+            $this->mapShapes($component->html()),
+            fn (array $shape): bool => $shape['count'] > 0,
+        ));
+
+        $this->assertSame(1, $rendered);
+        $this->assertSame($rendered, $stats['active_provinces']);
+        $this->assertLessThanOrEqual(count(Province::all()), $stats['active_provinces']);
     }
 
     public function test_it_requires_the_dashboard_permission(): void
