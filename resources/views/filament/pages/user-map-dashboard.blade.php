@@ -155,11 +155,11 @@
             </div>
 
             {{-- Coverage Note --}}
-            @if ($stats['hidden_users'] > 0)
+            {{-- @if ($stats['hidden_users'] > 0)
                 <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
                     {{ number_format($stats['hidden_users']) }} کاربر آدرس ثبت‌شده دارند ولی استانشان مشخص نیست، بنابراین در نقشه نمایش داده نمی‌شوند.
                 </p>
-            @endif
+            @endif --}}
         </div>
     </div>
 </x-filament-panels::page>
