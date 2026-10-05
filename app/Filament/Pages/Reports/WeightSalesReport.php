@@ -54,7 +54,7 @@ class WeightSalesReport extends Page
 
     public ?string $dateTo = null;
 
-    /** @var Collection<int, array{date: string, total_rial: float, total_items: int, bar_count: int, bar_weight: float, bar_avg_weight: float, bar_rial: float, gold750_count: int, gold750_weight: float, gold750_avg_weight: float, gold750_rial: float, silver_count: int, silver_weight: float, silver_avg_weight: float, silver_rial: float}> */
+    /** @var Collection<int, array{date: string, total_rial: float, total_items: int, bar_count: int, bar_weight: float, bar_avg_weight: float, bar_rial: float, bar_price: float, gold750_count: int, gold750_weight: float, gold750_avg_weight: float, gold750_rial: float, gold750_price: float, silver_count: int, silver_weight: float, silver_avg_weight: float, silver_rial: float, silver_price: float}> */
     public $report;
 
     public bool $submitted = false;
@@ -134,15 +134,27 @@ class WeightSalesReport extends Page
                         && $item->product->form?->value === 'shammesh',
                 );
 
+                $gold750Items = $allItems->filter(
+                    static fn ($item) => $item->product
+                        && $item->product->metal_type?->value === 'gold'
+                        && $item->product->form?->value !== 'shammesh',
+                );
+
                 $silverItems = $allItems->filter(
                     static fn ($item) => $item->product && $item->product->metal_type?->value === 'silver',
                 );
 
                 $barWeight = (float) $barItems->sum(fn ($item) => (float) ($item->product?->weight ?? 0) * $item->quantity);
+                $gold750Weight = (float) $gold750Items->sum(fn ($item) => (float) ($item->product?->weight ?? 0) * $item->quantity);
                 $silverWeight = (float) $silverItems->sum(fn ($item) => (float) ($item->product?->weight ?? 0) * $item->quantity);
 
                 $barCount = (int) $barItems->sum('quantity');
+                $gold750Count = (int) $gold750Items->sum('quantity');
                 $silverCount = (int) $silverItems->sum('quantity');
+
+                $barRial = (float) $barItems->sum('subtotal');
+                $gold750Rial = (float) $gold750Items->sum('subtotal');
+                $silverRial = (float) $silverItems->sum('subtotal');
 
                 return [
                     'date' => $date,
@@ -151,11 +163,18 @@ class WeightSalesReport extends Page
                     'bar_count' => $barCount,
                     'bar_weight' => $barWeight,
                     'bar_avg_weight' => $barCount > 0 ? round($barWeight / $barCount, 2) : 0,
-                    'bar_rial' => (float) $barItems->sum('subtotal'),
+                    'bar_rial' => $barRial,
+                    'bar_price' => $barWeight > 0 ? $barRial / $barWeight : 0,
+                    'gold750_count' => $gold750Count,
+                    'gold750_weight' => $gold750Weight,
+                    'gold750_avg_weight' => $gold750Count > 0 ? round($gold750Weight / $gold750Count, 2) : 0,
+                    'gold750_rial' => $gold750Rial,
+                    'gold750_price' => $gold750Weight > 0 ? $gold750Rial / $gold750Weight : 0,
                     'silver_count' => $silverCount,
                     'silver_weight' => $silverWeight,
                     'silver_avg_weight' => $silverCount > 0 ? round($silverWeight / $silverCount, 2) : 0,
-                    'silver_rial' => (float) $silverItems->sum('subtotal'),
+                    'silver_rial' => $silverRial,
+                    'silver_price' => $silverWeight > 0 ? $silverRial / $silverWeight : 0,
                 ];
             })
             ->sortByDesc('date')
