@@ -120,7 +120,7 @@
             </div>
 
             {{-- Selected Province Info Panel --}}
-            <div
+            {{-- <div
                 x-show="selected.visible"
                 x-transition
                 x-cloak
@@ -140,7 +140,7 @@
                         <x-heroicon-o-x-mark class="h-5 w-5" />
                     </button>
                 </div>
-            </div>
+            </div> --}}
 
             {{-- Legend --}}
             <div class="mt-6 flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
