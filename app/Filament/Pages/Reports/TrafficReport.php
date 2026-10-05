@@ -53,7 +53,7 @@ class TrafficReport extends Page
 
     public static function getNavigationSort(): ?int
     {
-        return 1;
+        return 4;
     }
 
     public function content(Schema $schema): Schema

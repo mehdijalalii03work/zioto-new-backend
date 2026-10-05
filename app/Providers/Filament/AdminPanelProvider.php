@@ -72,10 +72,10 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
             ])
-            ->widgets([
-                TrafficSummaryStats::class,
-                TrafficOverviewChart::class,
-            ])
+            // ->widgets([
+            //     TrafficSummaryStats::class,
+            //     TrafficOverviewChart::class,
+            // ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
