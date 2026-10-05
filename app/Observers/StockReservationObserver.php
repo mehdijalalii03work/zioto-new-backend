@@ -79,7 +79,13 @@ class StockReservationObserver
                     ->increment('hesabfa_reserved_stock', $quantity);
 
                 if (! $updated) {
-                    throw new \RuntimeException("موجودی کافی برای محصول {$productId} وجود ندارد. درخواست: {$quantity}");
+                    Log::warning('Insufficient stock for reservation - order confirmed anyway', [
+                        'order_id' => $order->id,
+                        'product_id' => $productId,
+                        'quantity' => $quantity,
+                    ]);
+
+                    continue;
                 }
             }
 

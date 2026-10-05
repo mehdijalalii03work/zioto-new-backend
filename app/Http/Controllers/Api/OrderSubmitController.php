@@ -65,13 +65,23 @@ class OrderSubmitController extends Controller
         $validated = $request->validated();
 
         $cartItems = Cart::where('user_id', $user->id)
-            ->with('product:id,name,price,is_nopay')
+            ->with('product:id,name,price,is_nopay,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved')
             ->get();
 
         if ($cartItems->isEmpty()) {
             return response()->json([
                 'message' => 'سبد خرید شما خالی است',
                 'error_code' => 'CART_EMPTY',
+            ], 422);
+        }
+
+        $stockCheck = $this->validateCartStock($cartItems);
+
+        if (! $stockCheck['valid']) {
+            return response()->json([
+                'message' => 'موجودی برخی محصولات کافی نیست: '.$stockCheck['product'],
+                'error_code' => 'INSUFFICIENT_STOCK',
+                'products' => $stockCheck['items'] ?? [],
             ], 422);
         }
 
@@ -150,6 +160,49 @@ class OrderSubmitController extends Controller
             'message' => 'سفارش با موفقیت ثبت شد',
             'order' => new OrderResource($result['order']),
         ], 201);
+    }
+
+    private function validateCartStock($cartItems): array
+    {
+        if (! config('hesabfa.enable_reserved_stock', false)) {
+            return ['valid' => true];
+        }
+
+        $insufficient = [];
+        $items = [];
+
+        foreach ($cartItems as $cartItem) {
+            $product = $cartItem->product;
+            if (! $product) {
+                continue;
+            }
+
+            $physical = (int) ($product->hesabfa_physical_stock ?? $product->stock_quantity ?? 0);
+            $reserved = (int) ($product->hesabfa_reserved_stock ?? 0);
+            $manualReserved = (int) ($product->hesabfa_manual_reserved ?? 0);
+            $sellable = max(0, $physical - $reserved - $manualReserved);
+
+            if ($cartItem->quantity > $sellable) {
+                $insufficient[] = "{$product->name}: موجودی {$sellable}، درخواست {$cartItem->quantity}";
+                $items[] = [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'requested' => (int) $cartItem->quantity,
+                    'available' => $sellable,
+                ];
+            }
+        }
+
+        if (! empty($insufficient)) {
+            return [
+                'valid' => false,
+                'message' => 'موجودی برخی محصولات کافی نیست: '.implode(' | ', $insufficient),
+                'product' => implode(', ', $insufficient),
+                'items' => $items,
+            ];
+        }
+
+        return ['valid' => true];
     }
 
     private function calculateOrderData($cartItems, array $validated, ?object $address = null): array

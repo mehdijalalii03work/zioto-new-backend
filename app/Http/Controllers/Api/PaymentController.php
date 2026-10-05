@@ -97,6 +97,15 @@ class PaymentController extends Controller
             }
         }
 
+        $stockCheck = $this->validateOrderStock($order);
+        if (! $stockCheck['valid']) {
+            return response()->json([
+                'message' => 'موجودی برخی محصولات کافی نیست: '.$stockCheck['product'],
+                'error_code' => 'INSUFFICIENT_STOCK',
+                'products' => $stockCheck['items'] ?? [],
+            ], 422);
+        }
+
         $nationalCode = $order->user?->national_code ?? '';
         $phone = $order->user?->phone ?? '';
 
@@ -441,14 +450,12 @@ class PaymentController extends Controller
 
         $stockCheck = $this->validateOrderStock($order);
         if (! $stockCheck['valid']) {
-            Log::channel('payment')->error('Payment callback: insufficient stock for order', [
+            Log::channel('payment')->warning('Payment verified successfully but stock insufficient - order confirmed anyway', [
                 'order_id' => $order->id,
                 'product' => $stockCheck['product'],
             ]);
 
-            $order->addNote("رد پرداخت: {$stockCheck['message']}", 'payment');
-
-            return redirect($frontendUrl.'/payment-failed');
+            $order->addNote("پرداخت موفق بود ولی موجودی کافی نیست و نیاز به بررسی دارد: {$stockCheck['message']}", 'payment');
         }
 
         try {
@@ -618,6 +625,7 @@ class PaymentController extends Controller
 
         $order->load('items.product');
         $insufficient = [];
+        $items = [];
 
         foreach ($order->items as $item) {
             $product = $item->product;
@@ -632,6 +640,12 @@ class PaymentController extends Controller
 
             if ($item->quantity > $sellable) {
                 $insufficient[] = "{$product->name}: موجودی {$sellable}، درخواست {$item->quantity}";
+                $items[] = [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'requested' => (int) $item->quantity,
+                    'available' => $sellable,
+                ];
             }
         }
 
@@ -640,6 +654,7 @@ class PaymentController extends Controller
                 'valid' => false,
                 'message' => 'موجودی برخی محصولات کافی نیست: '.implode(' | ', $insufficient),
                 'product' => implode(', ', $insufficient),
+                'items' => $items,
             ];
         }
 

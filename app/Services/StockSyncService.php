@@ -79,7 +79,7 @@ class StockSyncService
 
                 try {
                     $updateData = [
-                        'hesabfa_physical_stock' => $quantity,
+                        'hesabfa_physical_stock' => max(0, $quantity),
                         'hesabfa_stock_synced_at' => $updatedAt,
                     ];
 

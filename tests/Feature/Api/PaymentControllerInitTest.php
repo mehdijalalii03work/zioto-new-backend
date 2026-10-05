@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
+use Modules\Product\Models\Product;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use Shetabit\Multipay\Payment as ShetabitPayment;
 use Tests\TestCase;
@@ -133,6 +134,44 @@ class PaymentControllerInitTest extends TestCase
         ]);
 
         $this->assertNotEquals(422, $response->getStatusCode(), 'Init should allow retry after failed payment');
+    }
+
+    public function test_init_rejects_insufficient_stock(): void
+    {
+        config(['hesabfa.enable_reserved_stock' => true]);
+
+        $order = Order::factory()->create([
+            'status' => 'pending',
+            'payment_status' => 'pending',
+            'total_amount' => 100000,
+        ]);
+
+        $product = Product::create([
+            'name' => 'شمش بدون موجودی',
+            'slug' => 'zero-stock-init-'.uniqid(),
+            'price' => 100000,
+            'stock_quantity' => 0,
+        ]);
+
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_price' => $product->price,
+            'quantity' => 1,
+            'subtotal' => $product->price,
+        ]);
+
+        $response = $this->postJson('/api/payment/init', [
+            'order_id' => $order->id,
+            'gateway' => 'parsian',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJson([
+            'error_code' => 'INSUFFICIENT_STOCK',
+        ]);
+        $response->assertJsonPath('products.0.available', 0);
+        $response->assertJsonPath('products.0.requested', 1);
     }
 
     #[RunInSeparateProcess]
