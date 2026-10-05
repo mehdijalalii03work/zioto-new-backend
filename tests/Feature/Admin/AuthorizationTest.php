@@ -15,6 +15,7 @@ use Database\Seeders\RolePermissionSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission as PermissionModel;
 use Spatie\Permission\Models\Role as RoleModel;
@@ -62,6 +63,31 @@ class AuthorizationTest extends TestCase
 
         $this->assertTrue($financial->canAccessPanel(Filament::getCurrentPanel()));
         $this->assertTrue($content->canAccessPanel(Filament::getCurrentPanel()));
+    }
+
+    public function test_analyst_can_access_panel_and_reports_but_not_products_or_settings(): void
+    {
+        $analyst = $this->staffUser(Role::Analyst);
+
+        $this->assertTrue($analyst->canAccessPanel(Filament::getCurrentPanel()));
+        $this->assertTrue($analyst->hasPermissionTo(Permission::ManagementReportView->value));
+        $this->assertTrue($analyst->hasPermissionTo(Permission::AnalyticsReportView->value));
+
+        $this->actingAs($analyst, 'web')
+            ->get(URL::route('filament.admin.pages.reports.total-invoice-report'))
+            ->assertOk();
+
+        $this->actingAs($analyst, 'web')
+            ->get(URL::route('filament.admin.pages.reports.traffic'))
+            ->assertOk();
+
+        Livewire::actingAs($analyst, 'web')
+            ->test(ListProducts::class)
+            ->assertForbidden();
+
+        Livewire::actingAs($analyst, 'web')
+            ->test(ManageSettings::class)
+            ->assertForbidden();
     }
 
     public function test_operator_cannot_access_product_listing(): void
