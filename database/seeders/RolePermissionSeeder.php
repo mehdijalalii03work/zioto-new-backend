@@ -67,6 +67,7 @@ class RolePermissionSeeder extends Seeder
             Permission::DashboardView,
             Permission::ManagementReportView,
             Permission::AnalyticsReportView,
+            Permission::HesabfaView,
         ]);
     }
 
