@@ -11,75 +11,102 @@
     </form>
 
     @if($report->count())
-        <div class="mt-8 fi-card fi-w-full rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
-            <div class="fi-card-body p-6">
-                <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">نتیجه گزارش</h3>
-                    <span class="inline-flex items-center rounded-full bg-green-500 px-3 py-1 text-xs font-bold text-white">{{ $report->count() }} روز</span>
-                </div>
-
-                <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-white/10">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="border-b-2 border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5">
-                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تاریخ فاکتور</th>
-                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تعداد فاکتور</th>
-                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">مبلغ خالص (ریال)</th>
-                                <th class="px-5 py-3 text-center text-sm font-semibold text-amber-600 dark:text-amber-400">تعداد فاکتور طلا</th>
-                                <th class="px-5 py-3 text-center text-sm font-semibold text-amber-600 dark:text-amber-400">ریال طلا</th>
-                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">تعداد فاکتور نقره</th>
-                                <th class="px-5 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">ریال نقره</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                            @foreach($report as $row)
-                                <tr class="transition hover:bg-gray-50 dark:hover:bg-white/5">
-                                    <td class="px-4 py-3 text-center whitespace-nowrap">
-                                        <span class="font-medium text-gray-900 dark:text-white">
-                                            {{ \Morilog\Jalali\Jalalian::fromCarbon(\Illuminate\Support\Carbon::parse($row['date']))->format('Y/m/d') }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-300">
-                                            {{ number_format($row['invoice_count']) }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span class="font-mono text-xs text-gray-900 dark:text-white">{{ number_format($row['net_amount']) }}</span>
-                                    </td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span class="inline-flex items-center rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30">
-                                            {{ number_format($row['gold_count']) }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span class="font-mono text-xs text-amber-700 dark:text-amber-400">{{ number_format($row['gold_amount']) }}</span>
-                                    </td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-300">
-                                            {{ number_format($row['silver_count']) }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span class="font-mono text-xs text-gray-900 dark:text-white">{{ number_format($row['silver_amount']) }}</span>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                        <tfoot>
-                            <tr class="border-t-2 border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5 font-semibold">
-                                <td class="px-5 py-3 text-center text-sm text-gray-900 dark:text-white">جمع کل</td>
-                                <td class="px-5 py-3 text-center text-sm text-gray-900 dark:text-white">{{ number_format($report->sum('invoice_count')) }}</td>
-                                <td class="px-5 py-3 text-center text-sm font-mono text-gray-900 dark:text-white">{{ number_format($report->sum('net_amount')) }}</td>
-                                <td class="px-5 py-3 text-center text-sm text-amber-700 dark:text-amber-400">{{ number_format($report->sum('gold_count')) }}</td>
-                                <td class="px-5 py-3 text-center text-sm font-mono text-amber-700 dark:text-amber-400">{{ number_format($report->sum('gold_amount')) }}</td>
-                                <td class="px-5 py-3 text-center text-sm text-gray-900 dark:text-white">{{ number_format($report->sum('silver_count')) }}</td>
-                                <td class="px-5 py-3 text-center text-sm font-mono text-gray-900 dark:text-white">{{ number_format($report->sum('silver_amount')) }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
+        <style>
+            .tir-responsive { overflow-x: auto; margin-top: 1.5rem !important; }
+            table.tir-table {
+                width: 100%;
+                margin-bottom: 1rem;
+                color: #212529;
+                vertical-align: middle;
+                border-color: #dee2e6;
+                border-collapse: collapse;
+                font-size: 1rem;
+                font-weight: 400;
+                line-height: 1.5;
+                background-color: #fff;
+                box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075) !important;
+                border-radius: .375rem;
+                overflow: hidden;
+            }
+            table.tir-table > thead.tir-thead-dark > tr > th {
+                background-color: #212529;
+                border-color: #373b3e;
+                color: #fff;
+                padding: .65rem .6rem;
+                border: 1px solid #373b3e;
+                font-size: 1.05rem;
+                font-weight: 800;
+                text-align: center;
+                vertical-align: middle;
+                white-space: nowrap;
+            }
+            table.tir-table > tbody > tr > td,
+            table.tir-table > tfoot.tir-tfoot-secondary > tr > td {
+                padding: .6rem .6rem;
+                border: 1px solid #dee2e6;
+                font-size: 1rem;
+                font-weight: 600;
+                vertical-align: middle;
+                text-align: center;
+            }
+            table.tir-table > tbody > tr:hover > td { background-color: rgba(0, 0, 0, .075); }
+            table.tir-table > tbody > tr > td.fw-medium,
+            table.tir-table .fw-medium { font-weight: 500; }
+            table.tir-table > tbody > tr > td.text-end,
+            table.tir-table > tfoot > tr > td.text-end { text-align: right; }
+            table.tir-table .gold-col {
+                background-color: orange !important;
+                color: black !important;
+            }
+            table.tir-table .silver-col {
+                background-color: silver !important;
+                color: black !important;
+            }
+            table.tir-table > tfoot.tir-tfoot-secondary > tr > td {
+                background-color: #e2e3e5;
+                border-color: #d3d6d8;
+                font-weight: 700;
+            }
+            table.tir-table > tfoot.tir-tfoot-secondary > tr > td.text-start { text-align: left; }
+        </style>
+        <div class="table-responsive mt-4 tir-responsive">
+            <table class="table table-hover table-bordered align-middle text-center shadow-sm rounded-3 overflow-hidden tir-table">
+                <thead class="table-dark tir-thead-dark">
+                    <tr>
+                        <th scope="col">تاریخ فاکتور</th>
+                        <th scope="col">تعداد فاکتور</th>
+                        <th scope="col">مبلغ خالص (ریال)</th>
+                        <th scope="col" class="gold-col">تعداد طلا</th>
+                        <th scope="col" class="gold-col">ریال شمش</th>
+                        <th scope="col" class="silver-col">تعداد نقره</th>
+                        <th scope="col" class="silver-col">ریال نقره</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($report as $row)
+                        <tr>
+                            <td class="fw-medium">{{ \Morilog\Jalali\Jalalian::fromCarbon(\Illuminate\Support\Carbon::parse($row['date']))->format('Y/m/d') }}</td>
+                            <td>{{ number_format($row['invoice_count']) }}</td>
+                            <td class="text-end">{{ number_format($row['net_amount']) }}</td>
+                            <td class="text-end gold-col">{{ number_format($row['gold_count']) }}</td>
+                            <td class="text-end gold-col">{{ number_format($row['gold_amount']) }}</td>
+                            <td class="text-end silver-col">{{ number_format($row['silver_count']) }}</td>
+                            <td class="text-end silver-col">{{ number_format($row['silver_amount']) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="table-secondary fw-bold tir-tfoot-secondary">
+                    <tr>
+                        <td class="text-start">جمع کل</td>
+                        <td>{{ number_format($report->sum('invoice_count')) }}</td>
+                        <td class="text-end">{{ number_format($report->sum('net_amount')) }}</td>
+                        <td class="gold-col">{{ number_format($report->sum('gold_count')) }}</td>
+                        <td class="text-end gold-col">{{ number_format($report->sum('gold_amount')) }}</td>
+                        <td class="silver-col">{{ number_format($report->sum('silver_count')) }}</td>
+                        <td class="text-end silver-col">{{ number_format($report->sum('silver_amount')) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
     @elseif($submitted)
         <div class="mt-8 flex flex-col items-center justify-center py-12 text-center">
