@@ -20,7 +20,7 @@ class UserMapDashboard extends Page
 
     protected static ?string $navigationLabel = 'نقشه کاربران';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'داشبورد';
+    protected static string|\UnitEnum|null $navigationGroup = 'گزارشات مدیریتی';
 
     protected static ?int $navigationSort = 2;
 
