@@ -28,7 +28,7 @@ class SiteWarehouse extends Page implements HasTable
 
     public static function getNavigationIcon(): string|\BackedEnum|null
     {
-        return 'heroicon-o-archive-box';
+        return 'heroicon-o-building-storefront';
     }
 
     public static function getNavigationLabel(): string
