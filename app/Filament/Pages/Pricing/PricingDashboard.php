@@ -234,7 +234,8 @@ class PricingDashboard extends Page
         $coefGold750To995 = $coef('coef_gold750_to_gold995');
         $coefGold750To9999 = $coef('coef_gold750_to_gold9999');
         $coefBuy = $coef('coef_buy_price');
-        $coefSilver999To9999 = $coef('coef_silver999_to_silver9999');
+        $coefSilver9999To999 = $coef('coef_silver9999_to_silver999');
+        $coefSilverBuy = $coef('coef_silver_buy_price');
         $coefGold750SellRatio = $coef('coef_gold750_sell_ratio');
         $coefGold750BuyRatio = $coef('coef_gold750_buy_ratio');
 
@@ -316,29 +317,23 @@ class PricingDashboard extends Page
         $gold9999Buy = $gold750Buy !== null ? $gold750Buy * (float) $coefGold750To9999 : null;
 
         $persianSilver999 = $num($persian['Silver999'] ?? null);
-        $silver9999Persian = $persianSilver999 !== null ? $persianSilver999 * (float) $coefSilver999To9999 : null;
         $manualSilver9999 = $num(PricingSettings::manualSilver9999Sell());
+        $manualSilver9999Rial = ($manualSilver9999 !== null && $manualSilver9999 > 0) ? $manualSilver9999 * 10 : null;
 
-        $silver9999Sell = $silver9999Persian;
-        $silverSellLogic = 'PersianAPI (قیمت دستی وارد نشده)';
-        if ($manualSilver9999 !== null && $manualSilver9999 > 0 && $silver9999Persian !== null) {
-            if ($manualSilver9999 > $silver9999Persian) {
-                $silver9999Sell = $manualSilver9999;
-                $silverSellLogic = 'قیمت دستی (چون بیشتر از PersianAPI است)';
-            } else {
-                $silver9999Sell = $silver9999Persian;
-                $silverSellLogic = 'PersianAPI (چون قیمت دستی کوچک‌تر یا برابر است)';
-            }
-        }
+        $silver9999Sell = $manualSilver9999Rial;
+        $silverSellLogic = $silver9999Sell !== null ? 'قیمت دستی (تنها منبع نقره)' : 'قیمت دستی وارد نشده';
 
-        $silver9999Buy = $silver9999Sell !== null ? $silver9999Sell * (float) $coefBuy : null;
+        $silver999Sell = $silver9999Sell !== null ? $silver9999Sell * (float) $coefSilver9999To999 : null;
+        $silver9999Buy = $silver9999Sell !== null ? $silver9999Sell * (float) $coefSilverBuy : null;
+        $silver999Buy = $silver999Sell !== null ? $silver999Sell * (float) $coefSilverBuy : null;
 
         return [
             'coefs' => [
                 'gold750_to_gold995' => $coefGold750To995,
                 'gold750_to_gold9999' => $coefGold750To9999,
                 'buy' => $coefBuy,
-                'silver999_to_silver9999' => $coefSilver999To9999,
+                'silver9999_to_silver999' => $coefSilver9999To999,
+                'silver_buy' => $coefSilverBuy,
                 'gold750_sell_ratio' => $coefGold750SellRatio,
                 'gold750_buy_ratio' => $coefGold750BuyRatio,
             ],
@@ -367,11 +362,12 @@ class PricingDashboard extends Page
             ],
             'silver9999' => [
                 'persian999' => $persianSilver999,
-                'converted' => $silver9999Persian,
-                'manual' => $manualSilver9999,
+                'manual' => $manualSilver9999Rial,
                 'sell' => $silver9999Sell,
                 'sellLogic' => $silverSellLogic,
                 'buy' => $silver9999Buy,
+                'silver999_sell' => $silver999Sell,
+                'silver999_buy' => $silver999Buy,
             ],
         ];
     }

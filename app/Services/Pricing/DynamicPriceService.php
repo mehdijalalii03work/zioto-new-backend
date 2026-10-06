@@ -29,6 +29,8 @@ class DynamicPriceService
         'Gold9999_Buy' => 'قیمت خرید طلای ۹۹۹.۹ (۲۴ عیار)',
         'Silver9999_Sell' => 'قیمت فروش نقره ۹۹۹.۹',
         'Silver9999_Buy' => 'قیمت خرید نقره ۹۹۹.۹',
+        'Silver999_Sell' => 'قیمت فروش نقره ۹۹۹',
+        'Silver999_Buy' => 'قیمت خرید نقره ۹۹۹',
     ];
 
     private ?array $boardMemo = null;

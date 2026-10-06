@@ -134,7 +134,9 @@
 | `Gold750.Buy` | `min(Persian, Tala)` وقتی هر دو هستند، بدون ضریب |
 | قیمت دستی طلا ۷۵۰ | اگر از `max` بیشتر باشد، جایگزین می‌شود (`buildPrices:211`) |
 | `Gold995` / `Gold9999` | از `Gold750` با ضریب‌های `coef_gold750_to_gold995` / `coef_gold750_to_gold9999` |
-| `Silver9999.Sell/Buy` | از منبع فعال؛ خرید با `coef_silver999_to_silver9999` و `coef_buy_price` |
+| `Silver9999.Sell` | فقط قیمت دستی (`manual_silver9999_sell` به تومان، ‎×۱۰ به ریال)؛ نقرهٔ PersianAPI نادیده گرفته می‌شود |
+| `Silver999.Sell/Buy` | از `Silver9999.Sell` با `coef_silver9999_to_silver999` (پیش‌فرض `0.961538`) |
+| `Silver*.Buy` | فروش × `coef_silver_buy_price` (پیش‌فرض `0.99`، جدا از ضریب خرید طلا) |
 
 ---
 

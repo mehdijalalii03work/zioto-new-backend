@@ -543,19 +543,23 @@
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>
                                 <dl class="space-y-2">
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">PersianAPI — نقره ۹۹۹</dt>
+                                        <dt class="text-gray-600">PersianAPI — نقره ۹۹۹ (مرجع، در قیمت استفاده نمی‌شود)</dt>
                                         <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($s9999['persian999'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">ضریب تبدیل ۹۹۹ به ۹۹۹.۹</dt>
-                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['silver999_to_silver9999'] ?? '—' }}</dd>
+                                        <dt class="text-gray-600">ضریب تبدیل ۹۹۹.۹ به ۹۹۹</dt>
+                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['silver9999_to_silver999'] ?? '—' }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">نقره ۹۹۹.۹ محاسبه‌شده</dt>
-                                        <dd class="font-mono tabular-nums">{{ $toToman($s9999['converted'] ?? null) }}</dd>
+                                        <dt class="text-gray-600">نقره ۹۹۹ محاسبه‌شده</dt>
+                                        <dd class="font-mono tabular-nums">{{ $toToman($s9999['silver999_sell'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">قیمت دستی</dt>
+                                        <dt class="text-gray-600">ضریب خرید نقره</dt>
+                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['silver_buy'] ?? '—' }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">قیمت دستی (تنها منبع)</dt>
                                         <dd class="font-mono tabular-nums text-red-600">{{ $toToman($s9999['manual'] ?? null) }}</dd>
                                     </div>
                                 </dl>
@@ -563,8 +567,9 @@
 
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
-                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۹۹.۹ فروش = بیشترین قیمت بین «نقره۹۹۹ × {{ $c['silver999_to_silver9999'] ?? '—' }}» و قیمت دستی</code>
-                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۹۹.۹ خرید = نقره۹۹۹.۹ فروش × {{ $c['buy'] ?? '—' }}</code>
+                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۹۹.۹ فروش = قیمت دستی</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۹۹ فروش = نقره۹۹۹.۹ فروش × {{ $c['silver9999_to_silver999'] ?? '—' }}</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره خرید = فروش × {{ $c['silver_buy'] ?? '—' }}</code>
                                 <div class="mt-3 space-y-1.5">
                                     <div class="rounded-lg border-s-4 border-purple-600 bg-purple-50 px-3 py-2">
                                         <div class="text-xs text-purple-700">قیمت نهایی فروش</div>
@@ -572,7 +577,7 @@
                                         <div class="mt-0.5 text-xs text-purple-700/80">{{ $s9999['sellLogic'] ?? '—' }}</div>
                                     </div>
                                     <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 px-3 py-2">
-                                        <div class="text-xs text-emerald-700">قیمت نهایی خرید (۹۹٪ فروش)</div>
+                                        <div class="text-xs text-emerald-700">قیمت نهایی خرید (ضریب خرید نقره)</div>
                                         <div class="mt-0.5 text-sm font-bold tabular-nums text-emerald-900">{{ $toman($s9999['buy'] ?? null) }}</div>
                                     </div>
                                 </div>

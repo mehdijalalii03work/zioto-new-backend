@@ -41,7 +41,8 @@ class CoefficientsPage extends Page
             'coef_gold750_to_gold995' => PricingSettings::coefficient('coef_gold750_to_gold995'),
             'coef_gold750_to_gold9999' => PricingSettings::coefficient('coef_gold750_to_gold9999'),
             'coef_buy_price' => PricingSettings::coefficient('coef_buy_price'),
-            'coef_silver999_to_silver9999' => PricingSettings::coefficient('coef_silver999_to_silver9999'),
+            'coef_silver9999_to_silver999' => PricingSettings::coefficient('coef_silver9999_to_silver999'),
+            'coef_silver_buy_price' => PricingSettings::coefficient('coef_silver_buy_price'),
             'coef_gold750_sell_ratio' => PricingSettings::coefficient('coef_gold750_sell_ratio'),
             'coef_gold750_buy_ratio' => PricingSettings::coefficient('coef_gold750_buy_ratio'),
         ]);
@@ -58,8 +59,9 @@ class CoefficientsPage extends Page
                         Grid::make(4)->schema([
                             TextInput::make('coef_gold750_to_gold995')->label('طلا ۷۵۰ ← ۹۹۵')->numeric(),
                             TextInput::make('coef_gold750_to_gold9999')->label('طلا ۷۵۰ ← ۹۹۹.۹')->numeric(),
-                            TextInput::make('coef_silver999_to_silver9999')->label('نقره ۹۹۹ ← ۹۹۹.۹')->numeric(),
-                            TextInput::make('coef_buy_price')->label('ضریب خرید نسبت به فروش (طلا و نقره)')->numeric(),
+                            TextInput::make('coef_silver9999_to_silver999')->label('نقره ۹۹۹.۹ ← ۹۹۹')->numeric(),
+                            TextInput::make('coef_silver_buy_price')->label('ضریب خرید نقره نسبت به فروش')->numeric(),
+                            TextInput::make('coef_buy_price')->label('ضریب خرید نسبت به فروش (طلا)')->numeric(),
                             TextInput::make('coef_gold750_sell_ratio')
                                 ->label('ضریب فروش طلای ۷۵۰')
                                 ->helperText('ضریب اعمال شده روی Max API برای محاسبه قیمت فروش ۷۵۰')
@@ -90,7 +92,8 @@ class CoefficientsPage extends Page
             'coef_gold750_to_gold995',
             'coef_gold750_to_gold9999',
             'coef_buy_price',
-            'coef_silver999_to_silver9999',
+            'coef_silver9999_to_silver999',
+            'coef_silver_buy_price',
             'coef_gold750_sell_ratio',
             'coef_gold750_buy_ratio',
         ];

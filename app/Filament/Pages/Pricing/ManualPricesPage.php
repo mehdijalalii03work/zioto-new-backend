@@ -49,7 +49,7 @@ class ManualPricesPage extends Page
         return $schema
             ->components([
                 Section::make('قیمت‌های دستی')
-                    ->description('مقادیر به تومان به ازای هر گرم وارد شوند. در صورت وجود، بر قیمت API اولویت دارند')
+                    ->description('مقادیر به تومان به ازای هر گرم وارد شوند. قیمت دستی نقره ۹۹۹.۹ تنها منبع قیمت نقره است (API نادیده گرفته می‌شود)')
                     ->icon('heroicon-o-banknotes')
                     ->schema([
                         Grid::make(2)->schema([
