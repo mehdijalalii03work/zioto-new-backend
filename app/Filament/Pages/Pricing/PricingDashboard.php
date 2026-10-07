@@ -231,8 +231,12 @@ class PricingDashboard extends Page
         $coef = fn (string $key): string => PricingSettings::coefficient($key);
         $num = fn (mixed $value): ?float => ($value !== null && $value !== '' && is_numeric($value)) ? (float) $value : null;
 
-        $coefGold750To995 = $coef('coef_gold750_to_gold995');
-        $coefGold750To9999 = $coef('coef_gold750_to_gold9999');
+        $coefGold999To995 = $coef('coef_gold999_to_gold995');
+        $coefGold999To9999 = $coef('coef_gold999_to_gold9999');
+        $coefGold995SellRatio = $coef('coef_gold995_sell_ratio');
+        $coefGold995BuyRatio = $coef('coef_gold995_buy_ratio');
+        $coefGold9999SellRatio = $coef('coef_gold9999_sell_ratio');
+        $coefGold9999BuyRatio = $coef('coef_gold9999_buy_ratio');
         $coefBuy = $coef('coef_buy_price');
         $coefSilver9999To999 = $coef('coef_silver9999_to_silver999');
         $coefSilverBuy = $coef('coef_silver_buy_price');
@@ -287,34 +291,98 @@ class PricingDashboard extends Page
         }
 
         $manualGold750 = $num(PricingSettings::manualGold750Sell());
+        $manualGold750Rial = ($manualGold750 !== null && $manualGold750 > 0) ? $manualGold750 * 10 : null;
 
         $gold750Sell = $maxApi !== null ? $maxApi * (float) $coefGold750SellRatio : null;
         $sellLogic = 'Max API × HighValueRatio ('.number_format((float) $coefGold750SellRatio, 4).')';
-        if ($manualGold750 !== null && $manualGold750 > 0 && $maxApi !== null) {
-            if ($manualGold750 > $maxApi) {
-                $gold750Sell = $manualGold750 * (float) $coefGold750SellRatio;
-                $sellLogic = 'قیمت دستی × HighValueRatio (چون بیشتر از Max API است)';
-            } else {
-                $gold750Sell = $maxApi * (float) $coefGold750SellRatio;
-                $sellLogic = 'Max API × HighValueRatio (چون قیمت دستی کوچک‌تر یا برابر است)';
-            }
+        if ($manualGold750Rial !== null) {
+            $gold750Sell = $manualGold750Rial * (float) $coefGold750SellRatio;
+            $sellLogic = 'قیمت دستی × HighValueRatio (دستی همیشه اولویت دارد)';
         }
 
         $gold750Buy = $minApi !== null ? $minApi * (float) $coefGold750BuyRatio : null;
         $buyLogic = 'Min API × LowValueRatio ('.number_format((float) $coefGold750BuyRatio, 4).')';
-        if ($manualGold750 !== null && $manualGold750 > 0 && $maxApi !== null && $manualGold750 > $maxApi) {
-            $gold750Buy = $gold750Sell !== null ? $gold750Sell * (float) $coefBuy : null;
-            $buyLogic = 'قیمت فروش × '.$coefBuy.' (چون قیمت دستی > Max API)';
+        if ($manualGold750Rial !== null && $gold750Sell !== null) {
+            $gold750Buy = $gold750Sell * (float) $coefBuy;
+            $buyLogic = 'قیمت فروش × '.$coefBuy.' (قیمت دستی اعمال شد)';
         } elseif ($apisEqual && $gold750Sell !== null) {
             $gold750Buy = $gold750Sell * (float) $coefBuy;
             $buyLogic = 'Persian و Tala برابر → خرید = فروش × ضریب';
         }
 
-        $gold995Sell = $gold750Sell !== null ? $gold750Sell * (float) $coefGold750To995 : null;
-        $gold995Buy = $gold750Buy !== null ? $gold750Buy * (float) $coefGold750To995 : null;
+        $persianGold999 = $num($persian['Gold999'] ?? null);
+        $talaGold999 = $num($tala['Gold999'] ?? null);
 
-        $gold9999Sell = $gold750Sell !== null ? $gold750Sell * (float) $coefGold750To9999 : null;
-        $gold9999Buy = $gold750Buy !== null ? $gold750Buy * (float) $coefGold750To9999 : null;
+        $coefGold999SellRatio = (float) $coef('coef_gold999_sell_ratio');
+        $coefGold999BuyRatio = (float) $coef('coef_gold999_buy_ratio');
+        $manualGold999 = $num(PricingSettings::manualGold999Sell());
+        $manualGold999Rial = ($manualGold999 !== null && $manualGold999 > 0) ? $manualGold999 * 10 : null;
+
+        $hasPersian999 = $persianGold999 !== null && $persianGold999 > 0;
+        $hasTala999 = $talaGold999 !== null && $talaGold999 > 0;
+
+        $maxApi999 = null;
+        $maxSource999 = '—';
+        if ($hasPersian999 && $hasTala999) {
+            $maxApi999 = max($persianGold999, $talaGold999);
+            $maxSource999 = $persianGold999 >= $talaGold999 ? 'PersianAPI' : 'Tala.ir';
+        } elseif ($hasPersian999) {
+            $maxApi999 = $persianGold999;
+            $maxSource999 = 'PersianAPI';
+        } elseif ($hasTala999) {
+            $maxApi999 = $talaGold999;
+            $maxSource999 = 'Tala.ir';
+        }
+
+        $gold999Sell = $maxApi999 !== null ? $maxApi999 * $coefGold999SellRatio : null;
+        $sellLogic999 = $maxApi999 !== null
+            ? 'Max API ('.$maxSource999.') × HighValueRatio ('.number_format($coefGold999SellRatio, 4).')'
+            : 'منبعی در دسترس نیست';
+        if ($manualGold999Rial !== null) {
+            $gold999Sell = $manualGold999Rial * $coefGold999SellRatio;
+            $sellLogic999 = 'قیمت دستی × HighValueRatio (دستی همیشه اولویت دارد)';
+        }
+
+        $minApi999 = null;
+        $minSource999 = '—';
+        $apisEqual999 = false;
+        if ($hasPersian999 && $hasTala999) {
+            if ($persianGold999 == $talaGold999) {
+                $minApi999 = $persianGold999;
+                $minSource999 = 'Equal';
+                $apisEqual999 = true;
+            } else {
+                $minApi999 = min($persianGold999, $talaGold999);
+                $minSource999 = $persianGold999 < $talaGold999 ? 'PersianAPI' : 'Tala.ir';
+            }
+        } elseif ($hasPersian999) {
+            $minApi999 = $persianGold999;
+            $minSource999 = 'PersianAPI';
+        } elseif ($hasTala999) {
+            $minApi999 = $talaGold999;
+            $minSource999 = 'Tala.ir';
+        }
+
+        $gold999Buy = $minApi999 !== null ? $minApi999 * $coefGold999BuyRatio : null;
+        $buyLogic999 = $minApi999 !== null
+            ? 'Min API ('.$minSource999.') × LowValueRatio ('.number_format($coefGold999BuyRatio, 4).')'
+            : '—';
+        if ($manualGold999Rial !== null && $gold999Sell !== null) {
+            $gold999Buy = $gold999Sell * (float) $coefBuy;
+            $buyLogic999 = 'قیمت فروش × '.$coefBuy.' (قیمت دستی اعمال شد)';
+        } elseif ($apisEqual999 && $gold999Sell !== null) {
+            $gold999Buy = $gold999Sell * (float) $coefBuy;
+            $buyLogic999 = 'Persian و Tala برابر → خرید = فروش × ضریب';
+        } elseif ($minApi999 === null && $gold999Sell !== null) {
+            $gold999Buy = $gold999Sell * (float) $coefBuy;
+            $buyLogic999 = 'قیمت فروش × '.$coefBuy;
+        }
+
+        $gold995Sell = $gold999Sell !== null ? $gold999Sell * (float) $coefGold999To995 * (float) $coefGold995SellRatio : null;
+        $gold995Buy = $gold999Buy !== null ? $gold999Buy * (float) $coefGold999To995 * (float) $coefGold995BuyRatio : null;
+
+        $gold9999Sell = $gold999Sell !== null ? $gold999Sell * (float) $coefGold999To9999 * (float) $coefGold9999SellRatio : null;
+        $gold9999Buy = $gold999Buy !== null ? $gold999Buy * (float) $coefGold999To9999 * (float) $coefGold9999BuyRatio : null;
 
         $persianSilver999 = $num($persian['Silver999'] ?? null);
         $manualSilver9999 = $num(PricingSettings::manualSilver9999Sell());
@@ -329,13 +397,19 @@ class PricingDashboard extends Page
 
         return [
             'coefs' => [
-                'gold750_to_gold995' => $coefGold750To995,
-                'gold750_to_gold9999' => $coefGold750To9999,
+                'gold999_to_gold995' => $coefGold999To995,
+                'gold999_to_gold9999' => $coefGold999To9999,
+                'gold995_sell_ratio' => $coefGold995SellRatio,
+                'gold995_buy_ratio' => $coefGold995BuyRatio,
+                'gold9999_sell_ratio' => $coefGold9999SellRatio,
+                'gold9999_buy_ratio' => $coefGold9999BuyRatio,
                 'buy' => $coefBuy,
                 'silver9999_to_silver999' => $coefSilver9999To999,
                 'silver_buy' => $coefSilverBuy,
                 'gold750_sell_ratio' => $coefGold750SellRatio,
                 'gold750_buy_ratio' => $coefGold750BuyRatio,
+                'gold999_sell_ratio' => (string) $coefGold999SellRatio,
+                'gold999_buy_ratio' => (string) $coefGold999BuyRatio,
             ],
             'gold750' => [
                 'persian' => $persianGold750,
@@ -346,7 +420,7 @@ class PricingDashboard extends Page
                 'minApi' => $minApi,
                 'minSource' => $minSource,
                 'apisEqual' => $apisEqual,
-                'manual' => $manualGold750,
+                'manual' => $manualGold750Rial,
                 'sell' => $gold750Sell,
                 'sellLogic' => $sellLogic,
                 'buy' => $gold750Buy,
@@ -359,6 +433,19 @@ class PricingDashboard extends Page
             'gold9999' => [
                 'sell' => $gold9999Sell,
                 'buy' => $gold9999Buy,
+            ],
+            'gold999' => [
+                'persian' => $persianGold999,
+                'tala' => $talaGold999,
+                'manual' => $manualGold999Rial,
+                'maxApi' => $maxApi999,
+                'maxSource' => $maxSource999,
+                'minApi' => $minApi999,
+                'minSource' => $minSource999,
+                'sell' => $gold999Sell,
+                'sellLogic' => $sellLogic999,
+                'buy' => $gold999Buy,
+                'buyLogic' => $buyLogic999,
             ],
             'silver9999' => [
                 'persian999' => $persianSilver999,

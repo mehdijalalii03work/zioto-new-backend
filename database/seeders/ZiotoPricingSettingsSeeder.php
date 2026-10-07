@@ -12,14 +12,21 @@ class ZiotoPricingSettingsSeeder extends Seeder
     {
         $settings = [
             // Coefficients
-            ['key' => 'zioto_pricing_coef_gold750_to_gold995', 'value' => '1.3333', 'type' => 'number', 'label' => 'ضریب ۷۵۰ به ۹۹۵', 'sort_order' => 3],
-            ['key' => 'zioto_pricing_coef_gold750_to_gold9999', 'value' => '1.3399665', 'type' => 'number', 'label' => 'ضریب ۷۵۰ به ۹۹۹.۹', 'sort_order' => 4],
+            ['key' => 'zioto_pricing_coef_gold999_to_gold995', 'value' => '0.995996', 'type' => 'number', 'label' => 'ضریب ۹۹۹ به ۹۹۵', 'sort_order' => 3],
+            ['key' => 'zioto_pricing_coef_gold999_to_gold9999', 'value' => '1.005', 'type' => 'number', 'label' => 'ضریب ۹۹۹ به ۹۹۹.۹', 'sort_order' => 4],
             ['key' => 'zioto_pricing_coef_buy_price', 'value' => '0.99', 'type' => 'number', 'label' => 'ضریب قیمت خرید', 'sort_order' => 5],
+            ['key' => 'zioto_pricing_coef_gold999_sell_ratio', 'value' => '1.001', 'type' => 'number', 'label' => 'ضریب فروش طلای ۹۹۹', 'sort_order' => 8],
+            ['key' => 'zioto_pricing_coef_gold999_buy_ratio', 'value' => '0.997', 'type' => 'number', 'label' => 'ضریب خرید طلای ۹۹۹', 'sort_order' => 9],
+            ['key' => 'zioto_pricing_coef_gold995_sell_ratio', 'value' => '1', 'type' => 'number', 'label' => 'ضریب فروش طلای ۹۹۵', 'sort_order' => 13],
+            ['key' => 'zioto_pricing_coef_gold995_buy_ratio', 'value' => '0.995', 'type' => 'number', 'label' => 'ضریب خرید طلای ۹۹۵', 'sort_order' => 14],
+            ['key' => 'zioto_pricing_coef_gold9999_sell_ratio', 'value' => '1', 'type' => 'number', 'label' => 'ضریب فروش طلای ۹۹۹.۹', 'sort_order' => 15],
+            ['key' => 'zioto_pricing_coef_gold9999_buy_ratio', 'value' => '0.995', 'type' => 'number', 'label' => 'ضریب خرید طلای ۹۹۹.۹', 'sort_order' => 16],
             ['key' => 'zioto_pricing_coef_silver9999_to_silver999', 'value' => '0.961538', 'type' => 'number', 'label' => 'ضریب نقره ۹۹۹.۹ به ۹۹۹', 'sort_order' => 6],
             ['key' => 'zioto_pricing_coef_silver_buy_price', 'value' => '0.99', 'type' => 'number', 'label' => 'ضریب خرید نقره', 'sort_order' => 7],
 
             // Manual prices
             ['key' => 'zioto_pricing_manual_gold750_sell', 'value' => '', 'type' => 'number', 'label' => 'قیمت دستی فروش طلای ۷۵۰', 'sort_order' => 10],
+            ['key' => 'zioto_pricing_manual_gold999_sell', 'value' => '', 'type' => 'number', 'label' => 'قیمت دستی فروش طلای ۹۹۹', 'sort_order' => 12],
             ['key' => 'zioto_pricing_manual_silver9999_sell', 'value' => '', 'type' => 'number', 'label' => 'قیمت دستی فروش نقره ۹۹۹.۹', 'sort_order' => 11],
 
             // Board / cache

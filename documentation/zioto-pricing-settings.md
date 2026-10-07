@@ -132,8 +132,13 @@
 |---|---|
 | `Gold750.Sell` | `max(Persian, Tala)` وقتی هر دو هستند |
 | `Gold750.Buy` | `min(Persian, Tala)` وقتی هر دو هستند، بدون ضریب |
-| قیمت دستی طلا ۷۵۰ | اگر از `max` بیشتر باشد، جایگزین می‌شود (`buildPrices:211`) |
-| `Gold995` / `Gold9999` | از `Gold750` با ضریب‌های `coef_gold750_to_gold995` / `coef_gold750_to_gold9999` |
+| قیمت دستی طلا ۷۵۰ | در صورت ورود، همیشه جایگزین `max` می‌شود (تومان ‎×۱۰ به ریال) |
+| `Gold995.Sell` | `Gold999.Sell` × `coef_gold999_to_gold995` (پیش‌فرض `0.995996`) × HighValueRatio (`coef_gold995_sell_ratio` پیش‌فرض `1`) |
+| `Gold995.Buy` | `Gold999.Buy` × `coef_gold999_to_gold995` × LowValueRatio (`coef_gold995_buy_ratio` پیش‌فرض `0.995`) |
+| `Gold9999.Sell` | `Gold999.Sell` × `coef_gold999_to_gold9999` (پیش‌فرض `1.005`) × HighValueRatio (`coef_gold9999_sell_ratio` پیش‌فرض `1`) |
+| `Gold9999.Buy` | `Gold999.Buy` × `coef_gold999_to_gold9999` × LowValueRatio (`coef_gold9999_buy_ratio` پیش‌فرض `0.995`) |
+| `Gold999.Sell` | `max(PersianAPI ۲۴ عیار، Tala.ir گرم ۲۴ عیار)` × `coef_gold999_sell_ratio`؛ دستی (تومان ‎×۱۰) در صورت ورود همیشه اولویت دارد |
+| `Gold999.Buy` | `min(...)` × `coef_gold999_buy_ratio`؛ اگر دستی برنده شد یا منابع برابر بودند فروش × `coef_buy_price` |
 | `Silver9999.Sell` | فقط قیمت دستی (`manual_silver9999_sell` به تومان، ‎×۱۰ به ریال)؛ نقرهٔ PersianAPI نادیده گرفته می‌شود |
 | `Silver999.Sell/Buy` | از `Silver9999.Sell` با `coef_silver9999_to_silver999` (پیش‌فرض `0.961538`) |
 | `Silver*.Buy` | فروش × `coef_silver_buy_price` (پیش‌فرض `0.99`، جدا از ضریب خرید طلا) |

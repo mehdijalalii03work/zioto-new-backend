@@ -40,6 +40,7 @@ class ManualPricesPage extends Page
     {
         $this->form->fill([
             'manual_gold750_sell' => PricingSettings::manualGold750Sell(),
+            'manual_gold999_sell' => PricingSettings::manualGold999Sell(),
             'manual_silver9999_sell' => PricingSettings::manualSilver9999Sell(),
         ]);
     }
@@ -49,11 +50,12 @@ class ManualPricesPage extends Page
         return $schema
             ->components([
                 Section::make('قیمت‌های دستی')
-                    ->description('مقادیر به تومان به ازای هر گرم وارد شوند. قیمت دستی نقره ۹۹۹.۹ تنها منبع قیمت نقره است (API نادیده گرفته می‌شود)')
+                    ->description('مقادیر به تومان به ازای هر گرم وارد شوند. قیمت دستی در صورت ورود، همیشه بر API اولویت دارد. قیمت دستی نقره ۹۹۹.۹ تنها منبع قیمت نقره است.')
                     ->icon('heroicon-o-banknotes')
                     ->schema([
                         Grid::make(2)->schema([
                             $this->moneyInput('manual_gold750_sell', 'قیمت دستی فروش طلای ۷۵۰'),
+                            $this->moneyInput('manual_gold999_sell', 'قیمت دستی فروش طلای ۹۹۹'),
                             $this->moneyInput('manual_silver9999_sell', 'قیمت دستی فروش نقره ۹۹۹.۹'),
                         ]),
                     ])->columnSpanFull(),
@@ -87,7 +89,7 @@ class ManualPricesPage extends Page
 
         $data = $this->form->getState();
 
-        foreach (['manual_gold750_sell', 'manual_silver9999_sell'] as $key) {
+        foreach (['manual_gold750_sell', 'manual_gold999_sell', 'manual_silver9999_sell'] as $key) {
             Setting::updateOrCreate(['key' => "zioto_pricing_{$key}"], [
                 'value' => (string) ($data[$key] ?? ''),
                 'type' => 'number',

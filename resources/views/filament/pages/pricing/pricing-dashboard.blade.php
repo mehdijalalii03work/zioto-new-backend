@@ -86,6 +86,7 @@
         $g750 = $f['gold750'] ?? [];
         $g995 = $f['gold995'] ?? [];
         $g9999 = $f['gold9999'] ?? [];
+        $g999 = $f['gold999'] ?? [];
         $s9999 = $f['silver9999'] ?? [];
     @endphp
 
@@ -439,24 +440,32 @@
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>
                                 <dl class="space-y-2">
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">قیمت فروش طلای ۷۵۰</dt>
-                                        <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($g750['sell'] ?? null) }}</dd>
+                                        <dt class="text-gray-600">قیمت فروش طلای ۹۹۹</dt>
+                                        <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($g999['sell'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">قیمت خرید طلای ۷۵۰</dt>
-                                        <dd class="font-mono tabular-nums text-emerald-700">{{ $toToman($g750['buy'] ?? null) }}</dd>
+                                        <dt class="text-gray-600">قیمت خرید طلای ۹۹۹</dt>
+                                        <dd class="font-mono tabular-nums text-emerald-700">{{ $toToman($g999['buy'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">ضریب تبدیل ۷۵۰ به ۹۹۵</dt>
-                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['gold750_to_gold995'] ?? '—' }}</dd>
+                                        <dt class="text-gray-600">ضریب تبدیل ۹۹۹ به ۹۹۵</dt>
+                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['gold999_to_gold995'] ?? '—' }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">HighValueRatio (ضریب فروش)</dt>
+                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold995_sell_ratio'] ?? 1), 4) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">LowValueRatio (ضریب خرید)</dt>
+                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold995_buy_ratio'] ?? 0.995), 4) }}</dd>
                                     </div>
                                 </dl>
                             </div>
 
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
-                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ فروش = طلای۷۵۰ فروش × {{ $c['gold750_to_gold995'] ?? '—' }}</code>
-                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ خرید = طلای۷۵۰ خرید × {{ $c['gold750_to_gold995'] ?? '—' }}</code>
+                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ فروش = طلای۹۹۹ فروش × {{ $c['gold999_to_gold995'] ?? '—' }} × HighValueRatio</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ خرید = طلای۹۹۹ خرید × {{ $c['gold999_to_gold995'] ?? '—' }} × LowValueRatio</code>
                                 <div class="mt-3 space-y-1.5">
                                     <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 px-3 py-2">
                                         <span class="text-xs text-blue-700">فروش: </span>
@@ -491,24 +500,32 @@
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>
                                 <dl class="space-y-2">
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">قیمت فروش طلای ۷۵۰</dt>
-                                        <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($g750['sell'] ?? null) }}</dd>
+                                        <dt class="text-gray-600">قیمت فروش طلای ۹۹۹</dt>
+                                        <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($g999['sell'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">قیمت خرید طلای ۷۵۰</dt>
-                                        <dd class="font-mono tabular-nums text-emerald-700">{{ $toToman($g750['buy'] ?? null) }}</dd>
+                                        <dt class="text-gray-600">قیمت خرید طلای ۹۹۹</dt>
+                                        <dd class="font-mono tabular-nums text-emerald-700">{{ $toToman($g999['buy'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">ضریب تبدیل ۷۵۰ به ۹۹۹.۹</dt>
-                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['gold750_to_gold9999'] ?? '—' }}</dd>
+                                        <dt class="text-gray-600">ضریب تبدیل ۹۹۹ به ۹۹۹.۹</dt>
+                                        <dd class="font-mono tabular-nums text-amber-600">{{ $c['gold999_to_gold9999'] ?? '—' }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">HighValueRatio (ضریب فروش)</dt>
+                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold9999_sell_ratio'] ?? 1), 4) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">LowValueRatio (ضریب خرید)</dt>
+                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold9999_buy_ratio'] ?? 0.995), 4) }}</dd>
                                     </div>
                                 </dl>
                             </div>
 
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
-                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ فروش = طلای۷۵۰ فروش × {{ $c['gold750_to_gold9999'] ?? '—' }}</code>
-                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ خرید = طلای۷۵۰ خرید × {{ $c['gold750_to_gold9999'] ?? '—' }}</code>
+                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ فروش = طلای۹۹۹ فروش × {{ $c['gold999_to_gold9999'] ?? '—' }} × HighValueRatio</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ خرید = طلای۹۹۹ خرید × {{ $c['gold999_to_gold9999'] ?? '—' }} × LowValueRatio</code>
                                 <div class="mt-3 space-y-1.5">
                                     <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 px-3 py-2">
                                         <span class="text-xs text-blue-700">فروش: </span>
@@ -524,7 +541,81 @@
                     </div>
                 </details>
 
-                {{-- 4. نقره ۹۹۹.۹ --}}
+                {{-- 4. طلای ۹۹۹ (۲۴ عیار، مستقیم از API) --}}
+                <details class="group overflow-hidden rounded-lg ring-1 ring-gray-950/5">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden hover:bg-gray-50">
+                        <span class="flex items-center gap-2.5">
+                            <span class="size-2.5 shrink-0 rounded-full bg-amber-500"></span>
+                            <span class="font-semibold text-gray-900">۴. طلای ۹۹۹ (۲۴ عیار)</span>
+                        </span>
+                        <span class="flex items-center gap-4 text-sm tabular-nums">
+                            <span class="text-gray-500">فروش: <strong class="text-gray-900">{{ $toToman($g999['sell'] ?? null) }}</strong></span>
+                            <span class="text-gray-500">خرید: <strong class="text-gray-900">{{ $toToman($g999['buy'] ?? null) }}</strong></span>
+                            <x-filament::icon icon="heroicon-m-chevron-down" class="size-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
+                        </span>
+                    </summary>
+                    <div class="border-t border-gray-100 bg-gray-50/60 px-4 py-4 text-sm">
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div class="rounded-lg bg-white p-4">
+                                <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>
+                                <dl class="space-y-2">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">PersianAPI — طلای ۲۴ عیار</dt>
+                                        <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($g999['persian'] ?? null) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">Tala.ir — گرم ۲۴ عیار</dt>
+                                        <dd class="font-mono tabular-nums text-amber-600">{{ $toToman($g999['tala'] ?? null) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">قیمت دستی</dt>
+                                        <dd class="font-mono tabular-nums text-red-600">{{ $toToman($g999['manual'] ?? null) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
+                                        <dt class="text-gray-600">Max(Persian, Tala)</dt>
+                                        <dd class="font-mono tabular-nums">{{ $toToman($g999['maxApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g999['maxSource'] ?? '—' }})</span></dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">Min(Persian, Tala)</dt>
+                                        <dd class="font-mono tabular-nums">{{ $toToman($g999['minApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g999['minSource'] ?? '—' }})</span></dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
+                                        <dt class="text-gray-600">HighValueRatio (ضریب فروش)</dt>
+                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold999_sell_ratio'] ?? 1.001), 4) }}</dd>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <dt class="text-gray-600">LowValueRatio (ضریب خرید)</dt>
+                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold999_buy_ratio'] ?? 0.997), 4) }}</dd>
+                                    </div>
+                                </dl>
+                            </div>
+
+                            <div class="rounded-lg bg-white p-4">
+                                <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
+                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">فروش = Max(Persian, Tala) × HighValueRatio ({{ number_format((float) ($c['gold999_sell_ratio'] ?? 1.001), 4) }})</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = Min(Persian, Tala) × LowValueRatio ({{ number_format((float) ($c['gold999_buy_ratio'] ?? 0.997), 4) }})</code>
+                                <p class="mt-2.5 text-xs leading-6 text-gray-500">
+                                    قیمت فروش با ضرب ماکزیمم API در HighValueRatio و قیمت خرید با ضرب مینیمم API در LowValueRatio محاسبه می‌شود.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 p-3">
+                                <div class="text-xs font-medium text-blue-700">قیمت نهایی فروش</div>
+                                <div class="mt-1 text-lg font-bold tabular-nums text-blue-900">{{ $toman($g999['sell'] ?? null) }}</div>
+                                <div class="mt-1 text-xs text-blue-700/80">{{ $g999['sellLogic'] ?? '—' }}</div>
+                            </div>
+                            <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 p-3">
+                                <div class="text-xs font-medium text-emerald-700">قیمت نهایی خرید</div>
+                                <div class="mt-1 text-lg font-bold tabular-nums text-emerald-900">{{ $toman($g999['buy'] ?? null) }}</div>
+                                <div class="mt-1 text-xs text-emerald-700/80">{{ $g999['buyLogic'] ?? '—' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                {{-- 5. نقره ۹۹۹.۹ --}}
                 <details class="group overflow-hidden rounded-lg ring-1 ring-gray-950/5">
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden hover:bg-gray-50">
                         <span class="flex items-center gap-2.5">

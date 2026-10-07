@@ -23,9 +23,15 @@ class PricingSettings
     ];
 
     public const COEFFICIENT_DEFAULTS = [
-        'coef_gold750_to_gold995' => '1.3333',
-        'coef_gold750_to_gold9999' => '1.3399665',
+        'coef_gold999_to_gold995' => '0.995996',
+        'coef_gold999_to_gold9999' => '1.005',
+        'coef_gold995_sell_ratio' => '1',
+        'coef_gold995_buy_ratio' => '0.995',
+        'coef_gold9999_sell_ratio' => '1',
+        'coef_gold9999_buy_ratio' => '0.995',
         'coef_buy_price' => '0.99',
+        'coef_gold999_sell_ratio' => '1.001',
+        'coef_gold999_buy_ratio' => '0.997',
         'coef_silver9999_to_silver999' => '0.961538',
         'coef_silver_buy_price' => '0.99',
         'coef_gold750_sell_ratio' => '1.001',
@@ -45,6 +51,11 @@ class PricingSettings
     public static function manualGold750Sell(): string
     {
         return (string) (self::get('manual_gold750_sell', '') ?? '');
+    }
+
+    public static function manualGold999Sell(): string
+    {
+        return (string) (self::get('manual_gold999_sell', '') ?? '');
     }
 
     public static function manualSilver9999Sell(): string

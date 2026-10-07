@@ -41,6 +41,7 @@ class PricePreviewPage extends Page
         // 'Gold995_Buy' => 'طلای ۹۹۵ (خرید)',
         'Gold9999_Sell' => 'طلای ۹۹۹.۹',
         // 'Gold9999_Buy' => 'طلای ۹۹۹.۹ (خرید)',
+        'Gold999_Sell' => 'طلای ۹۹۹',
         'Silver9999_Sell' => 'نقره ۹۹۹.۹',
         // 'Silver9999_Buy' => 'نقره ۹۹۹.۹ (خرید)',
     ];

@@ -38,40 +38,90 @@ class CoefficientsPage extends Page
     public function mount(): void
     {
         $this->form->fill([
-            'coef_gold750_to_gold995' => PricingSettings::coefficient('coef_gold750_to_gold995'),
-            'coef_gold750_to_gold9999' => PricingSettings::coefficient('coef_gold750_to_gold9999'),
-            'coef_buy_price' => PricingSettings::coefficient('coef_buy_price'),
-            'coef_silver9999_to_silver999' => PricingSettings::coefficient('coef_silver9999_to_silver999'),
-            'coef_silver_buy_price' => PricingSettings::coefficient('coef_silver_buy_price'),
             'coef_gold750_sell_ratio' => PricingSettings::coefficient('coef_gold750_sell_ratio'),
             'coef_gold750_buy_ratio' => PricingSettings::coefficient('coef_gold750_buy_ratio'),
+            'coef_gold999_sell_ratio' => PricingSettings::coefficient('coef_gold999_sell_ratio'),
+            'coef_gold999_buy_ratio' => PricingSettings::coefficient('coef_gold999_buy_ratio'),
+            'coef_gold999_to_gold995' => PricingSettings::coefficient('coef_gold999_to_gold995'),
+            'coef_gold995_sell_ratio' => PricingSettings::coefficient('coef_gold995_sell_ratio'),
+            'coef_gold995_buy_ratio' => PricingSettings::coefficient('coef_gold995_buy_ratio'),
+            'coef_gold999_to_gold9999' => PricingSettings::coefficient('coef_gold999_to_gold9999'),
+            'coef_gold9999_sell_ratio' => PricingSettings::coefficient('coef_gold9999_sell_ratio'),
+            'coef_gold9999_buy_ratio' => PricingSettings::coefficient('coef_gold9999_buy_ratio'),
+            'coef_silver9999_to_silver999' => PricingSettings::coefficient('coef_silver9999_to_silver999'),
+            'coef_silver_buy_price' => PricingSettings::coefficient('coef_silver_buy_price'),
+            'coef_buy_price' => PricingSettings::coefficient('coef_buy_price'),
         ]);
     }
 
     public function form(Schema $schema): Schema
     {
+        $ratio = fn (string $name, string $label, string $helper): TextInput => TextInput::make($name)
+            ->label($label)
+            ->helperText($helper)
+            ->numeric()
+            ->step(0.0001);
+
         return $schema
             ->components([
-                Section::make('ضرایب تابلو')
-                    ->description('ضریب‌های تبدیل بین کلیدهای تابلو')
+                Section::make('طلای ۷۵۰ (۱۸ عیار)')
+                    ->description('فروش = Max API × ضریب فروش؛ خرید = Min API × ضریب خرید')
                     ->icon('heroicon-o-calculator')
                     ->schema([
-                        Grid::make(4)->schema([
-                            TextInput::make('coef_gold750_to_gold995')->label('طلا ۷۵۰ ← ۹۹۵')->numeric(),
-                            TextInput::make('coef_gold750_to_gold9999')->label('طلا ۷۵۰ ← ۹۹۹.۹')->numeric(),
-                            TextInput::make('coef_silver9999_to_silver999')->label('نقره ۹۹۹.۹ ← ۹۹۹')->numeric(),
+                        Grid::make(2)->schema([
+                            $ratio('coef_gold750_sell_ratio', 'ضریب فروش (HighValueRatio)', 'ضریب اعمال شده روی Max API برای محاسبه قیمت فروش ۷۵۰'),
+                            $ratio('coef_gold750_buy_ratio', 'ضریب خرید (LowValueRatio)', 'ضریب اعمال شده روی Min API برای محاسبه قیمت خرید ۷۵۰'),
+                        ]),
+                    ])->columnSpanFull(),
+
+                Section::make('طلای ۹۹۹ (۲۴ عیار)')
+                    ->description('فروش = Max API × ضریب فروش؛ خرید = Min API × ضریب خرید')
+                    ->icon('heroicon-o-calculator')
+                    ->schema([
+                        Grid::make(2)->schema([
+                            $ratio('coef_gold999_sell_ratio', 'ضریب فروش (HighValueRatio)', 'ضریب اعمال شده روی Max API برای محاسبه قیمت فروش ۹۹۹'),
+                            $ratio('coef_gold999_buy_ratio', 'ضریب خرید (LowValueRatio)', 'ضریب اعمال شده روی Min API برای محاسبه قیمت خرید ۹۹۹'),
+                        ]),
+                    ])->columnSpanFull(),
+
+                Section::make('طلای ۹۹۵')
+                    ->description('از طلای ۹۹۹ ساخته می‌شود: فروش × ضریب تبدیل × HighValueRatio')
+                    ->icon('heroicon-o-calculator')
+                    ->schema([
+                        Grid::make(3)->schema([
+                            TextInput::make('coef_gold999_to_gold995')->label('ضریب تبدیل ۹۹۹ ← ۹۹۵')->numeric(),
+                            $ratio('coef_gold995_sell_ratio', 'ضریب فروش (HighValueRatio)', ''),
+                            $ratio('coef_gold995_buy_ratio', 'ضریب خرید (LowValueRatio)', ''),
+                        ]),
+                    ])->columnSpanFull(),
+
+                Section::make('طلای ۹۹۹.۹')
+                    ->description('از طلای ۹۹۹ ساخته می‌شود: فروش × ضریب تبدیل × HighValueRatio')
+                    ->icon('heroicon-o-calculator')
+                    ->schema([
+                        Grid::make(3)->schema([
+                            TextInput::make('coef_gold999_to_gold9999')->label('ضریب تبدیل ۹۹۹ ← ۹۹۹.۹')->numeric(),
+                            $ratio('coef_gold9999_sell_ratio', 'ضریب فروش (HighValueRatio)', ''),
+                            $ratio('coef_gold9999_buy_ratio', 'ضریب خرید (LowValueRatio)', ''),
+                        ]),
+                    ])->columnSpanFull(),
+
+                Section::make('نقره')
+                    ->description('قیمت نقره ۹۹۹.۹ دستی وارد می‌شود؛ نقره ۹۹۹ از آن ساخته می‌شود')
+                    ->icon('heroicon-o-calculator')
+                    ->schema([
+                        Grid::make(2)->schema([
+                            TextInput::make('coef_silver9999_to_silver999')->label('ضریب تبدیل ۹۹۹.۹ ← ۹۹۹')->numeric(),
                             TextInput::make('coef_silver_buy_price')->label('ضریب خرید نقره نسبت به فروش')->numeric(),
+                        ]),
+                    ])->columnSpanFull(),
+
+                Section::make('ضریب خرید طلا (حالت خاص)')
+                    ->description('فقط وقتی استفاده می‌شود که دو منبع برابر باشند یا قیمت دستی برنده شود')
+                    ->icon('heroicon-o-calculator')
+                    ->schema([
+                        Grid::make(2)->schema([
                             TextInput::make('coef_buy_price')->label('ضریب خرید نسبت به فروش (طلا)')->numeric(),
-                            TextInput::make('coef_gold750_sell_ratio')
-                                ->label('ضریب فروش طلای ۷۵۰')
-                                ->helperText('ضریب اعمال شده روی Max API برای محاسبه قیمت فروش ۷۵۰')
-                                ->numeric()
-                                ->step(0.0001),
-                            TextInput::make('coef_gold750_buy_ratio')
-                                ->label('ضریب خرید طلای ۷۵۰ ')
-                                ->helperText('ضریب اعمال شده روی Min API برای محاسبه قیمت خرید ۷۵۰')
-                                ->numeric()
-                                ->step(0.0001),
                         ]),
                     ])->columnSpanFull(),
             ])
@@ -89,13 +139,19 @@ class CoefficientsPage extends Page
         $data = $this->form->getState();
 
         $keys = [
-            'coef_gold750_to_gold995',
-            'coef_gold750_to_gold9999',
-            'coef_buy_price',
-            'coef_silver9999_to_silver999',
-            'coef_silver_buy_price',
             'coef_gold750_sell_ratio',
             'coef_gold750_buy_ratio',
+            'coef_gold999_sell_ratio',
+            'coef_gold999_buy_ratio',
+            'coef_gold999_to_gold995',
+            'coef_gold995_sell_ratio',
+            'coef_gold995_buy_ratio',
+            'coef_gold999_to_gold9999',
+            'coef_gold9999_sell_ratio',
+            'coef_gold9999_buy_ratio',
+            'coef_silver9999_to_silver999',
+            'coef_silver_buy_price',
+            'coef_buy_price',
         ];
 
         foreach ($keys as $key) {
