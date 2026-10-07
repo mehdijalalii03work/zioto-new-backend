@@ -151,6 +151,13 @@ class ProductsTable
                         1 => 'بله',
                         0 => 'خیر',
                     ]),
+
+                SelectFilter::make('hesabfa_exclude_from_sync')
+                    ->label('غیرفعال کردن سینک')
+                    ->options([
+                        1 => 'بله',
+                        0 => 'خیر',
+                    ]),
             ])
             ->defaultPaginationPageOption(25)
             ->reorderable('sort_order')
