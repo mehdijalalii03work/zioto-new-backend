@@ -12,12 +12,17 @@ use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
+use Morilog\Jalali\Jalalian;
 
 class OrdersTable
 {
@@ -212,6 +217,45 @@ class OrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Filter::make('created_at')
+                    ->label('تاریخ ثبت')
+                    ->schema([
+                        DatePicker::make('from')
+                            ->label('از تاریخ')
+                            ->jalali()
+                            ->native(false)
+                            ->displayFormat('Y/m/d')
+                            ->placeholder('۱۴۰۳/۰۱/۰۱'),
+                        DatePicker::make('until')
+                            ->label('تا تاریخ')
+                            ->jalali()
+                            ->native(false)
+                            ->displayFormat('Y/m/d')
+                            ->placeholder('۱۴۰۳/۱۲/۲۹'),
+                    ])
+                    ->columns(2)
+                    ->query(function (Builder $query, array $data): Builder {
+                        $from = self::parseFilterDate($data['from'] ?? null)?->startOfDay();
+                        $until = self::parseFilterDate($data['until'] ?? null)?->endOfDay();
+
+                        return $query
+                            ->when($from && $until, fn (Builder $q): Builder => $q->whereBetween('created_at', [$from, $until]))
+                            ->when($from && ! $until, fn (Builder $q): Builder => $q->where('created_at', '>=', $from))
+                            ->when(! $from && $until, fn (Builder $q): Builder => $q->where('created_at', '<=', $until));
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+
+                        if (filled($data['from'] ?? null) && ($from = self::parseFilterDate($data['from']))) {
+                            $indicators[] = 'از '.Jalalian::fromCarbon($from)->format('Y/m/d');
+                        }
+
+                        if (filled($data['until'] ?? null) && ($until = self::parseFilterDate($data['until']))) {
+                            $indicators[] = 'تا '.Jalalian::fromCarbon($until)->format('Y/m/d');
+                        }
+
+                        return $indicators;
+                    }),
                 SelectFilter::make('platform')
                     ->label('پلتفرم')
                     ->placeholder('همه')
@@ -319,5 +363,31 @@ class OrdersTable
                         ->label('حذف دائمی انتخاب شده‌ها'),
                 ]),
             ]);
+    }
+
+    /**
+     * DatePicker با ->jalali() معمولاً میلادی (Y-m-d) برمی‌گرداند،
+     * ولی برای اطمینان ورودی شمسی (Y/m/d) هم پشتیبانی می‌شود.
+     */
+    public static function parseFilterDate(mixed $value): ?Carbon
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        try {
+            if (is_string($value) && str_contains($value, '/')) {
+                $year = (int) explode('/', $value)[0];
+
+                if ($year < 1700) {
+                    // toCarbon() از Carbon\Carbon برمی‌گرداند؛ برای هماهنگی با تایپ متد نرمالایز می‌کنیم.
+                    return Carbon::parse(Jalalian::fromFormat('Y/m/d', $value)->toCarbon()->toDateTimeString());
+                }
+            }
+
+            return Carbon::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }
