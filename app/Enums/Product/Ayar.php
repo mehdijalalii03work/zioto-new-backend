@@ -4,6 +4,7 @@ namespace App\Enums\Product;
 
 enum Ayar: string
 {
+    case P750 = '750';
     case P995 = '995';
     case P999 = '999';
     case P9999 = '9999';
@@ -11,6 +12,7 @@ enum Ayar: string
     public function label(): string
     {
         return match ($this) {
+            self::P750 => '۷۵۰',
             self::P995 => '۹۹۵',
             self::P999 => '۹۹۹',
             self::P9999 => '۹۹۹۹',

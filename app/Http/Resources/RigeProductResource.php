@@ -48,6 +48,7 @@ class RigeProductResource extends JsonResource
             Ayar::P995 => 1,
             Ayar::P999 => 2,
             Ayar::P9999 => 3,
+            Ayar::P750 => 4,
             default => null,
         };
     }
