@@ -47,12 +47,17 @@
                         <th class="border-e border-gray-200 px-3 py-2 text-start">محصول</th>
                         <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت زیوتو (تومان)</th>
                         <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت توکنیکو (تومان)</th>
-                        <th class="px-3 py-2 text-start">اختلاف ٪</th>
+                        <th class="px-3 py-2 text-start">
+                        <button type="button" wire:click="sortByDiff" class="inline-flex items-center gap-1 font-semibold hover:text-gray-900" title="مرتب‌سازی بر اساس قدرمطلق اختلاف">
+                            اختلاف ٪
+                            <span aria-hidden="true">{{ $sortDirection === 'desc' ? '▼' : '▲' }}</span>
+                        </button>
+                    </th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($rows as $row)
-                        <tr class="border-t border-gray-100 {{ $isHl($row['diffPct']) ? 'bg-amber-50' : 'odd:bg-white even:bg-gray-50' }}">
+                        <tr class="border-t border-gray-100 {{ $isHl($row['diffPct']) ? 'bg-amber-200' : 'odd:bg-white even:bg-gray-50' }}">
                             <td class="px-3 py-2">
                                 <div class="font-semibold text-gray-900">{{ $row['name'] }}</div>
                                 {{-- <div class="font-mono text-xs text-gray-400" dir="ltr">{{ $row['sku'] }}</div> --}}

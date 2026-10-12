@@ -131,12 +131,12 @@ class ProductComparisonPageTest extends TestCase
             ->set('allowedDiffInput', '5')
             ->call('applyThreshold')
             ->assertSet('diffThreshold', 5.0)
-            ->assertSee('bg-amber-50', false);
+            ->assertSee('bg-amber-200', false);
 
         $component
             ->set('allowedDiffInput', '20')
             ->call('applyThreshold')
-            ->assertDontSee('bg-amber-50', false);
+            ->assertDontSee('bg-amber-200', false);
 
         $component
             ->set('allowedDiffInput', '')
@@ -153,8 +153,51 @@ class ProductComparisonPageTest extends TestCase
         $this->fakeTokeniko($requests);
 
         Livewire::test(ProductComparisonPage::class)
+            ->assertSet('diffThreshold', 0.5)
             ->set('allowedDiffInput', 'abc')
             ->call('applyThreshold')
-            ->assertSet('diffThreshold', null);
+            ->assertSet('diffThreshold', 0.5);
+    }
+
+    public function test_rows_are_highlighted_by_default_threshold(): void
+    {
+        $this->admin();
+        $this->product('zioto-gold-bar-1gram-995', 330000000);
+
+        $requests = [];
+        $this->fakeTokeniko($requests);
+
+        Livewire::test(ProductComparisonPage::class)
+            ->assertSet('allowedDiffInput', '0.5')
+            ->assertSee('bg-amber-200', false);
+    }
+
+    public function test_sort_by_diff_orders_absolute_values_with_missing_last(): void
+    {
+        $this->admin();
+        $plus10 = $this->product('zioto-gold-bar-1gram-995', 330000000);
+        $minus8 = $this->product('zioto-silver-bar-5gram', 34306800);
+        $plus2 = $this->product('zioto-gold-bar-1gram-995', 306000000);
+        $missing = $this->product('no-such-sku', 1000);
+
+        $requests = [];
+        $this->fakeTokeniko($requests);
+
+        $component = Livewire::test(ProductComparisonPage::class);
+
+        $this->assertSame(
+            [$plus10->id, $minus8->id, $plus2->id, $missing->id],
+            array_column($component->get('rows'), 'id')
+        );
+
+        $component->call('sortByDiff');
+
+        $this->assertSame(
+            [$plus2->id, $minus8->id, $plus10->id, $missing->id],
+            array_column($component->get('rows'), 'id')
+        );
+
+        // Sorting never refetches Tokeniko.
+        $this->assertCount(1, $requests);
     }
 }

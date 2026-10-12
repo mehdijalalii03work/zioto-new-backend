@@ -46,12 +46,19 @@ class ProductComparisonPage extends Page
     /**
      * Raw threshold input (allowed difference percent).
      */
-    public ?string $allowedDiffInput = null;
+    public ?string $allowedDiffInput = '0.5';
 
     /**
      * Applied threshold; rows with abs(diffPct) >= it are highlighted.
      */
-    public ?float $diffThreshold = null;
+    public ?float $diffThreshold = 0.5;
+
+    /**
+     * Sort direction for the diff column (by absolute value).
+     *
+     * @var 'asc'|'desc'
+     */
+    public string $sortDirection = 'desc';
 
     public static function canAccess(): bool
     {
@@ -140,6 +147,42 @@ class ProductComparisonPage extends Page
 
         $this->rows = $rows;
         $this->productCount = count($rows);
+        $this->sortRows();
+    }
+
+    /**
+     * Toggle diff-column sorting (by absolute value, missing values last).
+     */
+    public function sortByDiff(): void
+    {
+        $this->sortDirection = $this->sortDirection === 'desc' ? 'asc' : 'desc';
+        $this->sortRows();
+    }
+
+    private function sortRows(): void
+    {
+        $direction = $this->sortDirection;
+
+        usort($this->rows, function (array $a, array $b) use ($direction): int {
+            $aNull = $a['diffPct'] === null;
+            $bNull = $b['diffPct'] === null;
+
+            if ($aNull && $bNull) {
+                return 0;
+            }
+
+            if ($aNull) {
+                return 1;
+            }
+
+            if ($bNull) {
+                return -1;
+            }
+
+            $compared = abs($a['diffPct']) <=> abs($b['diffPct']);
+
+            return $direction === 'desc' ? -$compared : $compared;
+        });
     }
 
     /**
