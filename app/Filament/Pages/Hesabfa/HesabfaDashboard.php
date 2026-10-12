@@ -16,7 +16,7 @@ class HesabfaDashboard extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasPermissionTo(Permission::HesabfaView->value) ?? false;
+        return auth()->user()?->can(Permission::HesabfaView->value) ?? false;
     }
 
     public static function getNavigationIcon(): string|\BackedEnum|null
@@ -89,7 +89,7 @@ class HesabfaDashboard extends Page
 
     public function syncStock(): void
     {
-        abort_unless(auth()->user()?->hasPermissionTo(Permission::HesabfaSync->value), 403);
+        abort_unless(auth()->user()?->can(Permission::HesabfaSync->value), 403);
 
         $stockSync = app(StockSyncService::class);
         $result = $stockSync->syncAllStock();

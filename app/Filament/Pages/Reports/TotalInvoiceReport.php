@@ -25,7 +25,7 @@ class TotalInvoiceReport extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasPermissionTo(Permission::ManagementReportView->value) ?? false;
+        return auth()->user()?->can(Permission::ManagementReportView->value) ?? false;
     }
 
     public static function getNavigationIcon(): string|\BackedEnum|null

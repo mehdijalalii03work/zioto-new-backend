@@ -24,7 +24,7 @@ trait InteractsWithAnalyticsPeriod
 
     public static function canView(): bool
     {
-        return auth()->user()?->hasPermissionTo(Permission::AnalyticsReportView->value) ?? false;
+        return auth()->user()?->can(Permission::AnalyticsReportView->value) ?? false;
     }
 
     protected function analyticsService(): AnalyticsService

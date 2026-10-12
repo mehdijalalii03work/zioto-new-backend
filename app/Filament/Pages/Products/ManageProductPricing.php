@@ -59,7 +59,7 @@ class ManageProductPricing extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasPermissionTo(Permission::ProductEdit->value) ?? false;
+        return auth()->user()?->can(Permission::ProductEdit->value) ?? false;
     }
 
     public static function getNavigationLabel(): string

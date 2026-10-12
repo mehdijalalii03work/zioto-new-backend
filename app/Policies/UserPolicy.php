@@ -13,7 +13,7 @@ class UserPolicy extends AdminPolicy
 
     public function update(User $user, mixed $model = null): bool
     {
-        if (! $user->hasPermissionTo(static::entity().'.edit')) {
+        if (! $user->can(static::entity().'.edit')) {
             return false;
         }
 
@@ -30,7 +30,7 @@ class UserPolicy extends AdminPolicy
             return false;
         }
 
-        if (! $user->hasPermissionTo(static::entity().'.delete')) {
+        if (! $user->can(static::entity().'.delete')) {
             return false;
         }
 

@@ -12,7 +12,7 @@ class Dashboard extends BaseDashboard
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasPermissionTo(Permission::DashboardView->value) ?? false;
+        return auth()->user()?->can(Permission::DashboardView->value) ?? false;
     }
 
     /**

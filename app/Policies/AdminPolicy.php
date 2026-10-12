@@ -13,7 +13,7 @@ abstract class AdminPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo(static::entity().'.view');
+        return $user->can(static::entity().'.view');
     }
 
     public function view(User $user, mixed $model = null): bool
@@ -23,17 +23,17 @@ abstract class AdminPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo(static::entity().'.create');
+        return $user->can(static::entity().'.create');
     }
 
     public function update(User $user, mixed $model = null): bool
     {
-        return $user->hasPermissionTo(static::entity().'.edit');
+        return $user->can(static::entity().'.edit');
     }
 
     public function delete(User $user, mixed $model = null): bool
     {
-        return $user->hasPermissionTo(static::entity().'.delete');
+        return $user->can(static::entity().'.delete');
     }
 
     public function deleteAny(User $user): bool

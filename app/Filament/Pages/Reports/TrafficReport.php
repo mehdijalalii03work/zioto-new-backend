@@ -33,7 +33,7 @@ class TrafficReport extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasPermissionTo(Permission::AnalyticsReportView->value) ?? false;
+        return auth()->user()?->can(Permission::AnalyticsReportView->value) ?? false;
     }
 
     public static function getNavigationIcon(): string|\BackedEnum|null

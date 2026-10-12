@@ -6,6 +6,7 @@ use App\Enums\Permission;
 use App\Enums\Role;
 use App\Filament\Pages\Hesabfa\HesabfaSyncLogs;
 use App\Filament\Pages\ManageSettings;
+use App\Filament\Pages\Pricing\CoefficientsPage;
 use App\Filament\Resources\Permissions\PermissionResource;
 use App\Filament\Resources\Products\Pages\ListProducts;
 use App\Filament\Resources\Roles\RoleResource;
@@ -248,5 +249,15 @@ class AuthorizationTest extends TestCase
         $permission = PermissionModel::where('name', Permission::OrderView->value)->first();
 
         $this->assertFalse(Gate::forUser($admin)->allows('delete', $permission));
+    }
+
+    public function test_page_access_check_returns_false_instead_of_throwing_when_permission_is_missing(): void
+    {
+        $admin = $this->staffUser(Role::Admin);
+        $this->actingAs($admin, 'web');
+
+        PermissionModel::where('name', Permission::PricingView->value)->delete();
+
+        $this->assertFalse(CoefficientsPage::canAccess());
     }
 }

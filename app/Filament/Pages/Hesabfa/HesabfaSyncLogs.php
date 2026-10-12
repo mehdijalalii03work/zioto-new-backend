@@ -13,7 +13,7 @@ class HesabfaSyncLogs extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasPermissionTo(Permission::HesabfaView->value) ?? false;
+        return auth()->user()?->can(Permission::HesabfaView->value) ?? false;
     }
 
     #[Url]

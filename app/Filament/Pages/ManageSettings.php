@@ -33,7 +33,7 @@ class ManageSettings extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasPermissionTo(Permission::SettingView->value) ?? false;
+        return auth()->user()?->can(Permission::SettingView->value) ?? false;
     }
 
     public array $data = [];

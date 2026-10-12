@@ -32,7 +32,7 @@ class CoefficientsPage extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasPermissionTo(Permission::PricingView->value) ?? false;
+        return auth()->user()?->can(Permission::PricingView->value) ?? false;
     }
 
     public function mount(): void

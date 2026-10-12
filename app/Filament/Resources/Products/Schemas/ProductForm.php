@@ -142,7 +142,7 @@ class ProductForm
                     ->description('قیمت، وزن و موجودی انبار')
                     ->icon('heroicon-o-currency-dollar')
                     ->collapsible()
-                    ->visible(fn (): bool => auth()->user()?->hasPermissionTo(Permission::ProductPricing->value) ?? false)
+                    ->visible(fn (): bool => auth()->user()?->can(Permission::ProductPricing->value) ?? false)
                     ->schema([
                         Grid::make(4)
                             ->schema([
@@ -186,7 +186,7 @@ class ProductForm
                     ->description('تنها برای قیمت‌گذاری پویا')
                     ->icon('heroicon-o-calculator')
                     ->collapsible()
-                    ->visible(fn ($get): bool => (($get('price_type') ?? 'fixed') === 'dynamic') && (auth()->user()?->hasPermissionTo(Permission::ProductPricing->value) ?? false))
+                    ->visible(fn ($get): bool => (($get('price_type') ?? 'fixed') === 'dynamic') && (auth()->user()?->can(Permission::ProductPricing->value) ?? false))
                     ->schema([
                         Grid::make(3)
                             ->schema([
@@ -203,7 +203,7 @@ class ProductForm
                     ->description('همگام‌سازی موجودی با حسابفا')
                     ->icon('heroicon-o-arrow-path')
                     ->collapsible()
-                    ->visible(fn (): bool => auth()->user()?->hasPermissionTo(Permission::HesabfaView->value) ?? false)
+                    ->visible(fn (): bool => auth()->user()?->can(Permission::HesabfaView->value) ?? false)
                     ->schema([
                         View::make('filament.components.hesabfa-stock-cards')
                             ->columnSpanFull(),
