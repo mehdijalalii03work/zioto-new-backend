@@ -169,8 +169,8 @@ class ProductForm
                                     ->label('وزن')
                                     ->numeric()
                                     ->suffix('گرم')
-                                    ->step(0.01)
-                                    ->placeholder('مثلاً 10'),
+                                    ->step(0.0000001)
+                                    ->placeholder('مثلاً 31.1034768'),
 
                                 TextInput::make('stock_quantity')
                                     ->label('موجودی انبار')

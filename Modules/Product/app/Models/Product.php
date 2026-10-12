@@ -62,7 +62,7 @@ class Product extends Model implements HasMedia
             'metal_type' => MetalType::class,
             'form' => ProductShape::class,
             'ayar' => Ayar::class,
-            'weight' => 'decimal:2',
+            'weight' => 'decimal:7',
             'fee_off_hours' => 'decimal:2',
             'fee_business_hours' => 'decimal:2',
             'price' => 'decimal:2',
