@@ -56,6 +56,7 @@ class ZiotoPricingSettingsSeeder extends Seeder
             // Source toggles (DB-editable; tokens live in .env)
             ['key' => 'zioto_pricing_persian_api_enabled', 'value' => 'true', 'type' => 'boolean', 'label' => 'فعال‌سازی PersianAPI', 'sort_order' => 50],
             ['key' => 'zioto_pricing_tala_api_enabled', 'value' => 'true', 'type' => 'boolean', 'label' => 'فعال‌سازی Tala.ir', 'sort_order' => 51],
+            ['key' => 'zioto_pricing_tokeniko_board_enabled', 'value' => 'false', 'type' => 'boolean', 'label' => 'دریافت تابلو از توکنیکو', 'sort_order' => 52],
 
             // Labor roles / periods
             ['key' => 'zioto_pricing_labor_roles', 'value' => json_encode(PricingSettings::DEFAULT_LABOR_ROLES), 'type' => 'json', 'label' => 'نقش‌های اجرت', 'sort_order' => 60],

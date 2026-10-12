@@ -45,6 +45,7 @@ class PricingSettingsPage extends Page
             'stale_block' => PricingSettings::staleBlock(),
             'persian_api_enabled' => (bool) PricingSettings::get('persian_api_enabled', true),
             'tala_api_enabled' => (bool) PricingSettings::get('tala_api_enabled', true),
+            'tokeniko_board_enabled' => (bool) PricingSettings::get('tokeniko_board_enabled', false),
             'emergency_mode_enabled' => PricingSettings::emergencyModeEnabled(),
         ]);
     }
@@ -70,6 +71,10 @@ class PricingSettingsPage extends Page
                         Grid::make(2)->schema([
                             Toggle::make('persian_api_enabled')->label('PersianAPI')->inline(false),
                             Toggle::make('tala_api_enabled')->label('Tala.ir')->inline(false),
+                            Toggle::make('tokeniko_board_enabled')
+                                ->label('توکنیکو (جایگزین محاسبه داخلی)')
+                                ->helperText('قیمت مستقیم توکنیکو؛ در صورت مشکل ارتباطی، محاسبه داخلی جایگزین می‌شود')
+                                ->inline(false),
                         ]),
                     ])->columnSpanFull(),
 
@@ -98,7 +103,7 @@ class PricingSettingsPage extends Page
 
         $data = $this->form->getState();
 
-        $booleans = ['stale_block', 'persian_api_enabled', 'tala_api_enabled', 'emergency_mode_enabled'];
+        $booleans = ['stale_block', 'persian_api_enabled', 'tala_api_enabled', 'tokeniko_board_enabled', 'emergency_mode_enabled'];
 
         foreach ($booleans as $key) {
             Setting::updateOrCreate(['key' => "zioto_pricing_{$key}"], [

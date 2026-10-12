@@ -20,6 +20,8 @@ class ApiClientService
 
     private array $rawTalaData = [];
 
+    private array $rawTokenikoData = [];
+
     private array $sourceStatus = [];
 
     private bool $usedFallback = false;
@@ -30,6 +32,15 @@ class ApiClientService
         137121 => 'Gold999',
         684758 => 'Silver999',
     ];
+
+    private const TOKENIKO_URL = 'https://tokeniko.com/api/prices-with-change';
+
+    /**
+     * Board items taken from Tokeniko; everything else in its response is ignored.
+     *
+     * @var list<string>
+     */
+    private const TOKENIKO_ITEMS = ['Gold750', 'Gold995', 'Gold9999', 'Gold999', 'Silver9999', 'Silver999'];
 
     private const NAME_MAP = [
         'Gold995' => 'طلای ۹۹۵ (۲۴ عیار)',
@@ -71,6 +82,7 @@ class ApiClientService
             'raw' => [
                 'persian' => $this->rawPersianData,
                 'tala' => $this->rawTalaData,
+                'tokeniko' => $this->rawTokenikoData,
             ],
             'used_fallback' => $this->usedFallback,
         ];
@@ -116,7 +128,7 @@ class ApiClientService
 
         $payload['debug'] ??= Cache::get('zioto:debug', []);
         $payload['source_status'] ??= Cache::get('zioto:source_status', []);
-        $payload['raw'] ??= Cache::get('zioto:raw', ['persian' => [], 'tala' => []]);
+        $payload['raw'] ??= Cache::get('zioto:raw', ['persian' => [], 'tala' => [], 'tokeniko' => []]);
         $payload['used_fallback'] ??= false;
 
         return $payload;
@@ -140,7 +152,7 @@ class ApiClientService
     {
         $payload = $this->readCache();
 
-        return $payload['raw'] ?? ['persian' => [], 'tala' => []];
+        return $payload['raw'] ?? ['persian' => [], 'tala' => [], 'tokeniko' => []];
     }
 
     public function refresh(): array
@@ -164,6 +176,30 @@ class ApiClientService
         $this->sourceStatus = [];
         $this->debugRows = [];
         $stalePolicy = $this->stalePolicy();
+
+        if ((bool) PricingSettings::get('tokeniko_board_enabled', false)) {
+            $tokenikoData = $this->fetchTokenikoBoard();
+
+            if ($tokenikoData !== []) {
+                $this->rawPersianData = [];
+                $this->rawTalaData = [];
+                $this->rawTokenikoData = $tokenikoData;
+                $this->setSourceStatus('tokeniko', 'ok', now()->timestamp, false);
+                $this->setSourceStatus('persian', 'disabled', null, false);
+                $this->setSourceStatus('tala', 'disabled', null, false);
+
+                $prices = $this->buildTokenikoPrices($tokenikoData);
+
+                if ($prices !== []) {
+                    return $prices;
+                }
+
+                Log::warning('[ZiotoPricing] Tokeniko returned no usable items; falling back to computed board.');
+            } else {
+                $this->setSourceStatus('tokeniko', 'down', null, false);
+                Log::warning('[ZiotoPricing] Tokeniko board unavailable; falling back to computed board.');
+            }
+        }
 
         $persianEnabled = (bool) PricingSettings::get('persian_api_enabled', config('zioto-pricing.persian_api.enabled', true));
         if ($persianEnabled) {
@@ -380,15 +416,7 @@ class ApiClientService
 
         // Emergency mode: an extra multiplier on the final board prices,
         // one for gold and one for silver (e.g. wartime unreliable sources).
-        if (PricingSettings::emergencyModeEnabled()) {
-            $emergencyGold = PricingSettings::coefficient('coef_emergency_gold');
-            $emergencySilver = PricingSettings::coefficient('coef_emergency_silver');
-
-            foreach ($prices as $key => &$item) {
-                $item['value'] = $bc::toFloat($bc::mul((string) $item['value'], str_starts_with($key, 'Silver') ? $emergencySilver : $emergencyGold));
-            }
-            unset($item);
-        }
+        $this->applyEmergency($prices);
 
         // Debug rows
         $this->debugRows['Gold750_Sell'] = $this->debugRow('Gold750_Sell', $persianGold750, $talaGold750, $manualGold750Rial, $gold750Sell, 'Max × HighValueRatio', 'Manual (always wins when set), else Max(PersianAPI, Tala.ir) × HighValueRatio', $nameMap);
@@ -459,6 +487,111 @@ class ApiClientService
             'coefficient' => $coefficient,
             'description' => $description,
         ];
+    }
+
+    /**
+     * Shared end-of-pipeline step for both board sources.
+     *
+     * @param  array<string, array>  $prices
+     */
+    private function applyEmergency(array &$prices): void
+    {
+        if (! PricingSettings::emergencyModeEnabled()) {
+            return;
+        }
+
+        $bc = BcmathHelper::class;
+        $emergencyGold = PricingSettings::coefficient('coef_emergency_gold');
+        $emergencySilver = PricingSettings::coefficient('coef_emergency_silver');
+
+        foreach ($prices as $key => &$item) {
+            $item['value'] = $bc::toFloat($bc::mul((string) $item['value'], str_starts_with($key, 'Silver') ? $emergencySilver : $emergencyGold));
+        }
+        unset($item);
+    }
+
+    /**
+     * Fetch Tokeniko's board (prices-with-change). Values are Rial, like ours.
+     *
+     * @return array<string, array{sell: float|null, buy: float|null}>
+     */
+    private function fetchTokenikoBoard(): array
+    {
+        try {
+            $pending = Http::timeout(15)
+                ->retry(2, 200, throw: false)
+                ->withHeaders(['Accept' => 'application/json'])
+                ->get(self::TOKENIKO_URL);
+        } catch (ConnectionException $e) {
+            Log::error('[ZiotoPricing] Tokeniko connection error: '.$e->getMessage());
+
+            return [];
+        }
+
+        if ($pending->failed()) {
+            Log::error('[ZiotoPricing] Tokeniko HTTP error: '.$pending->status());
+
+            return [];
+        }
+
+        $data = $pending->json();
+
+        if (! is_array($data)) {
+            Log::error('[ZiotoPricing] Tokeniko invalid response format');
+
+            return [];
+        }
+
+        $products = $data['products'] ?? $data['data']['products'] ?? [];
+
+        if (! is_array($products) || $products === []) {
+            Log::error('[ZiotoPricing] Tokeniko response has no products');
+
+            return [];
+        }
+
+        $mapped = [];
+
+        foreach ($products as $item) {
+            if (! is_array($item) || ! isset($item['name']) || ! in_array($item['name'], self::TOKENIKO_ITEMS, true)) {
+                continue;
+            }
+
+            $mapped[$item['name']] = [
+                'sell' => isset($item['sellPrice']) && is_numeric($item['sellPrice']) ? (float) $item['sellPrice'] : null,
+                'buy' => isset($item['buyPrice']) && is_numeric($item['buyPrice']) ? (float) $item['buyPrice'] : null,
+            ];
+        }
+
+        return $mapped;
+    }
+
+    /**
+     * Build board items straight from Tokeniko values: no manual overrides,
+     * no conversion coefficients — sell/buy land on the board as received.
+     *
+     * @param  array<string, array{sell: float|null, buy: float|null}>  $tokenikoData
+     * @return array<string, array>
+     */
+    private function buildTokenikoPrices(array $tokenikoData): array
+    {
+        $nameMap = self::NAME_MAP;
+        $prices = [];
+
+        foreach (self::TOKENIKO_ITEMS as $name) {
+            $sell = $tokenikoData[$name]['sell'] ?? null;
+            $buy = $tokenikoData[$name]['buy'] ?? null;
+
+            $this->maybeAdd($prices, $name.'_Sell', $name, $sell, 'sell', $nameMap);
+            $this->maybeAdd($prices, $name.'_Buy', $name, $buy, 'buy', $nameMap);
+
+            $this->debugRows[$name.'_Sell'] = $this->debugRow($name.'_Sell', null, null, null, $sell, 'Tokeniko', 'توکنیکو مستقیم (بدون ضریب و دستی)', $nameMap);
+            $this->debugRows[$name.'_Buy'] = $this->debugRow($name.'_Buy', null, null, null, $buy, 'Tokeniko', 'توکنیکو مستقیم (بدون ضریب و دستی)', $nameMap);
+        }
+
+        $this->applyEmergency($prices);
+
+        return $prices;
     }
 
     private function fetchPersianApi(): array

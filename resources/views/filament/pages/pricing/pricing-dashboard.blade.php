@@ -82,6 +82,7 @@
         ];
 
         $f = $formula;
+        $tokenikoMode = ! empty($f['tokenikoMode']);
         $c = $f['coefs'] ?? [];
         $g750 = $f['gold750'] ?? [];
         $g995 = $f['gold995'] ?? [];
@@ -419,6 +420,12 @@
             <p class="mt-1 text-sm text-gray-500">سیستم قیمت‌گذاری با استفاده از منابع مختلف و ضرایب قابل تنظیم، قیمت‌های خرید و فروش را محاسبه می‌کند. روی هر ردیف کلیک کنید تا جزئیات باز شود.</p>
 
             <div class="mt-4 space-y-3">
+                @if($tokenikoMode)
+                    <div class="rounded-lg border-s-4 border-sky-600 bg-sky-50 px-4 py-3">
+                        <div class="text-sm font-bold text-sky-800">منبع تابلو: توکنیکو</div>
+                        <div class="mt-1 text-xs text-sky-700/80">قیمت‌ها مستقیم از توکنیکو می‌آیند؛ ضرایب، قیمت دستی و محاسبات داخلی اعمال نمی‌شوند.</div>
+                    </div>
+                @endif
                 {{-- @if(!empty($f['emergency']['enabled']))
                     <div class="rounded-lg border-s-4 border-red-600 bg-red-50 px-4 py-3">
                         <div class="text-sm font-bold text-red-800">حالت بحرانی فعال است</div>
@@ -447,6 +454,12 @@
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>
                                 <dl class="space-y-2">
+                                    @if($tokenikoMode)
+                                        <div class="flex items-center justify-between gap-3">
+                                            <dt class="text-gray-600">توکنیکو — فروش / خرید</dt>
+                                            <dd class="font-mono tabular-nums text-sky-700">{{ $toToman($g750['sell'] ?? null) }} / {{ $toToman($g750['buy'] ?? null) }}</dd>
+                                        </div>
+                                    @endif
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">PersianAPI — طلای ۷۵۰</dt>
                                         <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($g750['persian'] ?? null) }}</dd>
@@ -480,11 +493,15 @@
 
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
+                                @if($tokenikoMode)
+                                    <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">توکنیکو مستقیم (بدون ضریب و دستی)</code>
+                                @else
                                 <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">فروش = Max(PersianAPI, Tala) × HighValueRatio ({{ number_format((float) ($c['gold750_sell_ratio'] ?? 1.001), 4) }})</code>
                                 <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = Min(PersianAPI, Tala) × LowValueRatio ({{ number_format((float) ($c['gold750_buy_ratio'] ?? 0.997), 4) }})</code>
                                 <p class="mt-2.5 text-xs leading-6 text-gray-500">
                                     قیمت فروش با ضرب ماکزیمم API در HighValueRatio و قیمت خرید با ضرب مینیمم API در LowValueRatio محاسبه می‌شود.
                                 </p>
+                                @endif
                             </div>
                         </div>
 
@@ -553,8 +570,12 @@
 
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
+                                @if($tokenikoMode)
+                                    <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">توکنیکو مستقیم (بدون ضریب و دستی)</code>
+                                @else
                                 <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ فروش = طلای۹۹۹ فروش × {{ $c['gold999_to_gold995'] ?? '—' }} × HighValueRatio</code>
                                 <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ خرید = طلای۹۹۹ خرید × {{ $c['gold999_to_gold995'] ?? '—' }} × LowValueRatio</code>
+                                @endif
                             </div>
                         </div>
 
@@ -620,8 +641,12 @@
 
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
+                                @if($tokenikoMode)
+                                    <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">توکنیکو مستقیم (بدون ضریب و دستی)</code>
+                                @else
                                 <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ فروش = طلای۹۹۹ فروش × {{ $c['gold999_to_gold9999'] ?? '—' }} × HighValueRatio</code>
                                 <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ خرید = طلای۹۹۹ خرید × {{ $c['gold999_to_gold9999'] ?? '—' }} × LowValueRatio</code>
+                                @endif
                             </div>
                         </div>
 
@@ -662,6 +687,12 @@
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>
                                 <dl class="space-y-2">
+                                    @if($tokenikoMode)
+                                        <div class="flex items-center justify-between gap-3">
+                                            <dt class="text-gray-600">توکنیکو — فروش / خرید</dt>
+                                            <dd class="font-mono tabular-nums text-sky-700">{{ $toToman($g999['sell'] ?? null) }} / {{ $toToman($g999['buy'] ?? null) }}</dd>
+                                        </div>
+                                    @endif
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">PersianAPI — طلای ۲۴ عیار</dt>
                                         <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($g999['persian'] ?? null) }}</dd>
@@ -695,11 +726,15 @@
 
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
+                                @if($tokenikoMode)
+                                    <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">توکنیکو مستقیم (بدون ضریب و دستی)</code>
+                                @else
                                 <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">فروش = Max(PersianAPI, Tala) × HighValueRatio ({{ number_format((float) ($c['gold999_sell_ratio'] ?? 1.001), 4) }})</code>
                                 <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = Min(PersianAPI, Tala) × LowValueRatio ({{ number_format((float) ($c['gold999_buy_ratio'] ?? 0.997), 4) }})</code>
                                 <p class="mt-2.5 text-xs leading-6 text-gray-500">
                                     قیمت فروش با ضرب ماکزیمم API در HighValueRatio و قیمت خرید با ضرب مینیمم API در LowValueRatio محاسبه می‌شود.
                                 </p>
+                                @endif
                             </div>
                         </div>
 
@@ -742,6 +777,12 @@
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">ورودی‌ها</div>
                                 <dl class="space-y-2">
+                                    @if($tokenikoMode)
+                                        <div class="flex items-center justify-between gap-3">
+                                            <dt class="text-gray-600">توکنیکو — فروش / خرید</dt>
+                                            <dd class="font-mono tabular-nums text-sky-700">{{ $toToman($s9999['sell'] ?? null) }} / {{ $toToman($s9999['buy'] ?? null) }}</dd>
+                                        </div>
+                                    @endif
                                     <div class="flex items-center justify-between gap-3">
                                         <dt class="text-gray-600">PersianAPI — نقره ۹۹۹ (مرجع، در قیمت استفاده نمی‌شود)</dt>
                                         <dd class="font-mono tabular-nums text-blue-700">{{ $toToman($s9999['persian999'] ?? null) }}</dd>
@@ -767,9 +808,13 @@
 
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
+                                @if($tokenikoMode)
+                                    <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">توکنیکو مستقیم (بدون ضریب و دستی)</code>
+                                @else
                                 <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۹۹.۹ فروش = قیمت دستی</code>
                                 <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۹۹ فروش = نقره۹۹۹.۹ فروش × {{ $c['silver9999_to_silver999'] ?? '—' }}</code>
                                 <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره خرید = فروش × {{ $c['silver_buy'] ?? '—' }}</code>
+                                @endif
                             </div>
                         </div>
 

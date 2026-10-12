@@ -2,85 +2,96 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\Role;
 use App\Filament\Pages\Pricing\PricingDashboard;
 use App\Models\Setting;
+use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class PricingDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function setting(string $key, string $value, string $type = 'number'): void
+    protected function setUp(): void
     {
-        Setting::create([
-            'key' => $key,
-            'value' => $value,
-            'type' => $type,
-            'category' => 'pricing',
-            'label' => $key,
-        ]);
+        parent::setUp();
+
+        $this->seed(RolePermissionSeeder::class);
+        Filament::setCurrentPanel('admin');
     }
 
-    public function test_emergency_table_is_empty_when_mode_is_disabled(): void
+    private function admin(): void
     {
-        $this->setting('zioto_pricing_coef_emergency_gold', '1.02');
-        $this->setting('zioto_pricing_coef_emergency_silver', '0.98');
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
 
-        $board = [
-            'Gold750_Sell' => ['value' => 102000.0],
-            'Silver9999_Sell' => ['value' => 98000.0],
-        ];
-
-        $this->assertSame([], PricingDashboard::buildEmergencyTable($board));
+        Livewire::actingAs($user, 'web');
     }
 
-    public function test_emergency_table_restores_exact_pre_emergency_values(): void
+    private function enableTokenikoMode(): void
     {
         Setting::create([
-            'key' => 'zioto_pricing_emergency_mode_enabled',
+            'key' => 'zioto_pricing_tokeniko_board_enabled',
             'value' => 'true',
             'type' => 'boolean',
             'category' => 'pricing',
-            'label' => 'emergency_mode_enabled',
+            'label' => 'tokeniko_board_enabled',
         ]);
-        $this->setting('zioto_pricing_coef_emergency_gold', '1.02');
-        $this->setting('zioto_pricing_coef_emergency_silver', '0.98');
-
-        $board = [
-            'Gold750_Sell' => ['value' => 102000.0],
-            'Silver9999_Sell' => ['value' => 98000.0],
-        ];
-
-        $rows = PricingDashboard::buildEmergencyTable($board);
-
-        $this->assertCount(2, $rows);
-
-        $this->assertSame('Gold750_Sell', $rows[0]['key']);
-        $this->assertEqualsWithDelta(100000.0, $rows[0]['base'], 0.001);
-        $this->assertSame(102000.0, $rows[0]['final']);
-        $this->assertEqualsWithDelta(2000.0, $rows[0]['diff'], 0.001);
-        $this->assertEqualsWithDelta(2.0, $rows[0]['pct'], 0.001);
-
-        $this->assertSame('Silver9999_Sell', $rows[1]['key']);
-        $this->assertEqualsWithDelta(100000.0, $rows[1]['base'], 0.001);
-        $this->assertEqualsWithDelta(-2000.0, $rows[1]['diff'], 0.001);
-        $this->assertEqualsWithDelta(-2.0, $rows[1]['pct'], 0.001);
     }
 
-    public function test_emergency_table_skips_keys_missing_from_the_board(): void
+    private function fakeTokeniko(): void
     {
-        Setting::create([
-            'key' => 'zioto_pricing_emergency_mode_enabled',
-            'value' => 'true',
-            'type' => 'boolean',
-            'category' => 'pricing',
-            'label' => 'emergency_mode_enabled',
+        Http::fake([
+            '*tokeniko.com/api/prices-with-change*' => Http::response(['products' => [
+                ['name' => 'Gold750', 'sellPrice' => 260000000, 'buyPrice' => 259000000],
+                ['name' => 'Gold9999', 'sellPrice' => 348000000, 'buyPrice' => 346000000],
+                ['name' => 'Euro', 'sellPrice' => 2943300, 'buyPrice' => 2943300],
+            ]], 200),
+        ]);
+    }
+
+    public function test_dashboard_shows_tokeniko_mode_with_passthrough_values(): void
+    {
+        $this->admin();
+        $this->enableTokenikoMode();
+        $this->fakeTokeniko();
+
+        $component = Livewire::test(PricingDashboard::class)->assertSuccessful();
+
+        $formula = $component->get('formula');
+
+        $this->assertTrue($formula['tokenikoMode'] ?? false);
+        $this->assertSame(260000000.0, $formula['gold750']['sell']);
+        $this->assertSame(259000000.0, $formula['gold750']['buy']);
+        $this->assertSame('توکنیکو مستقیم', $formula['gold750']['sellLogic']);
+
+        $component
+            ->assertSee('منبع تابلو: توکنیکو', false)
+            ->assertSee('توکنیکو مستقیم (بدون ضریب و دستی)', false);
+    }
+
+    public function test_dashboard_computed_mode_has_no_tokeniko_flag(): void
+    {
+        $this->admin();
+
+        Http::fake([
+            '*persianapi*' => Http::response(['result' => [
+                ['key' => 137120, 'price' => '244259000'],
+            ]], 200),
+            '*tala.ir*' => Http::response(['success' => true, 'rates' => [
+                'geram18k' => ['value' => 24425900],
+            ]], 200),
         ]);
 
-        $rows = PricingDashboard::buildEmergencyTable(['Gold750_Sell' => ['value' => 100.0]]);
+        $component = Livewire::test(PricingDashboard::class)->assertSuccessful();
 
-        $this->assertCount(1, $rows);
-        $this->assertSame('Gold750_Sell', $rows[0]['key']);
+        $formula = $component->get('formula');
+
+        $this->assertFalse(! empty($formula['tokenikoMode']));
+        $this->assertArrayHasKey('gold750', $formula);
     }
 }

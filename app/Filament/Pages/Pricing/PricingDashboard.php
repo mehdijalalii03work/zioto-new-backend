@@ -278,8 +278,55 @@ class PricingDashboard extends Page
      *
      * @return array<string, array<string, mixed>>
      */
+    /**
+     * Formula view when the board comes straight from Tokeniko: no API inputs,
+     * no manual overrides, no conversion coefficients — values land as received.
+     *
+     * @param  array<string, array{sell: float|null, buy: float|null}>  $tokeniko
+     * @return array<string, array<string, mixed>>
+     */
+    private function computeTokenikoFormula(array $tokeniko): array
+    {
+        $metal = function (string $name) use ($tokeniko): array {
+            $sell = isset($tokeniko[$name]['sell']) && is_numeric($tokeniko[$name]['sell'])
+                ? (float) $tokeniko[$name]['sell']
+                : null;
+            $buy = isset($tokeniko[$name]['buy']) && is_numeric($tokeniko[$name]['buy'])
+                ? (float) $tokeniko[$name]['buy']
+                : null;
+
+            return [
+                'sell' => $sell,
+                'buy' => $buy,
+                'sellLogic' => 'توکنیکو مستقیم',
+                'buyLogic' => 'توکنیکو مستقیم',
+            ];
+        };
+
+        return [
+            'tokenikoMode' => true,
+            'coefs' => [],
+            'emergency' => [
+                'enabled' => PricingSettings::emergencyModeEnabled(),
+                'gold' => PricingSettings::coefficient('coef_emergency_gold'),
+                'silver' => PricingSettings::coefficient('coef_emergency_silver'),
+            ],
+            'gold750' => $metal('Gold750'),
+            'gold995' => $metal('Gold995'),
+            'gold9999' => $metal('Gold9999'),
+            'gold999' => $metal('Gold999'),
+            'silver9999' => $metal('Silver9999'),
+        ];
+    }
+
     private function computeFormula(array $raw): array
     {
+        $tokeniko = $raw['tokeniko'] ?? [];
+
+        if ($tokeniko !== []) {
+            return $this->computeTokenikoFormula($tokeniko);
+        }
+
         $persian = $raw['persian'] ?? [];
         $tala = $raw['tala'] ?? [];
 
