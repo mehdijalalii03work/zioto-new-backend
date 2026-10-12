@@ -175,15 +175,23 @@ class ProductComparisonPageTest extends TestCase
     public function test_sort_by_diff_orders_absolute_values_with_missing_last(): void
     {
         $this->admin();
-        $plus10 = $this->product('zioto-gold-bar-1gram-995', 330000000);
-        $minus8 = $this->product('zioto-silver-bar-5gram', 34306800);
         $plus2 = $this->product('zioto-gold-bar-1gram-995', 306000000);
         $missing = $this->product('no-such-sku', 1000);
+        $plus10 = $this->product('zioto-gold-bar-1gram-995', 330000000);
+        $minus8 = $this->product('zioto-silver-bar-5gram', 34306800);
 
         $requests = [];
         $this->fakeTokeniko($requests);
 
         $component = Livewire::test(ProductComparisonPage::class);
+
+        // Natural order until the header is clicked.
+        $this->assertSame(
+            [$plus2->id, $missing->id, $plus10->id, $minus8->id],
+            array_column($component->get('rows'), 'id')
+        );
+
+        $component->call('sortByDiff');
 
         $this->assertSame(
             [$plus10->id, $minus8->id, $plus2->id, $missing->id],

@@ -55,10 +55,11 @@ class ProductComparisonPage extends Page
 
     /**
      * Sort direction for the diff column (by absolute value).
+     * Null means natural order (no sorting until the header is clicked).
      *
-     * @var 'asc'|'desc'
+     * @var 'asc'|'desc'|null
      */
-    public string $sortDirection = 'desc';
+    public ?string $sortDirection = null;
 
     public static function canAccess(): bool
     {
@@ -147,11 +148,11 @@ class ProductComparisonPage extends Page
 
         $this->rows = $rows;
         $this->productCount = count($rows);
-        $this->sortRows();
     }
 
     /**
      * Toggle diff-column sorting (by absolute value, missing values last).
+     * First click sorts descending.
      */
     public function sortByDiff(): void
     {

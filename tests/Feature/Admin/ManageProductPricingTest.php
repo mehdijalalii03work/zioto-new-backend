@@ -44,6 +44,8 @@ class ManageProductPricingTest extends TestCase
         $component = Livewire::actingAs($user, 'web')
             ->test(ManageProductPricing::class)
             ->assertSuccessful()
+            // Pin the tab: the default active period follows the wall clock.
+            ->call('setPeriod', 'daily')
             // The default coefficient (1.0) is presented as 100%.
             ->assertSet("values.{$product->id}.daily.basic", 100)
             ->assertSee("wire:model=\"values.{$product->id}.daily.basic\"", false)
@@ -123,6 +125,7 @@ class ManageProductPricingTest extends TestCase
 
         $component = Livewire::actingAs($user, 'web')
             ->test(ManageProductPricing::class)
+            ->call('setPeriod', 'daily')
             ->assertSee('wire:key="cell-'.$product->id.'-daily-basic"', false)
             ->call('setPeriod', 'nightly')
             ->assertSee('wire:key="cell-'.$product->id.'-nightly-basic"', false)

@@ -50,7 +50,7 @@
                         <th class="px-3 py-2 text-start">
                         <button type="button" wire:click="sortByDiff" class="inline-flex items-center gap-1 font-semibold hover:text-gray-900" title="مرتب‌سازی بر اساس قدرمطلق اختلاف">
                             اختلاف ٪
-                            <span aria-hidden="true">{{ $sortDirection === 'desc' ? '▼' : '▲' }}</span>
+                            <span aria-hidden="true">{{ $sortDirection === 'desc' ? '▼' : ($sortDirection === 'asc' ? '▲' : '↕') }}</span>
                         </button>
                     </th>
                     </tr>
