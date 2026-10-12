@@ -36,6 +36,8 @@ class PricingSettings
         'coef_silver_buy_price' => '0.99',
         'coef_gold750_sell_ratio' => '1.001',
         'coef_gold750_buy_ratio' => '0.997',
+        'coef_emergency_gold' => '1',
+        'coef_emergency_silver' => '1',
     ];
 
     public static function get(string $key, mixed $default = null): mixed
@@ -66,6 +68,11 @@ class PricingSettings
     public static function enableDynamicPricing(): bool
     {
         return (bool) self::get('enable_dynamic_pricing', true);
+    }
+
+    public static function emergencyModeEnabled(): bool
+    {
+        return (bool) self::get('emergency_mode_enabled', false);
     }
 
     public static function roundPrices(): bool

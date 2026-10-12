@@ -88,6 +88,42 @@
         $g9999 = $f['gold9999'] ?? [];
         $g999 = $f['gold999'] ?? [];
         $s9999 = $f['silver9999'] ?? [];
+        // Pre-emergency board value (Rials) for a row; null when emergency is off.
+        $emgBase = function (?array $row, string $base) use ($f): ?float {
+            if (empty($f['emergency']['enabled'])) {
+                return null;
+            }
+
+            $coef = str_starts_with($base, 'Silver')
+                ? (float) ($f['emergency']['silver'] ?? 0)
+                : (float) ($f['emergency']['gold'] ?? 0);
+
+            $value = isset($row['value']) && is_numeric($row['value']) ? (float) $row['value'] : null;
+
+            if ($value === null || $coef <= 0) {
+                return null;
+            }
+
+            return $value / $coef;
+        };
+        // Emergency-adjusted board value (Rials) for a key; null when emergency is off.
+        $emg = function (string $boardKey) use ($f, $board): ?array {
+            if (empty($f['emergency']['enabled'])) {
+                return null;
+            }
+
+            $coef = str_starts_with($boardKey, 'Silver')
+                ? (float) ($f['emergency']['silver'] ?? 0)
+                : (float) ($f['emergency']['gold'] ?? 0);
+
+            $final = $board[$boardKey]['value'] ?? null;
+
+            if (! is_numeric($final) || $coef <= 0) {
+                return null;
+            }
+
+            return ['coef' => $coef, 'final' => (float) $final];
+        };
     @endphp
 
     {{-- Header --}}
@@ -258,6 +294,16 @@
     </div>
 
     <div class="mt-6 space-y-6">
+                        @if(!empty($f['emergency']['enabled']))
+                    <div class="rounded-lg border-s-4 border-red-600 bg-red-50 px-4 py-3">
+                        <div class="text-sm font-bold text-red-800">حالت بحرانی فعال است</div>
+                        <div class="mt-1 flex flex-wrap gap-x-6 gap-y-1 text-sm tabular-nums text-red-700">
+                            <span>ضریب اضطرار طلا: <strong>{{ $f['emergency']['gold'] ?? '—' }}</strong></span>
+                            <span>ضریب اضطرار نقره: <strong>{{ $f['emergency']['silver'] ?? '—' }}</strong></span>
+                        </div>
+                        <div class="mt-1 text-xs text-red-700/80">این ضرایب روی قیمت تمام‌شده تابلو اعمال می‌شوند.</div>
+                    </div>
+                @endif
         {{-- Current prices --}}
         <section class="overflow-hidden rounded-xl bg-white ring-1 ring-gray-950/5">
             <header class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-4">
@@ -289,8 +335,16 @@
                                             {{ $meta['label'] }}
                                         </span>
                                     </td>
-                                    <td class="px-5 py-3 font-semibold tabular-nums text-gray-900">{{ $toToman($sellRow['value'] ?? null) }}</td>
-                                    <td class="px-5 py-3 tabular-nums text-gray-600">{{ $toToman($buyRow['value'] ?? null) }}</td>
+                                    <td class="px-5 py-3 font-semibold tabular-nums text-gray-900">{{ $toToman($sellRow['value'] ?? null) }}
+                                        @if(($sellBase = $emgBase($sellRow, $base)) !== null)
+                                            <div class="mt-0.5 text-xs font-normal text-gray-400">بدون اضطرار: {{ $toToman($sellBase) }}</div>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-3 tabular-nums text-gray-600">{{ $toToman($buyRow['value'] ?? null) }}
+                                        @if(($buyBase = $emgBase($buyRow, $base)) !== null)
+                                            <div class="mt-0.5 text-xs font-normal text-gray-400">بدون اضطرار: {{ $toToman($buyBase) }}</div>
+                                        @endif
+                                    </td>
                                     <td class="px-5 py-3 text-xs text-gray-500">{{ $jalali($sellRow['updated_at'] ?? ($buyRow['updated_at'] ?? null)) }}</td>
                                 </tr>
                             @endforeach
@@ -309,8 +363,8 @@
             <h3 class="font-semibold text-gray-900">قیمت‌های پایه</h3>
             <p class="mt-1 text-sm text-gray-500">این قیمت‌ها مستقیماً از API ها دریافت می‌شوند و پایه محاسبات هستند:</p>
 
-            <div class="mt-4 grid gap-4 sm:grid-cols-3">
-                <div class="rounded-lg bg-gray-50 p-4">
+            <div class="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                <div class="rounded-lg bg-emerald-50 p-4">
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-xs font-medium text-gray-500">طلای ۷۵۰</span>
                         <span class="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">PersianAPI</span>
@@ -319,12 +373,30 @@
                     <div class="mt-0.5 text-xs text-gray-500">تومان</div>
                 </div>
 
-                <div class="rounded-lg bg-gray-50 p-4">
+                <div class="rounded-lg bg-emerald-50 p-4">
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-xs font-medium text-gray-500">طلای ۷۵۰</span>
                         <span class="rounded bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">Tala.ir</span>
                     </div>
                     <div class="mt-2 text-lg font-bold tabular-nums text-gray-900">{{ $toToman($basePrices['tala']['Gold750'] ?? null) }}</div>
+                    <div class="mt-0.5 text-xs text-gray-500">تومان</div>
+                </div>
+
+                <div class="rounded-lg bg-amber-50 p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-medium text-gray-500">طلای ۲۴ عیار</span>
+                        <span class="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">PersianAPI</span>
+                    </div>
+                    <div class="mt-2 text-lg font-bold tabular-nums text-gray-900">{{ $toToman($basePrices['persian']['Gold999'] ?? null) }}</div>
+                    <div class="mt-0.5 text-xs text-gray-500">تومان</div>
+                </div>
+
+                <div class="rounded-lg bg-amber-50 p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-medium text-gray-500">طلای ۲۴ عیار</span>
+                        <span class="rounded bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">Tala.ir</span>
+                    </div>
+                    <div class="mt-2 text-lg font-bold tabular-nums text-gray-900">{{ $toToman($basePrices['tala']['Gold999'] ?? null) }}</div>
                     <div class="mt-0.5 text-xs text-gray-500">تومان</div>
                 </div>
 
@@ -338,7 +410,7 @@
                 </div>
             </div>
 
-            <p class="mt-3 text-xs text-gray-500">این سه قیمت پایه محاسبات تابلو قیمت هستند.</p>
+            <p class="mt-3 text-xs text-gray-500">این پنج قیمت پایه محاسبات تابلو قیمت هستند.</p>
         </section>
 
         {{-- Formulas --}}
@@ -347,6 +419,16 @@
             <p class="mt-1 text-sm text-gray-500">سیستم قیمت‌گذاری با استفاده از منابع مختلف و ضرایب قابل تنظیم، قیمت‌های خرید و فروش را محاسبه می‌کند. روی هر ردیف کلیک کنید تا جزئیات باز شود.</p>
 
             <div class="mt-4 space-y-3">
+                {{-- @if(!empty($f['emergency']['enabled']))
+                    <div class="rounded-lg border-s-4 border-red-600 bg-red-50 px-4 py-3">
+                        <div class="text-sm font-bold text-red-800">حالت بحرانی فعال است</div>
+                        <div class="mt-1 flex flex-wrap gap-x-6 gap-y-1 text-sm tabular-nums text-red-700">
+                            <span>ضریب اضطرار طلا: <strong>{{ $f['emergency']['gold'] ?? '—' }}</strong></span>
+                            <span>ضریب اضطرار نقره: <strong>{{ $f['emergency']['silver'] ?? '—' }}</strong></span>
+                        </div>
+                        <div class="mt-1 text-xs text-red-700/80">این ضرایب روی قیمت تمام‌شده تابلو اعمال می‌شوند.</div>
+                    </div>
+                @endif --}}
                 {{-- 1. طلای ۷۵۰ --}}
                 <details class="group overflow-hidden rounded-lg ring-1 ring-gray-950/5" open>
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden hover:bg-gray-50">
@@ -378,11 +460,11 @@
                                         <dd class="font-mono tabular-nums text-red-600">{{ $toToman($g750['manual'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
-                                        <dt class="text-gray-600">Max(Persian, Tala)</dt>
+                                        <dt class="text-gray-600">Max(PersianAPI, Tala)</dt>
                                         <dd class="font-mono tabular-nums">{{ $toToman($g750['maxApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g750['maxSource'] ?? '—' }})</span></dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">Min(Persian, Tala)</dt>
+                                        <dt class="text-gray-600">Min(PersianAPI, Tala)</dt>
                                         <dd class="font-mono tabular-nums">{{ $toToman($g750['minApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g750['minSource'] ?? '—' }})</span></dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
@@ -398,8 +480,8 @@
 
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
-                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">فروش = Max(Persian, Tala) × HighValueRatio ({{ number_format((float) ($c['gold750_sell_ratio'] ?? 1.001), 4) }})</code>
-                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = Min(Persian, Tala) × LowValueRatio ({{ number_format((float) ($c['gold750_buy_ratio'] ?? 0.997), 4) }})</code>
+                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">فروش = Max(PersianAPI, Tala) × HighValueRatio ({{ number_format((float) ($c['gold750_sell_ratio'] ?? 1.001), 4) }})</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = Min(PersianAPI, Tala) × LowValueRatio ({{ number_format((float) ($c['gold750_buy_ratio'] ?? 0.997), 4) }})</code>
                                 <p class="mt-2.5 text-xs leading-6 text-gray-500">
                                     قیمت فروش با ضرب ماکزیمم API در HighValueRatio و قیمت خرید با ضرب مینیمم API در LowValueRatio محاسبه می‌شود.
                                 </p>
@@ -409,12 +491,19 @@
                         <div class="mt-4 grid gap-3 sm:grid-cols-2">
                             <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 p-3">
                                 <div class="text-xs font-medium text-blue-700">قیمت نهایی فروش</div>
+
                                 <div class="mt-1 text-lg font-bold tabular-nums text-blue-900">{{ $toman($g750['sell'] ?? null) }}</div>
+                                @if(($e = $emg('Gold750_Sell')) !== null)
+                                    <div class="mt-1 text-xs font-bold tabular-nums text-red-700">× {{ $e['coef'] }} = {{ $toman($e['final']) }}</div>
+                                @endif
                                 <div class="mt-1 text-xs text-blue-700/80">{{ $g750['sellLogic'] ?? '—' }}</div>
                             </div>
                             <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 p-3">
                                 <div class="text-xs font-medium text-emerald-700">قیمت نهایی خرید</div>
                                 <div class="mt-1 text-lg font-bold tabular-nums text-emerald-900">{{ $toman($g750['buy'] ?? null) }}</div>
+                                @if(($e = $emg('Gold750_Buy')) !== null)
+                                    <div class="mt-1 text-xs font-bold tabular-nums text-red-700">× {{ $e['coef'] }} = {{ $toman($e['final']) }}</div>
+                                @endif
                                 <div class="mt-1 text-xs text-emerald-700/80">{{ $g750['buyLogic'] ?? '—' }}</div>
                             </div>
                         </div>
@@ -466,16 +555,23 @@
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
                                 <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ فروش = طلای۹۹۹ فروش × {{ $c['gold999_to_gold995'] ?? '—' }} × HighValueRatio</code>
                                 <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ خرید = طلای۹۹۹ خرید × {{ $c['gold999_to_gold995'] ?? '—' }} × LowValueRatio</code>
-                                <div class="mt-3 space-y-1.5">
-                                    <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 px-3 py-2">
-                                        <span class="text-xs text-blue-700">فروش: </span>
-                                        <span class="text-sm font-bold tabular-nums text-blue-900">{{ $toman($g995['sell'] ?? null) }}</span>
-                                    </div>
-                                    <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 px-3 py-2">
-                                        <span class="text-xs text-emerald-700">خرید: </span>
-                                        <span class="text-sm font-bold tabular-nums text-emerald-900">{{ $toman($g995['buy'] ?? null) }}</span>
-                                    </div>
-                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 p-3">
+                                <div class="text-xs font-medium text-blue-700">قیمت نهایی فروش</div>
+                                <div class="mt-1 text-lg font-bold tabular-nums text-blue-900">{{ $toman($g995['sell'] ?? null) }}</div>
+                                @if(($e = $emg('Gold995_Sell')) !== null)
+                                    <div class="mt-1 text-xs font-bold tabular-nums text-red-700">× {{ $e['coef'] }} = {{ $toman($e['final']) }}</div>
+                                @endif
+                            </div>
+                            <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 p-3">
+                                <div class="text-xs font-medium text-emerald-700">قیمت نهایی خرید</div>
+                                <div class="mt-1 text-lg font-bold tabular-nums text-emerald-900">{{ $toman($g995['buy'] ?? null) }}</div>
+                                @if(($e = $emg('Gold995_Buy')) !== null)
+                                    <div class="mt-1 text-xs font-bold tabular-nums text-red-700">× {{ $e['coef'] }} = {{ $toman($e['final']) }}</div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -526,16 +622,23 @@
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
                                 <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ فروش = طلای۹۹۹ فروش × {{ $c['gold999_to_gold9999'] ?? '—' }} × HighValueRatio</code>
                                 <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ خرید = طلای۹۹۹ خرید × {{ $c['gold999_to_gold9999'] ?? '—' }} × LowValueRatio</code>
-                                <div class="mt-3 space-y-1.5">
-                                    <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 px-3 py-2">
-                                        <span class="text-xs text-blue-700">فروش: </span>
-                                        <span class="text-sm font-bold tabular-nums text-blue-900">{{ $toman($g9999['sell'] ?? null) }}</span>
-                                    </div>
-                                    <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 px-3 py-2">
-                                        <span class="text-xs text-emerald-700">خرید: </span>
-                                        <span class="text-sm font-bold tabular-nums text-emerald-900">{{ $toman($g9999['buy'] ?? null) }}</span>
-                                    </div>
-                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 p-3">
+                                <div class="text-xs font-medium text-blue-700">قیمت نهایی فروش</div>
+                                <div class="mt-1 text-lg font-bold tabular-nums text-blue-900">{{ $toman($g9999['sell'] ?? null) }}</div>
+                                @if(($e = $emg('Gold9999_Sell')) !== null)
+                                    <div class="mt-1 text-xs font-bold tabular-nums text-red-700">× {{ $e['coef'] }} = {{ $toman($e['final']) }}</div>
+                                @endif
+                            </div>
+                            <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 p-3">
+                                <div class="text-xs font-medium text-emerald-700">قیمت نهایی خرید</div>
+                                <div class="mt-1 text-lg font-bold tabular-nums text-emerald-900">{{ $toman($g9999['buy'] ?? null) }}</div>
+                                @if(($e = $emg('Gold9999_Buy')) !== null)
+                                    <div class="mt-1 text-xs font-bold tabular-nums text-red-700">× {{ $e['coef'] }} = {{ $toman($e['final']) }}</div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -572,11 +675,11 @@
                                         <dd class="font-mono tabular-nums text-red-600">{{ $toToman($g999['manual'] ?? null) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
-                                        <dt class="text-gray-600">Max(Persian, Tala)</dt>
+                                        <dt class="text-gray-600">Max(PersianAPI, Tala)</dt>
                                         <dd class="font-mono tabular-nums">{{ $toToman($g999['maxApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g999['maxSource'] ?? '—' }})</span></dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">Min(Persian, Tala)</dt>
+                                        <dt class="text-gray-600">Min(PersianAPI, Tala)</dt>
                                         <dd class="font-mono tabular-nums">{{ $toToman($g999['minApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g999['minSource'] ?? '—' }})</span></dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
@@ -592,8 +695,8 @@
 
                             <div class="rounded-lg bg-white p-4">
                                 <div class="mb-2.5 text-xs font-semibold text-gray-500">فرمول</div>
-                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">فروش = Max(Persian, Tala) × HighValueRatio ({{ number_format((float) ($c['gold999_sell_ratio'] ?? 1.001), 4) }})</code>
-                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = Min(Persian, Tala) × LowValueRatio ({{ number_format((float) ($c['gold999_buy_ratio'] ?? 0.997), 4) }})</code>
+                                <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">فروش = Max(PersianAPI, Tala) × HighValueRatio ({{ number_format((float) ($c['gold999_sell_ratio'] ?? 1.001), 4) }})</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = Min(PersianAPI, Tala) × LowValueRatio ({{ number_format((float) ($c['gold999_buy_ratio'] ?? 0.997), 4) }})</code>
                                 <p class="mt-2.5 text-xs leading-6 text-gray-500">
                                     قیمت فروش با ضرب ماکزیمم API در HighValueRatio و قیمت خرید با ضرب مینیمم API در LowValueRatio محاسبه می‌شود.
                                 </p>
@@ -604,11 +707,17 @@
                             <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 p-3">
                                 <div class="text-xs font-medium text-blue-700">قیمت نهایی فروش</div>
                                 <div class="mt-1 text-lg font-bold tabular-nums text-blue-900">{{ $toman($g999['sell'] ?? null) }}</div>
+                                @if(($e = $emg('Gold999_Sell')) !== null)
+                                    <div class="mt-1 text-xs font-bold tabular-nums text-red-700">× {{ $e['coef'] }} = {{ $toman($e['final']) }}</div>
+                                @endif
                                 <div class="mt-1 text-xs text-blue-700/80">{{ $g999['sellLogic'] ?? '—' }}</div>
                             </div>
                             <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 p-3">
                                 <div class="text-xs font-medium text-emerald-700">قیمت نهایی خرید</div>
                                 <div class="mt-1 text-lg font-bold tabular-nums text-emerald-900">{{ $toman($g999['buy'] ?? null) }}</div>
+                                @if(($e = $emg('Gold999_Buy')) !== null)
+                                    <div class="mt-1 text-xs font-bold tabular-nums text-red-700">× {{ $e['coef'] }} = {{ $toman($e['final']) }}</div>
+                                @endif
                                 <div class="mt-1 text-xs text-emerald-700/80">{{ $g999['buyLogic'] ?? '—' }}</div>
                             </div>
                         </div>
@@ -661,17 +770,24 @@
                                 <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۹۹.۹ فروش = قیمت دستی</code>
                                 <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره۹۹۹ فروش = نقره۹۹۹.۹ فروش × {{ $c['silver9999_to_silver999'] ?? '—' }}</code>
                                 <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">نقره خرید = فروش × {{ $c['silver_buy'] ?? '—' }}</code>
-                                <div class="mt-3 space-y-1.5">
-                                    <div class="rounded-lg border-s-4 border-purple-600 bg-purple-50 px-3 py-2">
-                                        <div class="text-xs text-purple-700">قیمت نهایی فروش</div>
-                                        <div class="mt-0.5 text-sm font-bold tabular-nums text-purple-900">{{ $toman($s9999['sell'] ?? null) }}</div>
-                                        <div class="mt-0.5 text-xs text-purple-700/80">{{ $s9999['sellLogic'] ?? '—' }}</div>
-                                    </div>
-                                    <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 px-3 py-2">
-                                        <div class="text-xs text-emerald-700">قیمت نهایی خرید (ضریب خرید نقره)</div>
-                                        <div class="mt-0.5 text-sm font-bold tabular-nums text-emerald-900">{{ $toman($s9999['buy'] ?? null) }}</div>
-                                    </div>
-                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div class="rounded-lg border-s-4 border-blue-600 bg-blue-50 p-3">
+                                <div class="text-xs font-medium text-blue-700">قیمت نهایی فروش</div>
+                                <div class="mt-1 text-lg font-bold tabular-nums text-blue-900">{{ $toman($s9999['sell'] ?? null) }}</div>
+                                @if(($e = $emg('Silver9999_Sell')) !== null)
+                                    <div class="mt-1 text-xs font-bold tabular-nums text-red-700">× {{ $e['coef'] }} = {{ $toman($e['final']) }}</div>
+                                @endif
+                                <div class="mt-1 text-xs text-blue-700/80">{{ $s9999['sellLogic'] ?? '—' }}</div>
+                            </div>
+                            <div class="rounded-lg border-s-4 border-emerald-600 bg-emerald-50 p-3">
+                                <div class="text-xs font-medium text-emerald-700">قیمت نهایی خرید</div>
+                                <div class="mt-1 text-lg font-bold tabular-nums text-emerald-900">{{ $toman($s9999['buy'] ?? null) }}</div>
+                                @if(($e = $emg('Silver9999_Buy')) !== null)
+                                    <div class="mt-1 text-xs font-bold tabular-nums text-red-700">× {{ $e['coef'] }} = {{ $toman($e['final']) }}</div>
+                                @endif
                             </div>
                         </div>
                     </div>

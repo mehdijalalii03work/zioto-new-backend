@@ -51,6 +51,8 @@ class CoefficientsPage extends Page
             'coef_silver9999_to_silver999' => PricingSettings::coefficient('coef_silver9999_to_silver999'),
             'coef_silver_buy_price' => PricingSettings::coefficient('coef_silver_buy_price'),
             'coef_buy_price' => PricingSettings::coefficient('coef_buy_price'),
+            'coef_emergency_gold' => PricingSettings::coefficient('coef_emergency_gold'),
+            'coef_emergency_silver' => PricingSettings::coefficient('coef_emergency_silver'),
         ]);
     }
 
@@ -116,12 +118,22 @@ class CoefficientsPage extends Page
                         ]),
                     ])->columnSpanFull(),
 
-                Section::make('ضریب خرید طلا (حالت خاص)')
-                    ->description('فقط وقتی استفاده می‌شود که دو منبع برابر باشند یا قیمت دستی برنده شود')
+                Section::make('ضریب خرید طلا (برای قیمت دستی)')
+                    ->description('فقط وقتی استفاده می‌شود که دو منبع برابر باشند یا قیمت دستی وارد شود')
                     ->icon('heroicon-o-calculator')
                     ->schema([
                         Grid::make(2)->schema([
                             TextInput::make('coef_buy_price')->label('ضریب خرید نسبت به فروش (طلا)')->numeric(),
+                        ]),
+                    ])->columnSpanFull(),
+
+                Section::make('شرایط بحرانی')
+                    ->description('ضریب اضافه روی قیمت تمام‌شده تابلو؛ فقط وقتی سوییچ شرایط بحرانی در تنظیمات تابلو روشن است اعمال می‌شود')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->schema([
+                        Grid::make(2)->schema([
+                            TextInput::make('coef_emergency_gold')->label('ضریب اضطرار طلا')->numeric(),
+                            TextInput::make('coef_emergency_silver')->label('ضریب اضطرار نقره')->numeric(),
                         ]),
                     ])->columnSpanFull(),
             ])
@@ -152,6 +164,8 @@ class CoefficientsPage extends Page
             'coef_silver9999_to_silver999',
             'coef_silver_buy_price',
             'coef_buy_price',
+            'coef_emergency_gold',
+            'coef_emergency_silver',
         ];
 
         foreach ($keys as $key) {

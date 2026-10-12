@@ -23,6 +23,9 @@ class ZiotoPricingSettingsSeeder extends Seeder
             ['key' => 'zioto_pricing_coef_gold9999_buy_ratio', 'value' => '0.995', 'type' => 'number', 'label' => 'ضریب خرید طلای ۹۹۹.۹', 'sort_order' => 16],
             ['key' => 'zioto_pricing_coef_silver9999_to_silver999', 'value' => '0.961538', 'type' => 'number', 'label' => 'ضریب نقره ۹۹۹.۹ به ۹۹۹', 'sort_order' => 6],
             ['key' => 'zioto_pricing_coef_silver_buy_price', 'value' => '0.99', 'type' => 'number', 'label' => 'ضریب خرید نقره', 'sort_order' => 7],
+            ['key' => 'zioto_pricing_coef_emergency_gold', 'value' => '1', 'type' => 'number', 'label' => 'ضریب اضطرار طلا', 'sort_order' => 17],
+            ['key' => 'zioto_pricing_coef_emergency_silver', 'value' => '1', 'type' => 'number', 'label' => 'ضریب اضطرار نقره', 'sort_order' => 18],
+            ['key' => 'zioto_pricing_emergency_mode_enabled', 'value' => 'false', 'type' => 'boolean', 'label' => 'حالت بحرانی', 'sort_order' => 19],
 
             // Manual prices
             ['key' => 'zioto_pricing_manual_gold750_sell', 'value' => '', 'type' => 'number', 'label' => 'قیمت دستی فروش طلای ۷۵۰', 'sort_order' => 10],

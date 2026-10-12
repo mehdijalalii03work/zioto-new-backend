@@ -45,6 +45,14 @@ class PricingDashboard extends Page
 
     public array $formula = [];
 
+    /**
+     * Before/after comparison per board key while emergency mode is on.
+     * "Before" is restored exactly: final ÷ coef (the board stores final).
+     *
+     * @var list<array{key: string, label: string, base: float, final: float, diff: float, pct: float}>
+     */
+    public array $emergencyTable = [];
+
     public ?string $updatedAt = null;
 
     public ?string $lastSuccessAt = null;
@@ -138,6 +146,53 @@ class PricingDashboard extends Page
         $this->lastPriceChangeAt = $this->resolveLastPriceChangeAt();
         $this->cacheDuration = PricingSettings::cacheDurationSeconds();
         $this->formula = $this->computeFormula($this->basePrices);
+        $this->emergencyTable = self::buildEmergencyTable($this->board);
+    }
+
+    /**
+     * Compare pre-emergency vs current board values, key by key.
+     * Returns an empty list when emergency mode is off or coefs are invalid.
+     *
+     * @param  array<string, array{value?: mixed}>  $board
+     * @return list<array{key: string, label: string, base: float, final: float, diff: float, pct: float}>
+     */
+    public static function buildEmergencyTable(array $board): array
+    {
+        if (! PricingSettings::emergencyModeEnabled()) {
+            return [];
+        }
+
+        $goldCoef = (float) PricingSettings::coefficient('coef_emergency_gold');
+        $silverCoef = (float) PricingSettings::coefficient('coef_emergency_silver');
+
+        if ($goldCoef <= 0 || $silverCoef <= 0) {
+            return [];
+        }
+
+        $rows = [];
+
+        foreach (DynamicPriceService::METAL_OPTIONS as $key => $label) {
+            $final = isset($board[$key]['value']) ? (float) $board[$key]['value'] : null;
+
+            if ($final === null) {
+                continue;
+            }
+
+            $coef = str_starts_with($key, 'Silver') ? $silverCoef : $goldCoef;
+            $base = $final / $coef;
+            $diff = $final - $base;
+
+            $rows[] = [
+                'key' => $key,
+                'label' => $label,
+                'base' => $base,
+                'final' => $final,
+                'diff' => $diff,
+                'pct' => $base > 0 ? $diff / $base * 100 : 0.0,
+            ];
+        }
+
+        return $rows;
     }
 
     /**
@@ -410,6 +465,11 @@ class PricingDashboard extends Page
                 'gold750_buy_ratio' => $coefGold750BuyRatio,
                 'gold999_sell_ratio' => (string) $coefGold999SellRatio,
                 'gold999_buy_ratio' => (string) $coefGold999BuyRatio,
+            ],
+            'emergency' => [
+                'enabled' => PricingSettings::emergencyModeEnabled(),
+                'gold' => PricingSettings::coefficient('coef_emergency_gold'),
+                'silver' => PricingSettings::coefficient('coef_emergency_silver'),
             ],
             'gold750' => [
                 'persian' => $persianGold750,

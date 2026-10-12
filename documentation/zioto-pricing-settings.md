@@ -130,8 +130,8 @@
 
 | خروجی | قاعده |
 |---|---|
-| `Gold750.Sell` | `max(Persian, Tala)` وقتی هر دو هستند |
-| `Gold750.Buy` | `min(Persian, Tala)` وقتی هر دو هستند، بدون ضریب |
+| `Gold750.Sell` | `Max(PersianAPI, Tala)` وقتی هر دو هستند |
+| `Gold750.Buy` | `Min(PersianAPI, Tala)` وقتی هر دو هستند، بدون ضریب |
 | قیمت دستی طلا ۷۵۰ | در صورت ورود، همیشه جایگزین `max` می‌شود (تومان ‎×۱۰ به ریال) |
 | `Gold995.Sell` | `Gold999.Sell` × `coef_gold999_to_gold995` (پیش‌فرض `0.995996`) × HighValueRatio (`coef_gold995_sell_ratio` پیش‌فرض `1`) |
 | `Gold995.Buy` | `Gold999.Buy` × `coef_gold999_to_gold995` × LowValueRatio (`coef_gold995_buy_ratio` پیش‌فرض `0.995`) |
@@ -142,6 +142,7 @@
 | `Silver9999.Sell` | فقط قیمت دستی (`manual_silver9999_sell` به تومان، ‎×۱۰ به ریال)؛ نقرهٔ PersianAPI نادیده گرفته می‌شود |
 | `Silver999.Sell/Buy` | از `Silver9999.Sell` با `coef_silver9999_to_silver999` (پیش‌فرض `0.961538`) |
 | `Silver*.Buy` | فروش × `coef_silver_buy_price` (پیش‌فرض `0.99`، جدا از ضریب خرید طلا) |
+| حالت بحرانی | اگر `emergency_mode_enabled` روشن باشد، همهٔ قیمت‌های طلا × `coef_emergency_gold` و همهٔ قیمت‌های نقره × `coef_emergency_silver` می‌شوند (پیش‌فرض هر دو `1`)؛ داشبورد جدول قبل/بعد هر قلم را نشان می‌دهد |
 
 ---
 

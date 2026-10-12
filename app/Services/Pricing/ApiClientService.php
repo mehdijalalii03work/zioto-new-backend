@@ -374,6 +374,18 @@ class ApiClientService
         $this->maybeAdd($prices, 'Silver999_Sell', 'Silver999', $silver999Sell, 'sell', $nameMap);
         $this->maybeAdd($prices, 'Silver999_Buy', 'Silver999', $silver999Buy, 'buy', $nameMap);
 
+        // Emergency mode: an extra multiplier on the final board prices,
+        // one for gold and one for silver (e.g. wartime unreliable sources).
+        if (PricingSettings::emergencyModeEnabled()) {
+            $emergencyGold = PricingSettings::coefficient('coef_emergency_gold');
+            $emergencySilver = PricingSettings::coefficient('coef_emergency_silver');
+
+            foreach ($prices as $key => &$item) {
+                $item['value'] = $bc::toFloat($bc::mul((string) $item['value'], str_starts_with($key, 'Silver') ? $emergencySilver : $emergencyGold));
+            }
+            unset($item);
+        }
+
         // Debug rows
         $this->debugRows['Gold750_Sell'] = $this->debugRow('Gold750_Sell', $persianGold750, $talaGold750, $manualGold750Rial, $gold750Sell, 'geram18k (Tala.ir)', 'Manual (always wins when set), else Max(PersianAPI, Tala.ir)', $nameMap);
         $this->debugRows['Gold750_Buy'] = $this->debugRow('Gold750_Buy', $persianGold750, $talaGold750, $manualGold750 !== '' ? $manualGold750 : null, $gold750Buy, 'Min(APIs) or Sell*0.99', 'Min(PersianAPI, Tala.ir) or Sell×0.99 if Manual>Max', $nameMap);

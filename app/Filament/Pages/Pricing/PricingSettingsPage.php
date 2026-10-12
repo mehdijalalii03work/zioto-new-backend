@@ -45,6 +45,7 @@ class PricingSettingsPage extends Page
             'stale_block' => PricingSettings::staleBlock(),
             'persian_api_enabled' => (bool) PricingSettings::get('persian_api_enabled', true),
             'tala_api_enabled' => (bool) PricingSettings::get('tala_api_enabled', true),
+            'emergency_mode_enabled' => PricingSettings::emergencyModeEnabled(),
         ]);
     }
 
@@ -71,6 +72,18 @@ class PricingSettingsPage extends Page
                             Toggle::make('tala_api_enabled')->label('Tala.ir')->inline(false),
                         ]),
                     ])->columnSpanFull(),
+
+                Section::make('شرایط بحرانی')
+                    ->description('با روشن شدن، ضریب اضطرار طلا/نقره (صفحه ضرایب) روی قیمت تمام‌شده تابلو اعمال می‌شود')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->schema([
+                        Grid::make(2)->schema([
+                            Toggle::make('emergency_mode_enabled')
+                                ->label('حالت بحرانی')
+                                ->helperText('اعمال ضریب اضطرار روی قیمت تابلو طلا و نقره')
+                                ->inline(false),
+                        ]),
+                    ])->columnSpanFull(),
             ])
             ->statePath('data');
     }
@@ -85,7 +98,7 @@ class PricingSettingsPage extends Page
 
         $data = $this->form->getState();
 
-        $booleans = ['stale_block', 'persian_api_enabled', 'tala_api_enabled'];
+        $booleans = ['stale_block', 'persian_api_enabled', 'tala_api_enabled', 'emergency_mode_enabled'];
 
         foreach ($booleans as $key) {
             Setting::updateOrCreate(['key' => "zioto_pricing_{$key}"], [

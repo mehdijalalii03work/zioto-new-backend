@@ -134,6 +134,34 @@ class GoldBoardPricingTest extends TestCase
         $this->assertEqualsWithDelta(349828000.0 * 0.995, $prices['Gold999_Buy']['value'], 1.0);
     }
 
+    public function test_emergency_multiplier_applies_when_enabled_and_ignored_when_off(): void
+    {
+        $this->neutralRatios();
+        $this->setting('zioto_pricing_manual_silver9999_sell', '5130000');
+        $this->setting('zioto_pricing_coef_emergency_gold', '1.02');
+        $this->setting('zioto_pricing_coef_emergency_silver', '0.98');
+        $this->fakeSources('349828000', 35008886);
+
+        $prices = $this->boardPrices();
+
+        $this->assertSame(350088860.0, $prices['Gold999_Sell']['value']);
+        $this->assertSame(51300000.0, $prices['Silver9999_Sell']['value']);
+
+        Setting::create([
+            'key' => 'zioto_pricing_emergency_mode_enabled',
+            'value' => 'true',
+            'type' => 'boolean',
+            'category' => 'pricing',
+            'label' => 'emergency_mode_enabled',
+        ]);
+
+        $prices = $this->boardPrices();
+
+        $this->assertEqualsWithDelta(350088860.0 * 1.02, $prices['Gold999_Sell']['value'], 1.0);
+        $this->assertEqualsWithDelta(51300000.0 * 0.98, $prices['Silver9999_Sell']['value'], 1.0);
+        $this->assertEqualsWithDelta(350088860.0 * 1.02 * 1.005, $prices['Gold9999_Sell']['value'], 1.0);
+    }
+
     public function test_gold999_manual_toman_price_wins_when_above_max_api(): void
     {
         $this->neutralRatios();
