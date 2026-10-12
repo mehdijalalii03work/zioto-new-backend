@@ -131,4 +131,39 @@ class ManageProductPricingTest extends TestCase
         $component->call('setPeriod', 'daily')
             ->assertSee('wire:key="cell-'.$product->id.'-daily-basic"', false);
     }
+
+    public function test_bulk_nightly_percent_fills_nightly_from_daily(): void
+    {
+        $product = $this->product();
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        Livewire::actingAs($user, 'web')
+            ->test(ManageProductPricing::class)
+            ->call('toggleEdit')
+            ->set("values.{$product->id}.daily.basic", 10)
+            ->set('bulkNightlyPercent', '20')
+            ->call('applyBulkNightlyPercent')
+            ->assertSet("values.{$product->id}.nightly.basic", 12.0)
+            ->assertSet("values.{$product->id}.daily.basic", 10)
+            ->call('save');
+
+        $matrix = $product->fresh()->labor_coefficients;
+
+        $this->assertEqualsWithDelta(0.10, $matrix['daily']['basic'] ?? null, 1e-9);
+        $this->assertEqualsWithDelta(0.12, $matrix['nightly']['basic'] ?? null, 1e-9);
+    }
+
+    public function test_bulk_nightly_percent_rejects_invalid_input(): void
+    {
+        $product = $this->product();
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        Livewire::actingAs($user, 'web')
+            ->test(ManageProductPricing::class)
+            ->call('toggleEdit')
+            ->set("values.{$product->id}.daily.basic", 10)
+            ->set('bulkNightlyPercent', 'abc')
+            ->call('applyBulkNightlyPercent')
+            ->assertSet("values.{$product->id}.nightly.basic", 100);
+    }
 }

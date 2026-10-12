@@ -57,6 +57,12 @@ class ManageProductPricing extends Page
 
     public int $productCount = 0;
 
+    /**
+     * Bulk nightly uplift percent (e.g. 20 means nightly = daily + 20%).
+     * Applied to the form values only; persisted via save().
+     */
+    public ?string $bulkNightlyPercent = null;
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can(Permission::ProductEdit->value) ?? false;
@@ -137,6 +143,58 @@ class ManageProductPricing extends Page
     public function toggleEdit(): void
     {
         $this->isEditing = ! $this->isEditing;
+    }
+
+    /**
+     * Fill every nightly cell from its daily cell plus the bulk percent.
+     */
+    public function applyBulkNightlyPercent(): void
+    {
+        $slugs = array_column($this->periods, 'slug');
+
+        if (! in_array('daily', $slugs, true) || ! in_array('nightly', $slugs, true)) {
+            Notification::make()
+                ->title('خطا')
+                ->body('بازه‌های روزانه و شبانه یافت نشد.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $percent = is_numeric($this->bulkNightlyPercent) ? (float) $this->bulkNightlyPercent : null;
+
+        if ($percent === null || $percent < 0 || $percent > 1000) {
+            Notification::make()
+                ->title('خطا')
+                ->body('درصد معتبر وارد کنید (۰ تا ۱۰۰۰).')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $factor = 1 + $percent / 100;
+        $applied = 0;
+
+        foreach ($this->values as $productId => $periodValues) {
+            foreach ($this->roles as $role) {
+                $daily = $periodValues['daily'][$role['slug']] ?? null;
+
+                if (! is_numeric($daily)) {
+                    continue;
+                }
+
+                $this->values[$productId]['nightly'][$role['slug']] = round((float) $daily * $factor, 4);
+                $applied++;
+            }
+        }
+
+        Notification::make()
+            ->title('اعمال شد')
+            ->body("اجرت شبانه {$applied} سلول {$percent}٪ بیشتر از روزانه شد. برای ثبت نهایی، ذخیره را بزنید.")
+            ->success()
+            ->send();
     }
 
     public function save(): void

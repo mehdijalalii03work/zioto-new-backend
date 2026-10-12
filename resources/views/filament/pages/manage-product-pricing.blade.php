@@ -17,6 +17,21 @@
             <x-filament::button wire:click="save" color="success" size="sm" icon="heroicon-o-check">
                 ذخیره تغییرات
             </x-filament::button>
+
+            <div class="flex items-center gap-2">
+                <input
+                    type="number"
+                    min="0"
+                    max="1000"
+                    step="0.01"
+                    wire:model="bulkNightlyPercent"
+                    placeholder="٪ اختلاف شبانه"
+                    class="w-32 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-center text-sm shadow-sm outline-none transition focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                />
+                <x-filament::button wire:click="applyBulkNightlyPercent" color="gray" size="sm" icon="heroicon-o-moon">
+                    اعمال به شبانه
+                </x-filament::button>
+            </div>
         @endif
     </div>
 
