@@ -84,7 +84,7 @@
                             <td class="px-3 py-2 text-gray-600">{{ $row['weight'] }}</td>
 
                             @foreach($roles as $role)
-                                <td class="border-e border-gray-100 px-1 py-2 text-center">
+                                <td wire:key="cell-{{ $row['id'] }}-{{ $activePeriod }}-{{ $role['slug'] }}" class="border-e border-gray-100 px-1 py-2 text-center">
                                     <div class="flex items-center justify-center gap-1">
                                         <input
                                             type="number"

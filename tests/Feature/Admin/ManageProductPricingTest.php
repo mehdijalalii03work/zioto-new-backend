@@ -96,4 +96,39 @@ class ManageProductPricingTest extends TestCase
 
         $this->assertEqualsWithDelta(0.077, $matrix['daily']['basic'] ?? null, 1e-9);
     }
+
+    public function test_daily_and_nightly_values_are_saved_independently(): void
+    {
+        $product = $this->product();
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        Livewire::actingAs($user, 'web')
+            ->test(ManageProductPricing::class)
+            ->call('toggleEdit')
+            ->set("values.{$product->id}.daily.basic", 7.7)
+            ->call('setPeriod', 'nightly')
+            ->set("values.{$product->id}.nightly.basic", 8.5)
+            ->call('save');
+
+        $matrix = $product->fresh()->labor_coefficients;
+
+        $this->assertEqualsWithDelta(0.077, $matrix['daily']['basic'] ?? null, 1e-9);
+        $this->assertEqualsWithDelta(0.085, $matrix['nightly']['basic'] ?? null, 1e-9);
+    }
+
+    public function test_each_period_renders_distinct_cell_keys(): void
+    {
+        $product = $this->product();
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        $component = Livewire::actingAs($user, 'web')
+            ->test(ManageProductPricing::class)
+            ->assertSee('wire:key="cell-'.$product->id.'-daily-basic"', false)
+            ->call('setPeriod', 'nightly')
+            ->assertSee('wire:key="cell-'.$product->id.'-nightly-basic"', false)
+            ->assertDontSee('wire:key="cell-'.$product->id.'-daily-basic"', false);
+
+        $component->call('setPeriod', 'daily')
+            ->assertSee('wire:key="cell-'.$product->id.'-daily-basic"', false);
+    }
 }
