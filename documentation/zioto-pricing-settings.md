@@ -130,8 +130,8 @@
 
 | خروجی | قاعده |
 |---|---|
-| `Gold750.Sell` | `Max(PersianAPI, Tala)` وقتی هر دو هستند |
-| `Gold750.Buy` | `Min(PersianAPI, Tala)` وقتی هر دو هستند، بدون ضریب |
+| `Gold750.Sell` | `Max(PersianAPI, Tala)` × `coef_gold750_sell_ratio`؛ دستی (تومان ‎×۱۰) در صورت ورود همیشه اولویت دارد |
+| `Gold750.Buy` | `Min(...)` × `coef_gold750_buy_ratio`؛ اگر دستی وارد شد یا منابع برابر بودند فروش × `coef_buy_price` |
 | قیمت دستی طلا ۷۵۰ | در صورت ورود، همیشه جایگزین `max` می‌شود (تومان ‎×۱۰ به ریال) |
 | `Gold995.Sell` | `Gold999.Sell` × `coef_gold999_to_gold995` (پیش‌فرض `0.995996`) × HighValueRatio (`coef_gold995_sell_ratio` پیش‌فرض `1`) |
 | `Gold995.Buy` | `Gold999.Buy` × `coef_gold999_to_gold995` × LowValueRatio (`coef_gold995_buy_ratio` پیش‌فرض `0.995`) |

@@ -189,11 +189,33 @@ class GoldBoardPricingTest extends TestCase
     public function test_gold750_manual_toman_price_wins_even_when_below_max_api(): void
     {
         $this->setting('zioto_pricing_manual_gold750_sell', '24000000');
+        $this->setting('zioto_pricing_coef_gold750_sell_ratio', '1.0');
+        $this->setting('zioto_pricing_coef_gold750_buy_ratio', '1.0');
         $this->fakeSources(null, null);
 
         $prices = $this->boardPrices();
 
         $this->assertSame(240000000.0, $prices['Gold750_Sell']['value']);
         $this->assertEqualsWithDelta(240000000.0 * 0.99, $prices['Gold750_Buy']['value'], 1.0);
+    }
+
+    public function test_gold750_applies_high_and_low_ratios_from_both_sources(): void
+    {
+        $this->setting('zioto_pricing_coef_gold750_sell_ratio', '1.002');
+        $this->setting('zioto_pricing_coef_gold750_buy_ratio', '0.995');
+
+        Http::fake([
+            '*persianapi*' => Http::response(['result' => [
+                ['key' => 137120, 'price' => '244259000'],
+            ]], 200),
+            '*tala.ir*' => Http::response(['success' => true, 'rates' => [
+                'geram18k' => ['value' => 24416025],
+            ]], 200),
+        ]);
+
+        $prices = $this->boardPrices();
+
+        $this->assertSame(244747518.0, $prices['Gold750_Sell']['value']);
+        $this->assertEqualsWithDelta(244160250.0 * 0.995, $prices['Gold750_Buy']['value'], 1.0);
     }
 }
