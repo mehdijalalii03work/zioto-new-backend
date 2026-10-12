@@ -43,6 +43,16 @@ class ProductComparisonPage extends Page
 
     public int $productCount = 0;
 
+    /**
+     * Raw threshold input (allowed difference percent).
+     */
+    public ?string $allowedDiffInput = null;
+
+    /**
+     * Applied threshold; rows with abs(diffPct) >= it are highlighted.
+     */
+    public ?float $diffThreshold = null;
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can(Permission::PricingView->value) ?? false;
@@ -71,6 +81,33 @@ class ProductComparisonPage extends Page
             ->body('قیمت محصولات و قیمت توکنیکو دوباره خوانده شد.')
             ->success()
             ->send();
+    }
+
+    /**
+     * Apply the allowed-difference threshold; rows beyond it highlight yellow.
+     * Empty input clears the highlight.
+     */
+    public function applyThreshold(): void
+    {
+        $input = trim((string) $this->allowedDiffInput);
+
+        if ($input === '') {
+            $this->diffThreshold = null;
+
+            return;
+        }
+
+        if (! is_numeric($input) || (float) $input < 0 || (float) $input > 1000) {
+            Notification::make()
+                ->title('خطا')
+                ->body('درصد مجاز معتبر وارد کنید (۰ تا ۱۰۰۰).')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $this->diffThreshold = (float) $input;
     }
 
     private function loadComparison(): void

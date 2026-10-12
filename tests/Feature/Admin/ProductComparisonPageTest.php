@@ -118,4 +118,43 @@ class ProductComparisonPageTest extends TestCase
         $this->assertSame(306000000.0, $component->get('rows')[0]['ourPrice']);
         $this->assertNull($component->get('rows')[0]['tokPrice']);
     }
+
+    public function test_threshold_highlights_rows_beyond_it(): void
+    {
+        $this->admin();
+        $this->product('zioto-gold-bar-1gram-995', 330000000);
+
+        $requests = [];
+        $this->fakeTokeniko($requests);
+
+        $component = Livewire::test(ProductComparisonPage::class)
+            ->set('allowedDiffInput', '5')
+            ->call('applyThreshold')
+            ->assertSet('diffThreshold', 5.0)
+            ->assertSee('bg-amber-50', false);
+
+        $component
+            ->set('allowedDiffInput', '20')
+            ->call('applyThreshold')
+            ->assertDontSee('bg-amber-50', false);
+
+        $component
+            ->set('allowedDiffInput', '')
+            ->call('applyThreshold')
+            ->assertSet('diffThreshold', null);
+    }
+
+    public function test_invalid_threshold_keeps_previous_value(): void
+    {
+        $this->admin();
+        $this->product('zioto-gold-bar-1gram-995', 330000000);
+
+        $requests = [];
+        $this->fakeTokeniko($requests);
+
+        Livewire::test(ProductComparisonPage::class)
+            ->set('allowedDiffInput', 'abc')
+            ->call('applyThreshold')
+            ->assertSet('diffThreshold', null);
+    }
 }

@@ -3,14 +3,29 @@
         $toToman = fn ($value) => is_numeric($value) ? number_format((float) $value / 10, 0) : '—';
         $pct = fn ($value) => $value === null ? '—' : number_format($value, 2).'٪';
         $pctClass = fn ($value) => $value === null ? '' : ($value >= 0 ? 'text-emerald-700' : 'text-red-700');
+        $isHl = fn ($diff) => $diffThreshold !== null && $diff !== null && abs($diff) >= $diffThreshold;
     @endphp
 
     <div class="mb-4 flex flex-wrap items-center gap-3">
         <x-filament::button wire:click="refresh" color="primary" size="sm" icon="heroicon-o-arrow-path">
             بروزرسانی
         </x-filament::button>
+        <div class="flex items-center gap-2">
+            <input
+                type="number"
+                min="0"
+                max="1000"
+                step="0.01"
+                wire:model="allowedDiffInput"
+                placeholder="٪ اختلاف مجاز"
+                class="w-36 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-center text-sm shadow-sm outline-none transition focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+            />
+            <x-filament::button wire:click="applyThreshold" color="gray" size="sm">
+                اعمال
+            </x-filament::button>
+        </div>
         <p class="text-sm text-gray-500">
-            {{ number_format($productCount) }} محصول
+            {{ number_format($productCount) }} محصول دارای tokeniko_sku
         </p>
     </div>
 
@@ -30,14 +45,14 @@
                 <thead>
                     <tr class="bg-gray-100 text-gray-700">
                         <th class="border-e border-gray-200 px-3 py-2 text-start">محصول</th>
-                        <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت ما (تومان)</th>
+                        <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت زیوتو (تومان)</th>
                         <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت توکنیکو (تومان)</th>
                         <th class="px-3 py-2 text-start">اختلاف ٪</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($rows as $row)
-                        <tr class="border-t border-gray-100 odd:bg-white even:bg-gray-50">
+                        <tr class="border-t border-gray-100 {{ $isHl($row['diffPct']) ? 'bg-amber-50' : 'odd:bg-white even:bg-gray-50' }}">
                             <td class="px-3 py-2">
                                 <div class="font-semibold text-gray-900">{{ $row['name'] }}</div>
                                 {{-- <div class="font-mono text-xs text-gray-400" dir="ltr">{{ $row['sku'] }}</div> --}}
