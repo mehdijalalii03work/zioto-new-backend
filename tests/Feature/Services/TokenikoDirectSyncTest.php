@@ -91,11 +91,11 @@ class TokenikoDirectSyncTest extends TestCase
 
         $changedPayload = collect($payload)->firstWhere('id', 'ZGB5-0001-0');
         $this->assertSame(306_000_000, $changedPayload['price']);
-        $this->assertSame(4, $changedPayload['stock']);
+        $this->assertArrayNotHasKey('stock', $changedPayload);
 
         $unchangedPayload = collect($payload)->firstWhere('id', 'ZSB9-0005-0');
         $this->assertSame(27_489_000, $unchangedPayload['price']);
-        $this->assertSame(5, $unchangedPayload['stock']);
+        $this->assertArrayNotHasKey('stock', $unchangedPayload);
     }
 
     public function test_sync_sends_products_to_tapsi_even_when_prices_unchanged(): void
@@ -114,7 +114,7 @@ class TokenikoDirectSyncTest extends TestCase
         $this->assertSame(306_000_000, $tapsiRequests[0]->data()['products'][0]['price']);
     }
 
-    public function test_sync_sends_zero_stock_for_all_products_when_emergency_active(): void
+    public function test_sync_sends_no_stock_key_even_when_emergency_active(): void
     {
         Setting::create([
             'key' => 'tapsi_emergency_status',
@@ -135,7 +135,7 @@ class TokenikoDirectSyncTest extends TestCase
         $this->assertSame(0, $result['updated']);
         $this->assertSame(1, $result['tapsi_sent']);
         $this->assertCount(1, $tapsiRequests);
-        $this->assertSame(0, $tapsiRequests[0]->data()['products'][0]['stock']);
+        $this->assertArrayNotHasKey('stock', $tapsiRequests[0]->data()['products'][0]);
         $this->assertDatabaseHas('products', ['id' => $product->id, 'price' => 300_000_000]);
     }
 

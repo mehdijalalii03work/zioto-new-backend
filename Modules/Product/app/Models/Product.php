@@ -2,10 +2,15 @@
 
 namespace Modules\Product\Models;
 
+use App\Enums\Inventory\InventoryMode;
+use App\Enums\Inventory\SerialStatus;
+use App\Enums\Inventory\StockReservationStatus;
 use App\Enums\Product\Ayar;
 use App\Enums\Product\MetalType;
 use App\Enums\Product\ProductShape;
 use App\Models\Brand;
+use App\Models\ProductSerial;
+use App\Models\ProductStockReservation;
 use App\Models\Setting;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Cache;
+use Modules\Product\Database\Factories\ProductFactory;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -24,12 +30,32 @@ class Product extends Model implements HasMedia
         'is_nopay' => false,
     ];
 
+    protected static function newFactory(): ProductFactory
+    {
+        return ProductFactory::new();
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (Product $product) {
+            if (is_string($product->serial_prefix)) {
+                $normalized = strtolower(trim($product->serial_prefix));
+                $product->serial_prefix = $normalized === '' ? null : $normalized;
+            }
+        });
+    }
+
     protected $fillable = [
         'category_id',
         'brand_id',
         'name',
         'slug',
         'sku',
+        'serial_prefix',
+        'inventory_mode',
+        'track_serials',
+        'made_to_order',
+        'production_lead_time_text',
         'status',
         'visibility',
         'contact_only',
@@ -76,6 +102,9 @@ class Product extends Model implements HasMedia
             'hesabfa_stock_synced_at' => 'datetime',
             'contact_only' => 'boolean',
             'is_nopay' => 'boolean',
+            'inventory_mode' => InventoryMode::class,
+            'track_serials' => 'boolean',
+            'made_to_order' => 'boolean',
         ];
     }
 
@@ -99,13 +128,65 @@ class Product extends Model implements HasMedia
         return $this->hasOne(ProductImage::class)->where('is_primary', true);
     }
 
+    public function serials(): HasMany
+    {
+        return $this->hasMany(ProductSerial::class);
+    }
+
+    public function manualReservations(): HasMany
+    {
+        return $this->hasMany(ProductStockReservation::class);
+    }
+
+    /**
+     * Free serial bars. Reads the withCount aggregate when the product was
+     * loaded with one (listings) instead of querying per product.
+     */
+    public function availableSerialCount(): int
+    {
+        if (array_key_exists('available_serial_count', $this->attributes)) {
+            return (int) $this->attributes['available_serial_count'];
+        }
+
+        return (int) $this->serials()->where('status', SerialStatus::Available->value)->count();
+    }
+
+    /**
+     * Active manual capacity holds. Reads the withSum aggregate when loaded.
+     */
+    public function activeManualReserved(): int
+    {
+        if (array_key_exists('active_manual_reserved', $this->attributes)) {
+            return (int) $this->attributes['active_manual_reserved'];
+        }
+
+        return (int) $this->manualReservations()
+            ->where('status', StockReservationStatus::Reserved->value)
+            ->sum('quantity');
+    }
+
+    /**
+     * Manual sellable capacity (stock minus active holds, never negative).
+     */
+    public function acceptableManualCount(): int
+    {
+        return max(0, (int) ($this->stock_quantity ?? 0) - $this->activeManualReserved());
+    }
+
+    public function isInStock(): bool
+    {
+        return $this->sellable_stock > 0;
+    }
+
     public function getSellableStockAttribute(): int
     {
-        $physical = (int) ($this->hesabfa_physical_stock ?? $this->stock_quantity ?? 0);
-        $reserved = (int) ($this->hesabfa_reserved_stock ?? 0);
-        $manualReserved = (int) ($this->hesabfa_manual_reserved ?? 0);
+        // Serial products live and die by free bars; the numeric columns
+        // (stock_quantity, hesabfa_*) are history only and never decide.
+        if (($this->inventory_mode ?? InventoryMode::Manual) === InventoryMode::Serial) {
+            return $this->availableSerialCount();
+        }
 
-        return max(0, $physical - $reserved - $manualReserved);
+        return $this->acceptableManualCount();
     }
 
     public function calculatePrice(): ?float

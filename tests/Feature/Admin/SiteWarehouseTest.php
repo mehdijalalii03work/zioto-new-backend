@@ -64,17 +64,18 @@ class SiteWarehouseTest extends TestCase
             ->assertRedirect();
     }
 
-    public function test_only_dynamic_products_are_listed(): void
+    public function test_dynamic_and_fixed_products_are_listed(): void
     {
         $dynamic = $this->createProduct('dynamic-bar', 'dynamic');
         $fixed = $this->createProduct('fixed-bar', 'fixed');
 
         $analyst = $this->staffUser(Role::Analyst);
 
+        // Serial-first warehouse shows every needed product, fixed included.
         $this->actingAs($analyst, 'web')
             ->get(URL::route('filament.admin.pages.site-warehouse'))
             ->assertOk()
             ->assertSee($dynamic->name, escape: false)
-            ->assertDontSee($fixed->name, escape: false);
+            ->assertSee($fixed->name, escape: false);
     }
 }

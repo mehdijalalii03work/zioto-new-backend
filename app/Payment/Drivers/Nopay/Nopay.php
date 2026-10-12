@@ -2,11 +2,11 @@
 
 namespace App\Payment\Drivers\Nopay;
 
+use App\Payment\Exceptions\AmbiguousGatewayOutcomeException;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Shetabit\Multipay\Abstracts\Driver;
 use Shetabit\Multipay\Contracts\ReceiptInterface;
-use Shetabit\Multipay\Exceptions\InvalidPaymentException;
 use Shetabit\Multipay\Exceptions\PurchaseFailedException;
 use Shetabit\Multipay\Invoice;
 use Shetabit\Multipay\Receipt;
@@ -16,6 +16,8 @@ use Shetabit\Multipay\Request;
 class Nopay extends Driver
 {
     protected Client $client;
+
+    private int $lastHttpStatus = 0;
 
     /**
      * @var (callable(string, string, array): void)|null
@@ -89,14 +91,14 @@ class Nopay extends Driver
         $entity = $this->arrayGet($result, 'entity');
 
         if (! $entity) {
-            throw new PurchaseFailedException('پاسخ نامعتبر از درگاه nopay');
+            throw new AmbiguousGatewayOutcomeException('nopay', $this->lastHttpStatus, null, $body);
         }
 
         $token = $entity['token'] ?? $entity['Token'] ?? null;
         $redirectUrl = $entity['redirectURL'] ?? $entity['RedirectURL'] ?? null;
 
         if (! $token) {
-            throw new PurchaseFailedException('توکن پرداخت دریافت نشد');
+            throw new AmbiguousGatewayOutcomeException('nopay', $this->lastHttpStatus, null, $body);
         }
 
         $this->invoice->transactionId($token);
@@ -150,13 +152,13 @@ class Nopay extends Driver
         $entity = $this->arrayGet($result, 'entity');
 
         if (! $entity) {
-            throw new InvalidPaymentException('پاسخ نامعتبر از درگاه nopay');
+            throw new AmbiguousGatewayOutcomeException('nopay', $this->lastHttpStatus, null, $body);
         }
 
-        $isApproved = (bool) ($entity['IsApproved'] ?? $entity['isApproved'] ?? false);
+        $isApproved = $entity['IsApproved'] ?? $entity['isApproved'] ?? null;
 
-        if (! $isApproved) {
-            throw new InvalidPaymentException('پرداخت تایید نشد');
+        if ($isApproved !== true) {
+            throw new AmbiguousGatewayOutcomeException('nopay', $this->lastHttpStatus, null, $body);
         }
 
         $refNumber = (string) ($entity['RefNumber'] ?? $entity['refNumber'] ?? '');
@@ -208,7 +210,13 @@ class Nopay extends Driver
             'http_errors' => false,
         ]);
 
-        $body = json_decode($response->getBody()->getContents(), true) ?? [];
+        $decoded = json_decode($response->getBody()->getContents(), true);
+        $body = is_array($decoded) ? $decoded : [];
+        $this->lastHttpStatus = $response->getStatusCode();
+
+        if ($this->lastHttpStatus !== 200) {
+            throw new AmbiguousGatewayOutcomeException('nopay', $this->lastHttpStatus, null, $body);
+        }
 
         $this->log('debug', 'Nopay API response', [
             'path' => $path,
@@ -222,10 +230,9 @@ class Nopay extends Driver
         if ($hasErrors) {
             $errors = $this->arrayGet($notification, 'Errors', []);
             $firstError = $errors[0] ?? [];
-            $errorMessage = $firstError['message'] ?? 'خطای ناشناخته';
             $errorCode = $firstError['code'] ?? null;
 
-            throw new PurchaseFailedException("nopay error [{$errorCode}]: {$errorMessage}");
+            throw new AmbiguousGatewayOutcomeException('nopay', $this->lastHttpStatus, is_int($errorCode) || is_string($errorCode) ? $errorCode : null, $body);
         }
 
         return $body;

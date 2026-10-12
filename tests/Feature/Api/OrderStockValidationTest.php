@@ -18,6 +18,7 @@ class OrderStockValidationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['serial_inventory.enabled' => true]);
         $this->app['router']->aliasMiddleware('auth.token', AuthenticateApiToken::class);
     }
 

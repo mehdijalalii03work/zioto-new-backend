@@ -15,7 +15,7 @@ class CartResource extends JsonResource
             'name' => $this->product->name ?? '',
             'price' => (int) ($this->product->price ?? 0),
             'weight' => $this->product->weight ?? '',
-            'stock' => ($this->product->stock_quantity ?? 0) > 0,
+            'stock' => ($this->product?->sellable_stock ?? 0) > 0,
         ];
     }
 }

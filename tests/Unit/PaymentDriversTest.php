@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Payment\Drivers\Kamanlend\Kamanlend;
 use App\Payment\Drivers\Nopay\Nopay;
 use App\Payment\Drivers\Smartis\Smartis;
+use App\Payment\Exceptions\AmbiguousGatewayOutcomeException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\Psr7\Response;
@@ -12,7 +13,6 @@ use PHPUnit\Framework\TestCase;
 use Shetabit\Multipay\Abstracts\Driver;
 use Shetabit\Multipay\Contracts\DriverInterface;
 use Shetabit\Multipay\Exceptions\InvalidPaymentException;
-use Shetabit\Multipay\Exceptions\PurchaseFailedException;
 use Shetabit\Multipay\Invoice;
 use Shetabit\Multipay\Request;
 
@@ -402,8 +402,7 @@ class PaymentDriversTest extends TestCase
 
         [$driver, $handler] = $this->nopayDriver($settings, $invoice, $response);
 
-        $this->expectException(PurchaseFailedException::class);
-        $this->expectExceptionMessage('nopay error [-7]: خطای احراز هویت');
+        $this->expectException(AmbiguousGatewayOutcomeException::class);
 
         $driver->purchase();
     }

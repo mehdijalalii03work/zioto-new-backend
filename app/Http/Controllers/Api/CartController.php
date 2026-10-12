@@ -19,7 +19,11 @@ class CartController extends Controller
         $userId = Auth::id();
 
         $items = Cart::where('user_id', $userId)
-            ->with('product:id,name,price,weight,stock_quantity')
+            ->with(['product' => fn ($query) => $query
+                ->select('id', 'name', 'price', 'weight', 'stock_quantity', 'inventory_mode', 'track_serials', 'serial_prefix')
+                ->withCount(['serials as available_serial_count' => fn ($count) => $count->where('status', 'available')])
+                ->withSum(['manualReservations as active_manual_reserved' => fn ($sum) => $sum->where('status', 'reserved')], 'quantity'),
+            ])
             ->get();
 
         return response()->json([

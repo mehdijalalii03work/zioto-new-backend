@@ -14,6 +14,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Modules\Product\Models\Product;
 
 class ProductForm
 {
@@ -172,11 +173,55 @@ class ProductForm
                                     ->placeholder('مثلاً 10'),
 
                                 TextInput::make('stock_quantity')
-                                    ->label('موجودی انبار')
+                                    ->label('ظرفیت دستی')
+                                    ->helperText('فقط برای محصول دستی؛ روی موجودی سریالی بی‌اثر است.')
                                     ->required()
                                     ->numeric()
                                     ->default(0)
-                                    ->minValue(0),
+                                    ->minValue(0)
+                                    ->disabled(fn ($get) => ($get('inventory_mode') ?? 'manual') === 'serial'),
+                            ]),
+
+                        Grid::make(4)
+                            ->schema([
+                                Select::make('inventory_mode')
+                                    ->label('روش موجودی')
+                                    ->options([
+                                        'serial' => 'سریالی',
+                                        'manual' => 'دستی / تولید پس از سفارش',
+                                    ])
+                                    ->default('manual')
+                                    ->required()
+                                    ->live()
+                                    ->disabled(fn (?Product $record): bool => $record?->serials()->exists() ?? false)
+                                    ->helperText('تغییر روش محصول دارای سریال ممنوع است.'),
+
+                                TextInput::make('serial_prefix')
+                                    ->label('پیشوند سریال')
+                                    ->placeholder('مثلاً ton9')
+                                    ->nullable()
+                                    ->maxLength(4)
+                                    ->regex('/\A[a-z]{3}9?\z/i')
+                                    ->validationMessages(['regex' => 'پیشوند باید ۳ حرف و در صورت نیاز رقم ۹ باشد (مثل ton یا ton9).'])
+                                    ->unique(ignoreRecord: true)
+                                    ->disabled(fn (?Product $record): bool => $record?->serials()->exists() ?? false),
+
+                                Toggle::make('track_serials')
+                                    ->label('رهگیری سریال تحویل')
+                                    ->helperText('مستقل از روش موجودی؛ برای محصول دستی یعنی سریال تولیدشده رهگیری شود.')
+                                    ->inline(false)
+                                    ->disabled(fn (?Product $record): bool => $record?->serials()->exists() ?? false),
+
+                                Toggle::make('made_to_order')
+                                    ->label('تولید پس از سفارش')
+                                    ->inline(false)
+                                    ->live(),
+
+                                TextInput::make('production_lead_time_text')
+                                    ->label('زمان آماده‌سازی')
+                                    ->placeholder('مثلاً ۱۰ روز کاری')
+                                    ->nullable()
+                                    ->visible(fn ($get): bool => (bool) ($get('made_to_order') ?? false)),
                             ]),
                     ])
                     ->columnSpanFull(),

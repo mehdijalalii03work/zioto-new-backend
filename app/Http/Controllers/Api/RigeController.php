@@ -7,6 +7,7 @@ use App\Enums\Product\MetalType;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\RigeProductResource;
 use App\Models\Brand;
+use App\Services\Inventory\SerialAvailabilityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Modules\Product\Models\Product;
@@ -25,6 +26,17 @@ class RigeController extends Controller
                 ->map(fn (Product $p) => (new RigeProductResource($p))->toArray(request()))
                 ->toArray();
         });
+
+        // Catalog rides the cache; stock never does — overlay live numbers.
+        $idsByCode = Product::whereIn('sku', collect($products)->pluck('code')->filter()->unique()->all())
+            ->pluck('id', 'sku');
+
+        $counts = app(SerialAvailabilityService::class)->countsForProducts($idsByCode->values()->all());
+
+        foreach ($products as $index => $product) {
+            $id = $idsByCode->get($product['code'] ?? null);
+            $products[$index]['in_stock'] = (($id !== null ? $counts[$id] ?? 0 : 0) > 0);
+        }
 
         return response()->json($products);
     }

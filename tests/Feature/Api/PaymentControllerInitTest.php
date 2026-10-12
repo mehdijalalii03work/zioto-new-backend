@@ -17,6 +17,12 @@ class PaymentControllerInitTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['serial_inventory.enabled' => true]);
+    }
+
     protected function tearDown(): void
     {
         Mockery::close();
@@ -26,6 +32,7 @@ class PaymentControllerInitTest extends TestCase
     public function test_init_rejects_already_paid_order(): void
     {
         $order = Order::factory()->create([
+            'serial_inventory_enabled' => true,
             'payment_status' => 'paid',
             'total_amount' => 100000,
         ]);
@@ -44,6 +51,7 @@ class PaymentControllerInitTest extends TestCase
     public function test_init_rejects_cancelled_order(): void
     {
         $order = Order::factory()->create([
+            'serial_inventory_enabled' => true,
             'status' => 'cancelled',
             'payment_status' => 'pending',
             'total_amount' => 100000,
@@ -63,6 +71,7 @@ class PaymentControllerInitTest extends TestCase
     public function test_init_rejects_expired_order(): void
     {
         $order = Order::factory()->create([
+            'serial_inventory_enabled' => true,
             'status' => 'expired',
             'payment_status' => 'pending',
             'total_amount' => 100000,
@@ -82,6 +91,7 @@ class PaymentControllerInitTest extends TestCase
     public function test_init_rejects_duplicate_pending_payment(): void
     {
         $order = Order::factory()->create([
+            'serial_inventory_enabled' => true,
             'status' => 'pending',
             'payment_status' => 'pending',
             'total_amount' => 100000,
@@ -109,9 +119,11 @@ class PaymentControllerInitTest extends TestCase
         ]);
     }
 
+    #[RunInSeparateProcess]
     public function test_init_allows_new_payment_for_order_with_previous_failed_payment(): void
     {
         $order = Order::factory()->create([
+            'serial_inventory_enabled' => true,
             'status' => 'pending',
             'payment_status' => 'failed',
             'total_amount' => 100000,
@@ -128,12 +140,26 @@ class PaymentControllerInitTest extends TestCase
             'description' => 'پرداخت ناموفق',
         ]);
 
+        $mock = Mockery::mock('overload:'.ShetabitPayment::class);
+        $mock->shouldReceive('via')->andReturnSelf();
+        $mock->shouldReceive('callbackUrl')->andReturnSelf();
+        $mock->shouldReceive('purchase')->andReturnUsing(function ($invoice, $callback) use ($mock) {
+            $callback(null, 'retry-claimed-token');
+
+            return $mock;
+        });
+        $form = Mockery::mock();
+        $form->shouldReceive('getAction')->andReturn('https://example.com/pay');
+        $mock->shouldReceive('pay')->andReturn($form);
+
         $response = $this->postJson('/api/payment/init', [
             'order_id' => $order->id,
             'gateway' => 'parsian',
         ]);
 
-        $this->assertNotEquals(422, $response->getStatusCode(), 'Init should allow retry after failed payment');
+        $response->assertOk();
+        $this->assertDatabaseHas('payments', ['order_id' => $order->id, 'transaction_id' => 'retry-claimed-token', 'status' => 'pending']);
+        $this->assertDatabaseHas('payments', ['order_id' => $order->id, 'transaction_id' => 'failed-txn', 'status' => 'failed']);
     }
 
     public function test_init_rejects_insufficient_stock(): void
@@ -141,6 +167,7 @@ class PaymentControllerInitTest extends TestCase
         config(['hesabfa.enable_reserved_stock' => true]);
 
         $order = Order::factory()->create([
+            'serial_inventory_enabled' => true,
             'status' => 'pending',
             'payment_status' => 'pending',
             'total_amount' => 100000,
@@ -159,6 +186,9 @@ class PaymentControllerInitTest extends TestCase
             'product_price' => $product->price,
             'quantity' => 1,
             'subtotal' => $product->price,
+            'inventory_mode' => 'manual',
+            'serial_tracking_required' => false,
+            'made_to_order' => false,
         ]);
 
         $response = $this->postJson('/api/payment/init', [
@@ -188,6 +218,7 @@ class PaymentControllerInitTest extends TestCase
         ]);
 
         $order = Order::factory()->create([
+            'serial_inventory_enabled' => true,
             'user_id' => $user->id,
             'user_address_id' => $address->id,
             'status' => 'pending',

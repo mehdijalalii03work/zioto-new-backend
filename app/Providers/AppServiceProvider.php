@@ -6,12 +6,12 @@ use App\Listeners\ConvertMediaToWebp;
 use App\Listeners\LogRolePermissionChanges;
 use App\Models\Brand;
 use App\Models\ContactMessage;
+use App\Models\SerialImportBatch;
 use App\Models\ShippingMethod;
 use App\Models\User;
 use App\Observers\HesabfaObserver;
 use App\Observers\ProductImageObserver;
 use App\Observers\RolePermissionAuditObserver;
-use App\Observers\StockReservationObserver;
 use App\Policies\BlogCategoryPolicy;
 use App\Policies\BlogPostPolicy;
 use App\Policies\BlogTagPolicy;
@@ -23,6 +23,7 @@ use App\Policies\PermissionPolicy;
 use App\Policies\ProductCategoryPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\RolePolicy;
+use App\Policies\SerialImportBatchPolicy;
 use App\Policies\ShippingMethodPolicy;
 use App\Policies\UserPolicy;
 use App\Support\TenantScope;
@@ -31,7 +32,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\ServiceProvider;
 use Modules\Blog\Models\BlogCategory;
 use Modules\Blog\Models\BlogPost;
@@ -68,7 +68,8 @@ class AppServiceProvider extends ServiceProvider
         $this->registerPolicies();
 
         Order::observe(HesabfaObserver::class);
-        Order::observe(StockReservationObserver::class);
+        // Numeric hesabfa reservation is out of the active path; serial and
+        // manual reservations are owned by SerialInventoryService instead.
         ProductImage::observe(ProductImageObserver::class);
 
         $this->app['events']->listen(MediaAdded::class, ConvertMediaToWebp::class);
@@ -97,9 +98,8 @@ class AppServiceProvider extends ServiceProvider
             Gate::define('viewPulse', fn (User $user): bool => $user->isStaff());
         });
 
-        $interval = config('hesabfa.sync_interval', 60);
-        Schedule::command('hesabfa:sync-stock')->cron("*/{$interval} * * * *")->withoutOverlapping();
-        Schedule::command('hesabfa:recalculate-reserved')->dailyAt('03:00')->withoutOverlapping();
+        // Stock intake from Hesabfa is stopped on every path (serial/manual
+        // inventory is the only source of truth); invoice sync is untouched.
 
         RateLimiter::for('otp', function (Request $request) {
             // In production, key by phone so one user's OTP requests don't
@@ -137,5 +137,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ContactMessage::class, ContactMessagePolicy::class);
         Gate::policy(RoleModel::class, RolePolicy::class);
         Gate::policy(PermissionModel::class, PermissionPolicy::class);
+        Gate::policy(SerialImportBatch::class, SerialImportBatchPolicy::class);
     }
 }

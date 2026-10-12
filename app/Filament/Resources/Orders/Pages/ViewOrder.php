@@ -5,9 +5,11 @@ namespace App\Filament\Resources\Orders\Pages;
 use App\Enums\Permission;
 use App\Filament\Resources\Orders\OrderResource;
 use App\Observers\HesabfaObserver;
+use App\Services\Inventory\SerialInventoryService;
 use App\Support\Platform;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
@@ -17,6 +19,8 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\HtmlString;
+use LogicException;
+use Modules\Order\Models\Order;
 
 class ViewOrder extends ViewRecord
 {
@@ -247,9 +251,30 @@ class ViewOrder extends ViewRecord
                                                         TextEntry::make('subtotal')
                                                             ->label('قیمت کل')
                                                             ->formatStateUsing(fn ($state): string => number_format($state).' ریال'),
+
+                                                        TextEntry::make('serial_list')
+                                                            ->label('سریال‌ها')
+                                                            ->state(fn ($record): string => $record->loadMissing('serials')
+                                                                ->serials->sortBy('unit_number')->pluck('serial_code')->implode('، ') ?: '—')
+                                                            ->columnSpan(2),
+
+                                                        TextEntry::make('fulfillment_label')
+                                                            ->label('تأمین')
+                                                            ->state(fn ($record): string => $record->serial_fulfillment_status?->label() ?? '—')
+                                                            ->badge()
+                                                            ->columnSpan(2),
                                                     ]),
                                             ])
                                             ->columnSpanFull(),
+                                    ]),
+
+                                // ---------- تأمین سریال ----------
+                                Fieldset::make('تأمین سریال')
+                                    ->schema([
+                                        TextEntry::make('serial_fulfillment_status')
+                                            ->label('وضعیت تأمین')
+                                            ->formatStateUsing(fn ($state): string => $state?->label() ?? '—')
+                                            ->badge(),
                                     ]),
                             ]),
 
@@ -410,6 +435,75 @@ class ViewOrder extends ViewRecord
                 ->icon('heroicon-o-pencil')
                 ->authorize(Permission::OrderEdit->value)
                 ->url(fn ($record): string => $record ? $this->getResource()::getUrl('edit', ['record' => $record]) : '#'),
+
+            Action::make('retryFinalize')
+                ->label('تلاش مجدد تخصیص')
+                ->icon('heroicon-o-arrow-path')
+                ->color('info')
+                ->authorize(Permission::SerialManage->value)
+                ->visible(fn (?Order $record): bool => $record !== null
+                    && $record->serial_inventory_enabled
+                    && ! in_array($record->serial_fulfillment_status?->value, ['shipped', 'not_required', 'legacy'], true))
+                ->action(function (?Order $record) {
+                    app(SerialInventoryService::class)->finalizePaidOrder($record->id, $record->platform);
+
+                    Notification::make()
+                        ->title('تخصیص بررسی شد')
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('markShipped')
+                ->label('ثبت خروج فیزیکی')
+                ->icon('heroicon-o-truck')
+                ->color('success')
+                ->authorize(Permission::SerialShip->value)
+                ->visible(fn (?Order $record): bool => $record !== null
+                    && $record->serial_inventory_enabled
+                    && ! in_array($record->serial_fulfillment_status?->value, ['shipped', 'not_required', 'legacy'], true))
+                ->requiresConfirmation()
+                ->modalHeading('ثبت خروج فیزیکی')
+                ->modalDescription('همه واحدهای نیازمند سریال باید تخصیص‌یافته باشند؛ ارسال ناقص ممکن نیست.')
+                ->action(function (?Order $record) {
+                    try {
+                        app(SerialInventoryService::class)->markShipped($record->id, $record->platform, auth()->id());
+                    } catch (LogicException $e) {
+                        Notification::make()
+                            ->title($e->getMessage())
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    Notification::make()
+                        ->title('خروج فیزیکی ثبت شد')
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('releaseHoldings')
+                ->label('آزادسازی تخصیص')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->color('danger')
+                ->authorize(Permission::SerialManage->value)
+                ->visible(fn (?Order $record): bool => $record !== null
+                    && $record->serial_inventory_enabled
+                    && in_array($record->serial_fulfillment_status?->value, ['reserved', 'allocated', 'needs_review'], true))
+                ->form([
+                    Textarea::make('reason')
+                        ->label('دلیل آزادسازی')
+                        ->required()
+                        ->maxLength(500),
+                ])
+                ->action(function (?Order $record, array $data) {
+                    app(SerialInventoryService::class)->releaseBeforeShipment($record->id, $record->platform, auth()->id(), $data['reason']);
+
+                    Notification::make()
+                        ->title('تخصیص آزاد شد')
+                        ->success()
+                        ->send();
+                }),
         ];
     }
 }

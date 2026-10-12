@@ -2,6 +2,7 @@
 
 namespace App\Payment\Drivers;
 
+use App\Payment\Exceptions\AmbiguousGatewayOutcomeException;
 use GuzzleHttp\RequestOptions;
 use Shetabit\Multipay\Contracts\ReceiptInterface;
 use Shetabit\Multipay\Drivers\Digipay\Digipay;
@@ -89,8 +90,7 @@ class CustomDigipay extends Digipay
         $status = $body['result']['status'] ?? null;
 
         if ($response->getStatusCode() != 200) {
-            $message = $body['result']['message'] ?? 'تراکنش تایید نشد';
-            throw new InvalidPaymentException($message, (int) $response->getStatusCode());
+            throw new AmbiguousGatewayOutcomeException('digipay', $response->getStatusCode(), is_int($status) || is_string($status) ? $status : null, is_array($body) ? $body : []);
         }
 
         // Pending status → retry a few times before giving up.
@@ -102,8 +102,7 @@ class CustomDigipay extends Digipay
         }
 
         if ($status !== 0) {
-            $message = $body['result']['message'] ?? 'تراکنش تایید نشد';
-            throw new InvalidPaymentException($message, (int) $response->getStatusCode());
+            throw new AmbiguousGatewayOutcomeException('digipay', $response->getStatusCode(), is_int($status) || is_string($status) ? $status : null, is_array($body) ? $body : []);
         }
 
         return (new Receipt('digipay', $body['trackingCode'] ?? $trackingCode))->detail($body);

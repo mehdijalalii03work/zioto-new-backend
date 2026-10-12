@@ -2,11 +2,12 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\Inventory\InventoryMode;
 use App\Enums\Permission;
+use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
-use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
@@ -23,7 +24,7 @@ class SiteWarehouse extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasPermissionTo(Permission::HesabfaView->value) ?? false;
+        return auth()->user()?->hasPermissionTo(Permission::SerialView->value) ?? false;
     }
 
     public static function getNavigationIcon(): string|\BackedEnum|null
@@ -46,12 +47,26 @@ class SiteWarehouse extends Page implements HasTable
         return 10;
     }
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('serialImport')
+                ->label('ایمپورت سریال')
+                ->icon('heroicon-o-qr-code')
+                ->color('success')
+                ->authorize(Permission::SerialImport->value)
+                ->url(fn (): string => SerialImport::getUrl())
+                ->openUrlInNewTab(false),
+        ];
+    }
+
     public function table(Table $table): Table
     {
         return $table
             ->query(fn (): Builder => Product::query()
-                ->where('price_type', 'dynamic')
                 ->where('slug', '!=', 'test')
+                ->withCount(['serials as available_serial_count' => fn ($query) => $query->where('status', 'available')])
+                ->withSum(['manualReservations as active_manual_reserved' => fn ($query) => $query->where('status', 'reserved')], 'quantity')
                 ->orderBy('name'))
             ->columns([
                 TextColumn::make('name')
@@ -59,20 +74,34 @@ class SiteWarehouse extends Page implements HasTable
                     ->description(fn (Product $record): string => $record->sku ?? '')
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%")),
 
-                TextInputColumn::make('stock_quantity')
-                    ->label('موجودی انبار')
-                    ->type('number')
-                    ->rules(['integer', 'min:0'])
-                    ->sortable(),
-
-                TextColumn::make('hesabfa_physical_stock')
-                    ->label('موجودی حسابفا')
-                    ->numeric()
-                    ->sortable()
+                TextColumn::make('serial_prefix')
+                    ->label('پیشوند')
+                    ->placeholder('—')
+                    ->searchable()
                     ->toggleable(),
 
-                ToggleColumn::make('hesabfa_exclude_from_sync')
-                    ->label('غیرفعال کردن سینک'),
+                TextColumn::make('inventory_mode')
+                    ->label('روش موجودی')
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => $state instanceof InventoryMode ? $state->label() : ($state ?? '—'))
+                    ->color(fn ($state): string => ($state instanceof InventoryMode ? $state->value : $state) === InventoryMode::Serial->value ? 'info' : 'gray'),
+
+                TextColumn::make('sellable_stock')
+                    ->label('موجودی قابل فروش')
+                    ->numeric()
+                    ->color(fn ($state): string => $state > 0 ? 'success' : 'danger'),
+
+                TextColumn::make('active_manual_reserved')
+                    ->label('ظرفیت رزروشده')
+                    ->numeric()
+                    ->placeholder('—')
+                    ->toggleable(),
+
+                TextInputColumn::make('stock_quantity')
+                    ->label('ظرفیت دستی')
+                    ->type('number')
+                    ->rules(['integer', 'min:0'])
+                    ->disabled(fn (Product $record): bool => ($record->inventory_mode ?? InventoryMode::Manual) === InventoryMode::Serial),
             ])
             ->paginated([10, 25, 50])
             ->defaultPaginationPageOption(25);

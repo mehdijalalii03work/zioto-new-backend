@@ -103,6 +103,19 @@ enum Permission: string
     case ManagementReportView = 'management-report.view';
 
     case AnalyticsReportView = 'analytics-report.view';
+
+    case SerialView = 'serial.view';
+
+    case SerialImport = 'serial.import';
+
+    case SerialManage = 'serial.manage';
+
+    case SerialShip = 'serial.ship';
+
+    case SerialReturn = 'serial.return';
+
+    case SerialRestock = 'serial.restock';
+
     public function label(): string
     {
         return match ($this) {
@@ -156,6 +169,12 @@ enum Permission: string
             self::HesabfaSync => 'همگام‌سازی با حسابفا',
             self::ManagementReportView => 'مشاهده گزارشات مدیریتی',
             self::AnalyticsReportView => 'مشاهده گزارش ترافیک (گوگل آنالیتیکس)',
+            self::SerialView => 'مشاهده سریال‌ها و تاریخچه',
+            self::SerialImport => 'تحلیل و ایمپورت سریال',
+            self::SerialManage => 'مدیریت پیشوند و رسیدگی کسری',
+            self::SerialShip => 'ثبت خروج فیزیکی',
+            self::SerialReturn => 'دریافت مرجوعی',
+            self::SerialRestock => 'بازگرداندن به موجودی پس از QC',
         };
     }
 
@@ -177,6 +196,7 @@ enum Permission: string
             self::ContactMessageView, self::ContactMessageEdit, self::ContactMessageDelete => 'پیام‌های تماس',
             self::HesabfaView, self::HesabfaSync => 'حسابفا',
             self::ManagementReportView, self::AnalyticsReportView => 'گزارشات مدیریتی',
+            self::SerialView, self::SerialImport, self::SerialManage, self::SerialShip, self::SerialReturn, self::SerialRestock => 'سریال انبار',
         };
     }
 

@@ -69,13 +69,13 @@ class TokenikoDirectSyncService
 
             if (! empty($product->tapsi_product_id)) {
                 $tapsiPrice = $this->tapsiShop->calculateTapsiPrice($newPrice);
-                $availableStock = $emergencyActive ? 0 : ($product->sellable_stock ?? $product->stock_quantity ?? 0);
 
+                // Tapsi owns its own stock: price-only payload, never any
+                // stock/quantity/availability key — not even zero.
                 $tapsiProducts[] = [
                     'id' => $product->tapsi_product_id,
                     'price' => $tapsiPrice,
                     'specialprice' => $tapsiPrice,
-                    'stock' => (int) $availableStock,
                     'referenceCode' => 'laravel_sync_'.$product->id.'_'.time(),
                 ];
             }

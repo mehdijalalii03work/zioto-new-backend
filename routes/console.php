@@ -12,6 +12,14 @@ Schedule::command('orders:cancel-unpaid')
     ->everyMinute()
     ->withoutOverlapping(1);
 
+Schedule::command('serials:release-expired')
+    ->everyMinute()
+    ->withoutOverlapping(1);
+
+Schedule::command('serials:reconcile-paid')
+    ->hourly()
+    ->withoutOverlapping(30);
+
 Schedule::command('pulse:check')
     ->everyMinute()
     ->withoutOverlapping(5);

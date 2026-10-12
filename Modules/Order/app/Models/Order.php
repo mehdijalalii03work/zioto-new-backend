@@ -2,9 +2,12 @@
 
 namespace Modules\Order\Models;
 
+use App\Enums\Inventory\SerialFulfillmentStatus;
 use App\Models\HesabfaSyncLog;
 use App\Models\OrderNote;
 use App\Models\OrderShipping;
+use App\Models\ProductSerial;
+use App\Models\ProductStockReservation;
 use App\Models\User;
 use App\Models\UserAddress;
 use App\Support\HasTenantScope;
@@ -72,6 +75,8 @@ class Order extends Model
         'shipping_address_snapshot',
         'notes',
         'cancel_reason',
+        'serial_fulfillment_status',
+        'serial_inventory_enabled',
         'tapsi_order_id',
         'tapsi_order_number',
         'tapsi_shipment_bundle',
@@ -85,6 +90,8 @@ class Order extends Model
         return [
             'total_amount' => 'decimal:0',
             'hesabfa_synced_at' => 'datetime',
+            'serial_fulfillment_status' => SerialFulfillmentStatus::class,
+            'serial_inventory_enabled' => 'boolean',
         ];
     }
 
@@ -121,6 +128,26 @@ class Order extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Whether the order still owns live serial bars or manual capacity
+     * holds. Deleting such an order is blocked to preserve history.
+     */
+    public function hasActiveSerialHoldings(): bool
+    {
+        $itemIds = $this->items()->pluck('id');
+
+        if ($itemIds->isEmpty()) {
+            return false;
+        }
+
+        return ProductSerial::whereIn('current_order_item_id', $itemIds)
+            ->whereIn('status', ['reserved', 'allocated'])
+            ->exists()
+            || ProductStockReservation::whereIn('order_item_id', $itemIds)
+                ->where('status', 'reserved')
+                ->exists();
     }
 
     public function addNote(string $note, string $type = 'general', bool $isCustomerNote = false): OrderNote

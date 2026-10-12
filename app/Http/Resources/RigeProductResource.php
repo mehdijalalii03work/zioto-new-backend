@@ -19,7 +19,7 @@ class RigeProductResource extends JsonResource
             'weight' => $this->weight ? (float) $this->weight : null,
             'wage' => 0,
             'discount' => 0,
-            'in_stock' => ($this->stock_quantity ?? 0) > 0,
+            'in_stock' => ($this->sellable_stock ?? 0) > 0,
             'used' => false,
             'production_code' => $this->sku,
             'variants' => [

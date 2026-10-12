@@ -44,9 +44,17 @@ class PaymentControllerCallbackTest extends TestCase
         return [$order, $payment];
     }
 
-    public function test_parsian_non_zero_status_marks_failed_without_calling_verify(): void
+    #[RunInSeparateProcess]
+    public function test_parsian_unsigned_failure_status_still_requires_server_verification(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('parsian');
+
+        $receipt = new Receipt('parsian', 'BANK-CONFIRMED');
+        $mock = Mockery::mock('overload:'.ShetabitPayment::class);
+        $mock->shouldReceive('via')->with('parsian')->andReturnSelf();
+        $mock->shouldReceive('amount')->andReturnSelf();
+        $mock->shouldReceive('transactionId')->andReturnSelf();
+        $mock->shouldReceive('verify')->andReturn($receipt);
 
         $response = $this->post("/api/payment/callback/{$order->id}/parsian", [
             'Token' => $payment->transaction_id,
@@ -55,17 +63,18 @@ class PaymentControllerCallbackTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        $this->assertStringContainsString('/payment-failed', $response->headers->get('Location'));
+        $this->assertStringContainsString('/confirm?order_id='.$order->id, $response->headers->get('Location'));
 
         $payment->refresh();
         $order->refresh();
 
-        $this->assertSame('failed', $payment->status);
-        $this->assertSame('failed', $order->payment_status);
+        $this->assertSame('paid', $payment->status);
+        $this->assertSame('BANK-CONFIRMED', $payment->gateway_response['reference_id']);
+        $this->assertSame('paid', $order->payment_status);
     }
 
     #[RunInSeparateProcess]
-    public function test_generic_verify_exception_marks_failed_not_pending(): void
+    public function test_generic_verify_exception_retains_retryable_processing_outcome(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
 
@@ -82,14 +91,14 @@ class PaymentControllerCallbackTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        $this->assertStringContainsString('/payment-failed', $response->headers->get('Location'));
+        $this->assertStringContainsString('/confirm?order_id='.$order->id, $response->headers->get('Location'));
 
         $payment->refresh();
         $order->refresh();
 
-        $this->assertSame('failed', $payment->status);
-        $this->assertNotSame('pending', $payment->status);
-        $this->assertSame('failed', $order->payment_status);
+        $this->assertSame('processing', $payment->status);
+        $this->assertTrue($payment->gateway_response['verification_retryable']);
+        $this->assertSame('pending', $order->payment_status);
     }
 
     #[RunInSeparateProcess]

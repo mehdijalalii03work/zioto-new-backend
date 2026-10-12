@@ -2,24 +2,31 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\DuplicatePaymentException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CalculateFeeRequest;
 use App\Http\Requests\InitPaymentRequest;
 use App\Http\Resources\PaymentResource;
+use App\Jobs\ReconcilePaidSerialOrder;
 use App\Models\Cart;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
+use App\Payment\Exceptions\AmbiguousGatewayOutcomeException;
+use App\Payment\Exceptions\TerminalPaymentRejectedException;
 use App\Services\InstallmentService;
+use App\Services\Inventory\AvailabilityCheck;
+use App\Services\Inventory\SerialInventoryService;
+use App\Services\Inventory\SerialStockShortageException;
+use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
 use Modules\Product\Models\Product;
-use Shetabit\Multipay\Exceptions\InvalidPaymentException;
-use Shetabit\Multipay\Exceptions\PurchaseFailedException;
 use Shetabit\Multipay\Invoice;
 use Shetabit\Multipay\Payment as ShetabitPayment;
 
@@ -70,6 +77,10 @@ class PaymentController extends Controller
 
         $order = Order::with(['user', 'address'])->findOrFail($validated['order_id']);
 
+        if ($order->platform !== Platform::TAPSI && (! config('serial_inventory.enabled', false) || ! $order->serial_inventory_enabled)) {
+            return response()->json(['message' => 'پرداخت موقتاً در دسترس نیست.', 'error_code' => 'INVENTORY_NOT_READY'], 503);
+        }
+
         if ($order->payment_status === 'paid') {
             return response()->json(['message' => 'سفارش قبلاً پرداخت شده', 'error_code' => 'ORDER_ALREADY_PAID'], 422);
         }
@@ -79,7 +90,7 @@ class PaymentController extends Controller
         }
 
         $existingPending = Payment::where('order_id', $order->id)
-            ->whereIn('status', ['pending', 'processing'])
+            ->whereIn('status', ['pending', 'processing', 'initiating'])
             ->first();
 
         if ($existingPending) {
@@ -137,6 +148,68 @@ class PaymentController extends Controller
             'redirectToFrontend' => $redirectToFrontend,
         ]);
 
+        // Atomic claim + serial/capacity reservation before touching the
+        // gateway. A second concurrent init blocks on the order lock and then
+        // observes the initiating payment below.
+        try {
+            $claimed = DB::transaction(function () use ($order, $validated) {
+                $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->firstOrFail();
+
+                if ($lockedOrder->payment_status === 'paid' || in_array($lockedOrder->status, ['cancelled', 'expired'], true)) {
+                    throw new \DomainException('ORDER_NOT_ACTIVE');
+                }
+
+                $order->setRawAttributes($lockedOrder->getAttributes(), true);
+
+                $race = Payment::where('order_id', $order->id)
+                    ->whereIn('status', ['pending', 'processing', 'initiating'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($race) {
+                    throw new DuplicatePaymentException;
+                }
+
+                $payment = Payment::create([
+                    'user_id' => $order->user_id,
+                    'order_id' => $order->id,
+                    'platform' => $order->platform,
+                    'transaction_id' => 'init-'.Str::ulid(),
+                    'amount' => $order->total_amount,
+                    'payment_method' => $order->payment_method,
+                    'gateway' => $validated['gateway'],
+                    'status' => 'initiating',
+                    'description' => 'شروع پرداخت',
+                ]);
+
+                app(SerialInventoryService::class)->reserveForPayment($order->id, $order->platform, $payment->id);
+
+                return $payment;
+            });
+        } catch (\DomainException) {
+            return response()->json(['message' => 'سفارش برای پرداخت فعال نیست.', 'error_code' => 'ORDER_NOT_ACTIVE'], 422);
+        } catch (DuplicatePaymentException) {
+            return response()->json(['message' => 'درخواست پرداخت قبلاً ثبت شده است', 'error_code' => 'PAYMENT_ALREADY_INITIATED'], 422);
+        } catch (SerialStockShortageException $e) {
+            $shortProduct = $e->getProductId() !== null ? Product::find($e->getProductId()) : null;
+            $label = $shortProduct
+                ? "{$shortProduct->name}: موجودی {$e->getAvailable()}، درخواست {$e->getNeeded()}"
+                : 'موجودی کافی نیست';
+
+            return response()->json([
+                'message' => 'موجودی برخی محصولات کافی نیست: '.$label,
+                'error_code' => 'INSUFFICIENT_STOCK',
+                'products' => [[
+                    'product_id' => $e->getProductId(),
+                    'product_name' => $shortProduct?->name ?? '',
+                    'requested' => $e->getNeeded(),
+                    'available' => $e->getAvailable(),
+                ]],
+            ], 422);
+        }
+
+        $invoice->amount($claimed->amount);
+
         try {
             $paymentConfig = config('payment');
             $payment = new ShetabitPayment($paymentConfig);
@@ -145,20 +218,17 @@ class PaymentController extends Controller
             $capturedTransactionId = null;
 
             $form = $payment->callbackUrl($callbackUrl)
-                ->purchase($invoice, function ($driver, $transactionId) use (&$capturedTransactionId, $order, $validated) {
+                ->purchase($invoice, function ($driver, $transactionId) use (&$capturedTransactionId, $claimed) {
                     $capturedTransactionId = $transactionId;
 
-                    Payment::create([
-                        'user_id' => $order->user_id,
-                        'order_id' => $order->id,
-                        'platform' => $order->platform,
-                        'transaction_id' => $transactionId,
-                        'amount' => $order->total_amount,
-                        'payment_method' => $order->payment_method,
-                        'gateway' => $validated['gateway'],
-                        'status' => 'pending',
-                        'description' => 'در انتظار پرداخت',
-                    ]);
+                    DB::transaction(function () use ($claimed, $transactionId): void {
+                        Order::withoutTenantScope()->whereKey($claimed->order_id)->lockForUpdate()->firstOrFail();
+                        $attempt = Payment::withoutTenantScope()->whereKey($claimed->id)->lockForUpdate()->firstOrFail();
+
+                        if ($attempt->status === 'initiating') {
+                            $attempt->update(['transaction_id' => $transactionId, 'status' => 'pending', 'description' => 'در انتظار پرداخت']);
+                        }
+                    });
                 })
                 ->pay();
 
@@ -173,17 +243,13 @@ class PaymentController extends Controller
                 'transaction_id' => $capturedTransactionId,
             ]);
 
-        } catch (PurchaseFailedException $e) {
-            Log::channel('payment')->error('Payment init PurchaseFailedException', [
-                'order_id' => $order->id,
-                'gateway' => $validated['gateway'],
-                'total_amount' => $order->total_amount,
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+        } catch (\Throwable $e) {
+            if ($e instanceof TerminalPaymentRejectedException && $e->gateway === $claimed->gateway) {
+                $this->failPaymentAttempt($order, $claimed, $e);
 
-            return response()->json(['message' => 'خطا در ایجاد درخواست پرداخت: '.$e->getMessage(), 'error_code' => 'PAYMENT_FAILED'], 500);
-        } catch (\Exception $e) {
+                return response()->json(['message' => 'درگاه درخواست پرداخت را نپذیرفت.', 'error_code' => 'PAYMENT_FAILED'], 500);
+            }
+
             Log::channel('payment')->error('Payment init Exception', [
                 'order_id' => $order->id,
                 'gateway' => $validated['gateway'],
@@ -192,7 +258,28 @@ class PaymentController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json(['message' => 'خطای غیرمنتظره: '.$e->getMessage(), 'error_code' => 'PAYMENT_ERROR'], 500);
+            // Ambiguous outcome (timeout/crash between purchase and token
+            // save): the initiating claim and its holdings intentionally stay
+            // for review/expiry, and retries stay blocked on the claim.
+            DB::transaction(function () use ($order, $claimed, $e): void {
+                $locked = Order::withoutTenantScope()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+                $attempt = Payment::withoutTenantScope()->whereKey($claimed->id)->lockForUpdate()->firstOrFail();
+
+                if ($attempt->status === 'initiating') {
+                    $attempt->update(['gateway_response' => $this->gatewayFailureDetails($e)]);
+                }
+
+                if ($attempt->status === 'pending') {
+                    $attempt->update(['status' => 'processing', 'gateway_response' => array_merge($this->gatewayFailureDetails($e), ['verification_retryable' => true])]);
+                }
+
+                if ($locked->serial_inventory_enabled && $locked->payment_status !== 'paid') {
+                    $locked->update(['serial_fulfillment_status' => 'needs_review']);
+                    $locked->addNote('نتیجه ایجاد پرداخت نامشخص است؛ رزرو تا تعیین تکلیف باقی می‌ماند.', 'payment');
+                }
+            });
+
+            return response()->json(['message' => 'نتیجه ایجاد پرداخت نامشخص است.', 'error_code' => 'PAYMENT_ERROR'], 500);
         }
     }
 
@@ -254,6 +341,7 @@ class PaymentController extends Controller
                 ->where('transaction_id', $callbackTransactionId)
                 ->where('order_id', $order->id)
                 ->where('platform', $order->platform)
+                ->where('gateway', $gateway)
                 ->first();
 
             if ($resolvedPayment && ! in_array($resolvedPayment->status, ['pending', 'processing'])) {
@@ -273,10 +361,15 @@ class PaymentController extends Controller
 
         try {
             $payment = DB::transaction(function () use ($order, $gateway, $resolvedPayment) {
+                // Shared lock order with the inventory service: order first.
+                Order::withoutTenantScope()->where('id', $order->id)->lockForUpdate()->first();
 
                 if ($resolvedPayment) {
                     $payment = Payment::withoutTenantScope()
                         ->where('id', $resolvedPayment->id)
+                        ->where('gateway', $gateway)
+                        ->where('order_id', $order->id)
+                        ->where('platform', $order->platform)
                         ->lockForUpdate()
                         ->first();
                 } else {
@@ -289,11 +382,15 @@ class PaymentController extends Controller
                         ->first();
                 }
 
-                if ($payment && $payment->status === 'pending') {
-                    $payment->update([
-                        'status' => 'processing',
-                    ]);
+                if (! $payment || ! in_array($payment->status, ['pending', 'processing'], true)) {
+                    return null;
                 }
+
+                if ($payment->status === 'processing' && ! ($payment->gateway_response['verification_retryable'] ?? false)) {
+                    return null;
+                }
+
+                $payment->update(['status' => 'processing', 'gateway_response' => ['verification_retryable' => false]]);
 
                 return $payment;
             });
@@ -340,18 +437,9 @@ class PaymentController extends Controller
         $receipt = null;
 
         try {
-            if ($gateway === 'parsian') {
-                $parsianStatus = $request->input('status');
-                if ($parsianStatus !== null && $parsianStatus !== '0') {
-                    throw new InvalidPaymentException(
-                        'پرداخت تکمیل نشد (کد وضعیت درگاه پارسیان: '.$parsianStatus.')'
-                    );
-                }
-            }
-
             $receipt = (new ShetabitPayment(config('payment')))
                 ->via($gateway)
-                ->amount($order->total_amount)
+                ->amount($payment->amount)
                 ->transactionId($payment->transaction_id)
                 ->verify();
 
@@ -362,90 +450,29 @@ class PaymentController extends Controller
                 'details' => $receipt->getDetails(),
             ]);
 
-        } catch (InvalidPaymentException $e) {
-
-            $payment->refresh();
-
-            if ($payment->status === 'paid') {
-                Log::channel('payment')->warning('Race condition avoided: InvalidPaymentException on already-paid payment', [
-                    'payment_id' => $payment->id,
-                    'order_id' => $order->id,
-                    'gateway' => $gateway,
-                    'message' => $e->getMessage(),
-                ]);
-
-                return redirect($frontendUrl.'/confirm?order_id='.$order->id);
-            }
-
-            Log::channel('payment')->warning('Payment verify failed', [
-                'payment_id' => $payment->id,
-                'order_id' => $order->id,
-                'gateway' => $gateway,
-                'transaction_id' => $payment->transaction_id,
-                'message' => $e->getMessage(),
-            ]);
-
-            $payment->update([
-                'status' => 'failed',
-                'gateway_response' => [
-                    'error' => $e->getMessage(),
-                ],
-            ]);
-
-            $order->update([
-                'payment_status' => 'failed',
-            ]);
-
-            $order->addNote(
-                "پرداخت ناموفق بود. خطا: {$e->getMessage()} | درگاه: {$gateway}",
-                'payment'
-            );
-
-            return redirect($frontendUrl.'/payment-failed');
-
         } catch (\Throwable $e) {
+            if ($e instanceof TerminalPaymentRejectedException && $e->gateway === $payment->gateway) {
+                $this->failPaymentAttempt($order, $payment, $e);
+                $order->refresh();
 
-            $payment->refresh();
-
-            if ($payment->status === 'paid') {
-                Log::channel('payment')->warning('Race condition avoided: generic exception on already-paid payment', [
-                    'payment_id' => $payment->id,
-                    'order_id' => $order->id,
-                    'gateway' => $gateway,
-                    'message' => $e->getMessage(),
-                ]);
-
-                return redirect($frontendUrl.'/confirm?order_id='.$order->id);
+                return redirect($order->payment_status === 'paid' ? $frontendUrl.'/confirm?order_id='.$order->id : $frontendUrl.'/payment-failed');
             }
 
-            Log::channel('payment')->error('Payment verify exception', [
-                'payment_id' => $payment->id,
-                'order_id' => $order->id,
-                'gateway' => $gateway,
-                'transaction_id' => $payment->transaction_id,
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            Log::channel('payment')->error('Payment verification outcome ambiguous', ['payment_id' => $payment->id, 'order_id' => $order->id, 'message' => $e->getMessage()]);
+            DB::transaction(function () use ($order, $payment, $e): void {
+                $locked = Order::withoutTenantScope()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+                $attempt = Payment::withoutTenantScope()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
 
-            $payment->update([
-                'status' => 'failed',
-                'gateway_response' => [
-                    'error' => $e->getMessage(),
-                ],
-            ]);
+                if ($attempt->status !== 'paid') {
+                    $attempt->update(['status' => 'processing', 'gateway_response' => array_merge($this->gatewayFailureDetails($e), ['verification_retryable' => true])]);
 
-            $order->update([
-                'payment_status' => 'failed',
-            ]);
+                    if ($locked->payment_status !== 'paid' && $locked->serial_inventory_enabled) {
+                        $locked->update(['serial_fulfillment_status' => 'needs_review']);
+                    }
+                }
+            });
 
-            $order->addNote(
-                "خطای غیرمنتظره هنگام تایید پرداخت. خطا: {$e->getMessage()} | درگاه: {$gateway}",
-                'payment'
-            );
-
-            return redirect($frontendUrl.'/payment-failed');
+            return redirect($frontendUrl.'/confirm?order_id='.$order->id);
         }
 
         $stockCheck = $this->validateOrderStock($order);
@@ -460,8 +487,14 @@ class PaymentController extends Controller
 
         try {
             DB::transaction(function () use ($payment, $order, $receipt, $gateway) {
+                // Re-read under lock: the order may have been cancelled while
+                // the customer was paying. A late payment records the money
+                // but never reactivates a cancelled order by itself.
+                $locked = Order::withoutTenantScope()->where('id', $order->id)->lockForUpdate()->firstOrFail();
+                $attempt = Payment::withoutTenantScope()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
+                $wasCancelled = $locked->status === 'cancelled';
 
-                $payment->update([
+                $attempt->update([
                     'status' => 'paid',
                     'gateway_response' => [
                         'reference_id' => $receipt->getReferenceId(),
@@ -470,18 +503,29 @@ class PaymentController extends Controller
                     'paid_at' => now(),
                 ]);
 
-                $order->update([
-                    'payment_status' => 'paid',
-                    'status' => 'confirmed',
-                ]);
+                if ($wasCancelled) {
+                    $locked->update([
+                        'payment_status' => 'paid',
+                    ]);
 
-                $order->addNote(
-                    "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: ".
-                    number_format($order->total_amount / 10).
-                    ' تومان',
-                    'payment',
-                    true
-                );
+                    $locked->addNote(
+                        "پرداخت دیررس برای سفارش لغوشده ثبت شد؛ فعال‌سازی خودکار انجام نشد و رسیدگی دستی لازم است. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway}",
+                        'payment'
+                    );
+                } else {
+                    $locked->update([
+                        'payment_status' => 'paid',
+                        'status' => 'confirmed',
+                    ]);
+
+                    $locked->addNote(
+                        "پرداخت موفقیت آمیز بود. کد رهگیری: {$receipt->getReferenceId()} | درگاه: {$gateway} | مبلغ: ".
+                        number_format($order->total_amount / 10).
+                        ' تومان',
+                        'payment',
+                        true
+                    );
+                }
 
                 Cart::where('user_id', $order->user_id)->delete();
             });
@@ -498,24 +542,28 @@ class PaymentController extends Controller
             ]);
 
             try {
-                $payment->refresh();
-                $order->refresh();
+                DB::transaction(function () use ($payment, $order, $receipt): void {
+                    $order = Order::withoutTenantScope()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+                    $payment = Payment::withoutTenantScope()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
 
-                $payment->forceFill([
-                    'status' => 'paid',
-                    'paid_at' => now(),
-                    'gateway_response' => [
-                        'reference_id' => $receipt->getReferenceId(),
-                        'details' => $receipt->getDetails(),
-                    ],
-                ])->saveQuietly();
+                    $wasCancelled = $order->status === 'cancelled';
 
-                $order->forceFill([
-                    'payment_status' => 'paid',
-                    'status' => 'confirmed',
-                ])->saveQuietly();
+                    $payment->forceFill([
+                        'status' => 'paid',
+                        'paid_at' => now(),
+                        'gateway_response' => [
+                            'reference_id' => $receipt->getReferenceId(),
+                            'details' => $receipt->getDetails(),
+                        ],
+                    ])->saveQuietly();
 
-                Cart::where('user_id', $order->user_id)->delete();
+                    $order->forceFill(array_merge(
+                        ['payment_status' => 'paid'],
+                        $wasCancelled ? [] : ['status' => 'confirmed'],
+                    ))->saveQuietly();
+
+                    Cart::where('user_id', $order->user_id)->delete();
+                });
 
             } catch (\Throwable $inner) {
                 Log::channel('payment')->critical('Failed to persist paid status after verify success - MANUAL FIX REQUIRED', [
@@ -528,7 +576,69 @@ class PaymentController extends Controller
             }
         }
 
+        $this->finalizeSerialFulfillment($order->fresh() ?? $order, $gateway);
+
         return redirect($frontendUrl.'/confirm?order_id='.$order->id);
+    }
+
+    /** @return array<string, mixed> */
+    private function gatewayFailureDetails(\Throwable $error): array
+    {
+        if ($error instanceof AmbiguousGatewayOutcomeException) {
+            return ['http_status' => $error->httpStatus, 'provider_code' => $error->providerCode, 'provider_response' => $error->providerResponse];
+        }
+
+        if ($error instanceof TerminalPaymentRejectedException) {
+            return ['provider_code' => $error->providerCode, 'provider_evidence' => $error->providerEvidence, 'terminal_rejection' => true];
+        }
+
+        return ['error' => $error->getMessage(), 'exception_code' => $error->getCode()];
+    }
+
+    private function failPaymentAttempt(Order $order, Payment $payment, \Throwable $error): void
+    {
+        DB::transaction(function () use ($order, $payment, $error): void {
+            $locked = Order::withoutTenantScope()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $attempt = Payment::withoutTenantScope()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
+
+            if ($attempt->status === 'paid') {
+                return;
+            }
+
+            $attempt->update(['status' => 'failed', 'gateway_response' => $this->gatewayFailureDetails($error)]);
+
+            if ($locked->payment_status !== 'paid') {
+                $locked->update(['payment_status' => 'failed']);
+                app(SerialInventoryService::class)->releaseUnpaidHoldings($locked->id, $locked->platform, $attempt->id, null, 'پرداخت ناموفق');
+            }
+        });
+    }
+
+    private function finalizeSerialFulfillment(Order $order, string $gateway): void
+    {
+        if ($order->platform === Platform::TAPSI) {
+            return;
+        }
+
+        if ($order->status === 'cancelled') {
+            $order->update(['serial_fulfillment_status' => 'needs_review']);
+
+            return;
+        }
+
+        try {
+            app(SerialInventoryService::class)->finalizePaidOrder($order->id, $order->platform);
+        } catch (\Throwable $e) {
+            Log::channel('payment')->critical('Serial finalize failed after paid truth - needs manual review', [
+                'order_id' => $order->id,
+                'gateway' => $gateway,
+                'message' => $e->getMessage(),
+            ]);
+
+            $order->update(['serial_fulfillment_status' => 'needs_review']);
+        }
+
+        ReconcilePaidSerialOrder::dispatch($order->id, $order->platform)->afterCommit();
     }
 
     public function status(Request $request, int $orderId): JsonResponse
@@ -618,47 +728,19 @@ class PaymentController extends Controller
 
     private function validateOrderStock(Order $order): array
     {
-        $reservedEnabled = config('hesabfa.enable_reserved_stock', false);
-        if (! $reservedEnabled) {
-            return ['valid' => true];
-        }
-
         $order->load('items.product');
-        $insufficient = [];
-        $items = [];
+
+        $lines = [];
 
         foreach ($order->items as $item) {
-            $product = $item->product;
-            if (! $product) {
-                continue;
-            }
-
-            $physical = (int) ($product->hesabfa_physical_stock ?? $product->stock_quantity ?? 0);
-            $reserved = (int) ($product->hesabfa_reserved_stock ?? 0);
-            $manualReserved = (int) ($product->hesabfa_manual_reserved ?? 0);
-            $sellable = max(0, $physical - $reserved - $manualReserved);
-
-            if ($item->quantity > $sellable) {
-                $insufficient[] = "{$product->name}: موجودی {$sellable}، درخواست {$item->quantity}";
-                $items[] = [
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'requested' => (int) $item->quantity,
-                    'available' => $sellable,
-                ];
-            }
-        }
-
-        if (! empty($insufficient)) {
-            return [
-                'valid' => false,
-                'message' => 'موجودی برخی محصولات کافی نیست: '.implode(' | ', $insufficient),
-                'product' => implode(', ', $insufficient),
-                'items' => $items,
+            $lines[] = [
+                'product' => $item->product,
+                'product_id' => $item->product_id,
+                'quantity' => (int) $item->quantity,
             ];
         }
 
-        return ['valid' => true];
+        return AvailabilityCheck::check($lines, $order->platform, $order);
     }
 
     private function frontendUrlFor(string $gateway): string

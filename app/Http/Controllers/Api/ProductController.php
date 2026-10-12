@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
 use App\Models\User;
+use App\Services\Inventory\SerialAvailabilityService;
+use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Modules\Product\Models\Product;
@@ -38,6 +40,15 @@ class ProductController extends Controller
                 ->toArray();
         });
 
+        // Catalog rides the cache; stock never does — overlay live numbers.
+        $counts = app(SerialAvailabilityService::class)->countsForProducts(
+            array_column($products, 'id')
+        );
+
+        $products = array_map(fn (array $p) => array_merge($p, [
+            'stock' => ($counts[$p['id']] ?? 0) > 0,
+        ]), $products);
+
         $token = request()->bearerToken();
         $wishlistIds = [];
 
@@ -45,7 +56,7 @@ class ProductController extends Controller
             $tokenHash = hash('sha256', $token);
             $user = User::withoutTenantScope()
                 ->where('api_token_hash', $tokenHash)
-                ->where('platform', \App\Support\Platform::fromRequest())
+                ->where('platform', Platform::fromRequest())
                 ->first();
             if ($user) {
                 $wishlistIds = $user->wishlists()->pluck('products.id')->toArray();
@@ -65,6 +76,8 @@ class ProductController extends Controller
     {
         $product = Product::published()
             ->with(['category:id,name,slug', 'brand:id,name,slug', 'images'])
+            ->withCount(['serials as available_serial_count' => fn ($query) => $query->where('status', 'available')])
+            ->withSum(['manualReservations as active_manual_reserved' => fn ($query) => $query->where('status', 'reserved')], 'quantity')
             ->where(function ($q) use ($slugOrId) {
                 $q->where('slug', $slugOrId)
                     ->orWhere('id', $slugOrId);
@@ -84,7 +97,7 @@ class ProductController extends Controller
             $tokenHash = hash('sha256', $token);
             $user = User::withoutTenantScope()
                 ->where('api_token_hash', $tokenHash)
-                ->where('platform', \App\Support\Platform::fromRequest())
+                ->where('platform', Platform::fromRequest())
                 ->first();
             if ($user) {
                 $data['is_wishlist'] = $user->wishlists()

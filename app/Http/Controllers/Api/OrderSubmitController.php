@@ -11,6 +11,7 @@ use App\Models\OrderShipping;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
 use App\Services\InstallmentService;
+use App\Services\Inventory\AvailabilityCheck;
 use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -64,8 +65,12 @@ class OrderSubmitController extends Controller
         $user = $request->user();
         $validated = $request->validated();
 
+        if (Platform::fromRequest($request) !== Platform::TAPSI && ! config('serial_inventory.enabled', false)) {
+            return response()->json(['message' => 'ثبت سفارش موقتاً در دسترس نیست.', 'error_code' => 'INVENTORY_NOT_READY'], 503);
+        }
+
         $cartItems = Cart::where('user_id', $user->id)
-            ->with('product:id,name,price,is_nopay,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved')
+            ->with('product:id,name,price,is_nopay,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved,inventory_mode,track_serials,made_to_order,production_lead_time_text,serial_prefix')
             ->get();
 
         if ($cartItems->isEmpty()) {
@@ -131,6 +136,7 @@ class OrderSubmitController extends Controller
                 'payment_status' => 'pending',
                 'user_address_id' => $validated['user_address_id'] ?? null,
                 'notes' => json_encode($notesData),
+                'serial_inventory_enabled' => (bool) config('serial_inventory.enabled', false),
             ]);
 
             foreach ($orderData['items'] as $orderItem) {
@@ -164,45 +170,17 @@ class OrderSubmitController extends Controller
 
     private function validateCartStock($cartItems): array
     {
-        if (! config('hesabfa.enable_reserved_stock', false)) {
-            return ['valid' => true];
-        }
-
-        $insufficient = [];
-        $items = [];
+        $lines = [];
 
         foreach ($cartItems as $cartItem) {
-            $product = $cartItem->product;
-            if (! $product) {
-                continue;
-            }
-
-            $physical = (int) ($product->hesabfa_physical_stock ?? $product->stock_quantity ?? 0);
-            $reserved = (int) ($product->hesabfa_reserved_stock ?? 0);
-            $manualReserved = (int) ($product->hesabfa_manual_reserved ?? 0);
-            $sellable = max(0, $physical - $reserved - $manualReserved);
-
-            if ($cartItem->quantity > $sellable) {
-                $insufficient[] = "{$product->name}: موجودی {$sellable}، درخواست {$cartItem->quantity}";
-                $items[] = [
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'requested' => (int) $cartItem->quantity,
-                    'available' => $sellable,
-                ];
-            }
-        }
-
-        if (! empty($insufficient)) {
-            return [
-                'valid' => false,
-                'message' => 'موجودی برخی محصولات کافی نیست: '.implode(' | ', $insufficient),
-                'product' => implode(', ', $insufficient),
-                'items' => $items,
+            $lines[] = [
+                'product' => $cartItem->product,
+                'product_id' => $cartItem->product_id,
+                'quantity' => (int) $cartItem->quantity,
             ];
         }
 
-        return ['valid' => true];
+        return AvailabilityCheck::check($lines, Platform::fromRequest());
     }
 
     private function calculateOrderData($cartItems, array $validated, ?object $address = null): array
@@ -220,6 +198,10 @@ class OrderSubmitController extends Controller
                 'product_price' => $product->price,
                 'quantity' => $cartItem->quantity,
                 'subtotal' => $subtotal,
+                'inventory_mode' => $product->inventory_mode?->value ?? 'manual',
+                'serial_tracking_required' => (bool) ($product->track_serials ?? false),
+                'made_to_order' => (bool) $product->made_to_order,
+                'production_lead_time_text' => $product->production_lead_time_text,
             ];
         }
 

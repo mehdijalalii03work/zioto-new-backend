@@ -13,23 +13,11 @@ class SyncHesabfaStock extends Command
 {
     public function handle(StockSyncService $stockSync): int
     {
-        $this->info('شروع همگام‌سازی موجودی از حسابفا...');
-
         $result = $stockSync->syncAllStock();
 
-        if ($result['success']) {
-            $this->info("{$result['message']}");
-            if (! empty($result['errors'])) {
-                foreach ($result['errors'] as $error) {
-                    $this->error("  - {$error}");
-                }
-            }
+        // Stock intake is stopped; the command stays as an explicit marker.
+        $this->info($result['message']);
 
-            return self::SUCCESS;
-        }
-
-        $this->error($result['message']);
-
-        return self::FAILURE;
+        return self::SUCCESS;
     }
 }

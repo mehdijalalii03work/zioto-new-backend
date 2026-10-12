@@ -54,6 +54,12 @@ class RolePermissionSeeder extends Seeder
             ...$this->crud(Permission::BlogCategoryView, Permission::BlogCategoryCreate, Permission::BlogCategoryEdit, Permission::BlogCategoryDelete),
             ...$this->crud(Permission::BlogTagView, Permission::BlogTagCreate, Permission::BlogTagEdit, Permission::BlogTagDelete),
             ...$this->crud(Permission::ContactMessageView, Permission::ContactMessageEdit, Permission::ContactMessageDelete),
+            Permission::SerialView,
+            Permission::SerialImport,
+            Permission::SerialManage,
+            Permission::SerialShip,
+            Permission::SerialReturn,
+            Permission::SerialRestock,
             Permission::ManagementReportView,
             Permission::AnalyticsReportView,
         ]);
@@ -68,6 +74,7 @@ class RolePermissionSeeder extends Seeder
             Permission::ManagementReportView,
             Permission::AnalyticsReportView,
             Permission::HesabfaView,
+            Permission::SerialView,
         ]);
     }
 

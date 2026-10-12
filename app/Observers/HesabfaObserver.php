@@ -38,7 +38,12 @@ class HesabfaObserver
             return;
         }
 
-        $this->syncOrder($order);
+        // Never run network I/O inside the caller's transaction (e.g. the
+        // payment callback's paid-truth write); sync right after commit.
+        // Outside a transaction the callback runs immediately.
+        $fresh = $order->fresh() ?? $order;
+
+        DB::afterCommit(fn () => $this->syncOrder($fresh));
     }
 
     public function syncOrder(Order $order, bool $force = false): array

@@ -99,9 +99,15 @@ class ProductsTable
                     ->formatStateUsing(fn ($state): string => number_format((int) $state / 10)),
 
                 TextColumn::make('stock_quantity')
-                    ->label('موجودی')
+                    ->label('ظرفیت دستی')
                     ->numeric()
                     ->sortable(),
+
+                TextColumn::make('serial_prefix')
+                    ->label('پیشوند سریال')
+                    ->searchable()
+                    ->placeholder('—')
+                    ->toggleable(),
 
                 TextColumn::make('hesabfa_physical_stock')
                     ->label('موجودی فیزیکی')

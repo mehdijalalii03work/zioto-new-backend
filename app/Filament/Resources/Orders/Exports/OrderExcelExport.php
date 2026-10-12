@@ -15,7 +15,7 @@ class OrderExcelExport
 {
     public function export(Collection $orders): StreamedResponse
     {
-        $orders->load(['user', 'items', 'shipping.shippingMethod', 'address.city', 'address.province']);
+        $orders->load(['user', 'items.serials', 'shipping.shippingMethod', 'address.city', 'address.province']);
 
         $spreadsheet = new Spreadsheet;
         $ordersData = [];
@@ -46,7 +46,7 @@ class OrderExcelExport
         $spreadsheet = new Spreadsheet;
         $ordersData = [];
 
-        $query->with(['user', 'items', 'shipping.shippingMethod', 'address.city', 'address.province'])
+        $query->with(['user', 'items.serials', 'shipping.shippingMethod', 'address.city', 'address.province'])
             ->chunk(100, function ($orders) use (&$ordersData) {
                 foreach ($orders as $order) {
                     $ordersData[] = $this->prepareOrderData($order);
@@ -140,12 +140,24 @@ class OrderExcelExport
         $receiverName = $order->address?->receiver_name ?? $buyerName;
         $receiverMobile = $order->address?->receiver_phone ?? $buyerMobile;
 
+        $serialsText = '';
+        foreach ($order->items as $item) {
+            $codes = $item->relationLoaded('serials')
+                ? $item->serials->sortBy('unit_number')->pluck('serial_code')->all()
+                : $item->serials()->orderBy('unit_number')->pluck('serial_code')->all();
+
+            if ($codes !== []) {
+                $serialsText .= $item->product_name.': '.implode('، ', $codes)."\n";
+            }
+        }
+        $serialsText = trim($serialsText);
+
         return [
             $status, $gateway, $dateStr, $order->order_number,
             $buyerName, $buyerMobile, $nationalCode, $trackingCode,
             $itemsText, $itemCountStr, $shippingMethodName, $deliveryType,
             $paymentType, $order->total_amount, $city, $address,
-            $receiverName, $receiverMobile,
+            $receiverName, $receiverMobile, $serialsText,
         ];
     }
 
@@ -164,7 +176,7 @@ class OrderExcelExport
             'ردیف', 'وضعیت', 'درگاه پرداخت', 'تاریخ و ساعت', 'شماره فاکتور',
             'نام خریدار', 'موبایل خریدار', 'کد ملی', 'کد پیگیری', 'اقلام خریداری شده',
             'تعداد اقلام', 'روش ارسال', 'نوع تحویل', 'نوع پرداخت', 'مبلغ پرداخت شده',
-            'شهر', 'آدرس', 'نام گیرنده', 'موبایل گیرنده',
+            'شهر', 'آدرس', 'نام گیرنده', 'موبایل گیرنده', 'سریال‌ها',
         ];
 
         $headerStyle = [
@@ -196,7 +208,7 @@ class OrderExcelExport
             $index++;
         }
 
-        $widths = [10, 18, 16, 22, 24, 24, 18, 0, 22, 50, 14, 22, 0, 20, 0, 18, 70, 24, 18];
+        $widths = [10, 18, 16, 22, 24, 24, 18, 0, 22, 50, 14, 22, 0, 20, 0, 18, 70, 24, 18, 44];
         foreach ($widths as $i => $w) {
             if ($w > 0) {
                 $sheet->getColumnDimension($this->colLetter($i + 1))->setWidth($w);
