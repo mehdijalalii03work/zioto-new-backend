@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <p class="mb-4 text-sm text-gray-500">
         درصد اجرت هر محصول برای بازهٔ زمانی و نقش مشتری. مقدار <strong>۷.۷</strong> یعنی ۷.۷٪ اجرت
-        (ضریب داخلی ۰.۰۷۷). پیش‌فرض همهٔ سلول‌ها ۱۰۰٪ است.
+        (ضریب داخلی ۰.۰۷۷).
     </p>
 
     <div class="mb-4 flex flex-wrap items-center gap-3">
