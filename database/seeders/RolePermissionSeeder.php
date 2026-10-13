@@ -7,13 +7,17 @@ use App\Enums\Role;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission as PermissionModel;
 use Spatie\Permission\Models\Role as RoleModel;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolePermissionSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->forgetCachedPermissions();
         $this->seedPermissions();
+        $this->forgetCachedPermissions();
         $this->seedRoles();
+        $this->forgetCachedPermissions();
     }
 
     private function seedPermissions(): void
@@ -88,9 +92,20 @@ class RolePermissionSeeder extends Seeder
     private function seedRole(Role $role, array $permissions): void
     {
         $model = RoleModel::firstOrCreate(['name' => $role->value, 'guard_name' => 'web']);
-        $model->syncPermissions(array_map(
-            static fn (Permission $permission): string => $permission->value,
+
+        // Resolve permission models directly instead of passing names so a
+        // stale Spatie cache can never fail the lookup with
+        // PermissionDoesNotExist during deploys.
+        $permissionModels = array_map(
+            static fn (Permission $permission): PermissionModel => PermissionModel::firstOrCreate(['name' => $permission->value, 'guard_name' => 'web']),
             $permissions,
-        ));
+        );
+
+        $model->syncPermissions($permissionModels);
+    }
+
+    private function forgetCachedPermissions(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }
