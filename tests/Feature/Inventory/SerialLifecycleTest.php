@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Inventory\SerialInventoryService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Modules\Order\Database\Factories\OrderFactory;
 use Modules\Order\Models\OrderItem;
 use Modules\Product\Models\Product;
@@ -52,16 +53,25 @@ class SerialLifecycleTest extends TestCase
     {
         $product = $this->makeSerialProduct();
 
-        ProductSerial::create([
+        $serial = ProductSerial::create([
             'product_id' => $product->id,
             'serial_code' => 'tst00000001',
             'serial_prefix' => 'tst',
             'status' => 'available',
         ]);
 
-        $this->expectException(QueryException::class);
+        try {
+            $product->delete();
+            $this->fail('A product with serial history must remain protected.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('product', $exception->errors());
+            $this->assertNotEmpty($exception->errors()['product'][0]);
+        }
 
-        $product->delete();
+        $this->assertModelExists($product);
+        $this->assertModelExists($serial);
+        $this->assertSame($product->id, $serial->fresh()->product_id);
+        $this->assertSame('tst00000001', $serial->fresh()->serial_code);
     }
 
     public function test_serial_code_is_globally_unique(): void

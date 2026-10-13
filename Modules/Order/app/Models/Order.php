@@ -8,6 +8,7 @@ use App\Models\OrderNote;
 use App\Models\OrderShipping;
 use App\Models\ProductSerial;
 use App\Models\ProductStockReservation;
+use App\Models\SerialEvent;
 use App\Models\User;
 use App\Models\UserAddress;
 use App\Support\HasTenantScope;
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Modules\Order\Database\Factories\OrderFactory;
 use Modules\Payment\Models\Payment;
 
@@ -120,6 +122,11 @@ class Order extends Model
         return $this->hasMany(HesabfaSyncLog::class);
     }
 
+    public function serialEvents(): HasMany
+    {
+        return $this->hasMany(SerialEvent::class)->with(['serial', 'actor'])->orderBy('id');
+    }
+
     public function orderNotes(): HasMany
     {
         return $this->hasMany(OrderNote::class)->latest();
@@ -136,6 +143,9 @@ class Order extends Model
      */
     public function hasActiveSerialHoldings(): bool
     {
+        if ($this->items()->where('made_to_order', true)->whereNull('production_completed_at')->where('serial_fulfillment_status', 'awaiting_production')->exists()) {
+            return true;
+        }
         $itemIds = $this->items()->pluck('id');
 
         if ($itemIds->isEmpty()) {
@@ -148,6 +158,24 @@ class Order extends Model
             || ProductStockReservation::whereIn('order_item_id', $itemIds)
                 ->where('status', 'reserved')
                 ->exists();
+    }
+
+    public function delete(): ?bool
+    {
+        return $this->getConnection()->transaction(function (): ?bool {
+            $current = $this->newQueryWithoutScopes()->lockForUpdate()->find($this->id);
+            if ($current) {
+                $items = $current->items()->orderBy('id')->lockForUpdate()->get(['id', 'made_to_order', 'production_completed_at', 'serial_fulfillment_status']);
+                $unfinishedProduction = $items->contains(fn (OrderItem $item): bool => $item->made_to_order && $item->production_completed_at === null && $item->serial_fulfillment_status === SerialFulfillmentStatus::AwaitingProduction);
+                $serial = ProductSerial::on($current->getConnectionName())->whereIn('current_order_item_id', $items->modelKeys())->whereIn('status', ['reserved', 'allocated'])->lockForUpdate()->first(['id']);
+                $manual = ProductStockReservation::on($current->getConnectionName())->whereIn('order_item_id', $items->modelKeys())->where('status', 'reserved')->lockForUpdate()->first(['id']);
+                if ($unfinishedProduction || $serial || $manual) {
+                    throw ValidationException::withMessages(['order' => 'سفارش دارای تعهد موجودی یا تولید قابل حذف نیست.']);
+                }
+            }
+
+            return parent::delete();
+        }, 3);
     }
 
     public function addNote(string $note, string $type = 'general', bool $isCustomerNote = false): OrderNote

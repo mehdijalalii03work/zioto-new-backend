@@ -32,7 +32,7 @@ final class SerialAvailabilityService
             return $result;
         }
 
-        $modes = Product::whereIn('id', $ids)->pluck('inventory_mode', 'id');
+        $modes = Product::query()->useWritePdo()->whereIn('id', $ids)->pluck('inventory_mode', 'id');
 
         $serialIds = [];
         $manualIds = [];
@@ -48,7 +48,7 @@ final class SerialAvailabilityService
         }
 
         if ($serialIds !== []) {
-            $free = ProductSerial::whereIn('product_id', $serialIds)
+            $free = ProductSerial::query()->useWritePdo()->whereIn('product_id', $serialIds)
                 ->where('status', SerialStatus::Available->value)
                 ->selectRaw('product_id, COUNT(*) as aggregate')
                 ->groupBy('product_id')
@@ -60,9 +60,9 @@ final class SerialAvailabilityService
         }
 
         if ($manualIds !== []) {
-            $stocks = Product::whereIn('id', $manualIds)->pluck('stock_quantity', 'id');
+            $stocks = Product::query()->useWritePdo()->whereIn('id', $manualIds)->pluck('stock_quantity', 'id');
 
-            $held = ProductStockReservation::whereIn('product_id', $manualIds)
+            $held = ProductStockReservation::query()->useWritePdo()->whereIn('product_id', $manualIds)
                 ->where('status', StockReservationStatus::Reserved->value)
                 ->selectRaw('product_id, COALESCE(SUM(quantity), 0) as aggregate')
                 ->groupBy('product_id')

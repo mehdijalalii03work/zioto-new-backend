@@ -4,6 +4,8 @@ namespace App\Filament\Resources\Orders\Pages;
 
 use App\Enums\Permission;
 use App\Filament\Resources\Orders\OrderResource;
+use App\Models\ProductSerial;
+use App\Models\SerialEvent;
 use App\Observers\HesabfaObserver;
 use App\Services\Inventory\SerialInventoryService;
 use App\Support\Platform;
@@ -18,9 +20,12 @@ use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
 use LogicException;
 use Modules\Order\Models\Order;
+use Modules\Product\Models\Product;
 
 class ViewOrder extends ViewRecord
 {
@@ -268,6 +273,20 @@ class ViewOrder extends ViewRecord
                                             ->columnSpanFull(),
                                     ]),
 
+                                Fieldset::make('تاریخچه سریال')
+                                    ->schema([
+                                        RepeatableEntry::make('serialEvents')
+                                            ->label('رویدادها')
+                                            ->schema([
+                                                TextEntry::make('serial.serial_code')->label('سریال'),
+                                                TextEntry::make('event_type')->label('رویداد')->formatStateUsing(fn ($state): string => $state?->value ?? '—'),
+                                                TextEntry::make('to_status')->label('وضعیت')->formatStateUsing(fn ($state): string => $state?->label() ?? '—'),
+                                                TextEntry::make('created_at')->label('زمان')->dateTime(),
+                                                TextEntry::make('actor.name')->label('کاربر')->placeholder('—'),
+                                                TextEntry::make('reason')->label('دلیل')->placeholder('—'),
+                                            ])->columns(3),
+                                    ]),
+
                                 // ---------- تأمین سریال ----------
                                 Fieldset::make('تأمین سریال')
                                     ->schema([
@@ -396,7 +415,13 @@ class ViewOrder extends ViewRecord
                         ->required(),
                 ])
                 ->action(function ($record, array $data) {
-                    $record->update(['status' => $data['status']]);
+                    if ($data['status'] === 'cancelled') {
+                        if (! app(SerialInventoryService::class)->cancelUnpaidOrder($record->id, $record->platform, 'لغو از پنل')) {
+                            throw ValidationException::withMessages([$this->getMountedActionSchema()->getStatePath().'.status' => 'سفارش پرداخت‌شده یا دارای پرداخت باز قابل لغو نیست.']);
+                        }
+                    } else {
+                        $record->update(['status' => $data['status']]);
+                    }
 
                     Notification::make()
                         ->title('وضعیت سفارش با موفقیت تغییر یافت')
@@ -440,11 +465,12 @@ class ViewOrder extends ViewRecord
                 ->label('تلاش مجدد تخصیص')
                 ->icon('heroicon-o-arrow-path')
                 ->color('info')
-                ->authorize(Permission::SerialManage->value)
+                ->authorize(fn (): bool => $this->canMutateInventory(Permission::SerialManage))
                 ->visible(fn (?Order $record): bool => $record !== null
                     && $record->serial_inventory_enabled
                     && ! in_array($record->serial_fulfillment_status?->value, ['shipped', 'not_required', 'legacy'], true))
                 ->action(function (?Order $record) {
+                    abort_unless($this->canMutateInventory(Permission::SerialManage), 403);
                     app(SerialInventoryService::class)->finalizePaidOrder($record->id, $record->platform);
 
                     Notification::make()
@@ -457,7 +483,7 @@ class ViewOrder extends ViewRecord
                 ->label('ثبت خروج فیزیکی')
                 ->icon('heroicon-o-truck')
                 ->color('success')
-                ->authorize(Permission::SerialShip->value)
+                ->authorize(fn (): bool => $this->canMutateInventory(Permission::SerialShip))
                 ->visible(fn (?Order $record): bool => $record !== null
                     && $record->serial_inventory_enabled
                     && ! in_array($record->serial_fulfillment_status?->value, ['shipped', 'not_required', 'legacy'], true))
@@ -465,6 +491,7 @@ class ViewOrder extends ViewRecord
                 ->modalHeading('ثبت خروج فیزیکی')
                 ->modalDescription('همه واحدهای نیازمند سریال باید تخصیص‌یافته باشند؛ ارسال ناقص ممکن نیست.')
                 ->action(function (?Order $record) {
+                    abort_unless($this->canMutateInventory(Permission::SerialShip), 403);
                     try {
                         app(SerialInventoryService::class)->markShipped($record->id, $record->platform, auth()->id());
                     } catch (LogicException $e) {
@@ -482,11 +509,39 @@ class ViewOrder extends ViewRecord
                         ->send();
                 }),
 
+            Action::make('completeProduction')
+                ->label('تکمیل تولید')
+                ->authorize(fn (): bool => $this->canMutateInventory(Permission::SerialManage))
+                ->visible(fn (?Order $record): bool => $record?->serial_fulfillment_status?->value === 'awaiting_production')
+                ->schema([Textarea::make('reason')->label('دلیل')->required()->maxLength(500)])
+                ->action(function (Order $record, array $data): void {
+                    abort_unless($this->canMutateInventory(Permission::SerialManage), 403);
+                    app(SerialInventoryService::class)->completeProduction($record->id, $record->platform, auth()->id(), $data['reason']);
+                }),
+
+            Action::make('receiveReturn')
+                ->label('دریافت مرجوعی')
+                ->authorize(fn (): bool => $this->canMutateInventory(Permission::SerialReturn))
+                ->schema([
+                    Select::make('serial_id')->label('سریال')->options(fn (Order $record): array => $this->ownedSerialOptions($record, 'shipped'))->required(),
+                    Textarea::make('reason')->label('دلیل')->required()->maxLength(500),
+                ])
+                ->action(fn (Order $record, array $data) => $this->mutateOwnedSerial($record, $data, Permission::SerialReturn)),
+
+            Action::make('qcRestock')
+                ->label('بازگشت به موجودی پس از QC')
+                ->authorize(fn (): bool => $this->canMutateInventory(Permission::SerialRestock))
+                ->schema([
+                    Select::make('serial_id')->label('سریال')->options(fn (Order $record): array => $this->ownedSerialOptions($record, 'returned'))->required(),
+                    Textarea::make('reason')->label('دلیل')->required()->maxLength(500),
+                ])
+                ->action(fn (Order $record, array $data) => $this->mutateOwnedSerial($record, $data, Permission::SerialRestock)),
+
             Action::make('releaseHoldings')
                 ->label('آزادسازی تخصیص')
                 ->icon('heroicon-o-arrow-uturn-left')
                 ->color('danger')
-                ->authorize(Permission::SerialManage->value)
+                ->authorize(fn (): bool => $this->canMutateInventory(Permission::SerialManage))
                 ->visible(fn (?Order $record): bool => $record !== null
                     && $record->serial_inventory_enabled
                     && in_array($record->serial_fulfillment_status?->value, ['reserved', 'allocated', 'needs_review'], true))
@@ -497,6 +552,7 @@ class ViewOrder extends ViewRecord
                         ->maxLength(500),
                 ])
                 ->action(function (?Order $record, array $data) {
+                    abort_unless($this->canMutateInventory(Permission::SerialManage), 403);
                     app(SerialInventoryService::class)->releaseBeforeShipment($record->id, $record->platform, auth()->id(), $data['reason']);
 
                     Notification::make()
@@ -505,5 +561,37 @@ class ViewOrder extends ViewRecord
                         ->send();
                 }),
         ];
+    }
+
+    private function canMutateInventory(Permission $permission): bool
+    {
+        return (auth()->user()?->checkPermissionTo(Permission::OrderEdit->value) ?? false)
+            && (auth()->user()?->checkPermissionTo($permission->value) ?? false);
+    }
+
+    private function ownedSerialOptions(Order $record, string $status): array
+    {
+        return ProductSerial::whereIn('current_order_item_id', $record->items()->pluck('id'))
+            ->where('status', $status)->pluck('serial_code', 'id')->all();
+    }
+
+    private function mutateOwnedSerial(Order $record, array $data, Permission $permission): void
+    {
+        abort_unless($this->canMutateInventory($permission), 403);
+        DB::transaction(function () use ($record, $data, $permission): void {
+            Order::withoutTenantScope()->lockForUpdate()->findOrFail($record->id);
+            $items = $record->items()->orderBy('id')->lockForUpdate()->get();
+            Product::whereIn('id', $items->pluck('product_id'))->orderBy('id')->lockForUpdate()->get();
+            $serial = ProductSerial::whereIn('current_order_item_id', $items->pluck('id'))->lockForUpdate()->find($data['serial_id']);
+            if (! $serial || ! SerialEvent::where('product_serial_id', $serial->id)->where('order_id', $record->id)->where('event_type', 'shipped')->exists()) {
+                throw ValidationException::withMessages(['serial_id' => 'سریال متعلق به خروج این سفارش نیست.']);
+            }
+            $service = app(SerialInventoryService::class);
+            if ($permission === Permission::SerialReturn) {
+                $service->receiveReturn($serial->id, auth()->id(), $data['reason']);
+            } else {
+                $service->restockReturnedSerial($serial->id, auth()->id(), $data['reason']);
+            }
+        }, 3);
     }
 }

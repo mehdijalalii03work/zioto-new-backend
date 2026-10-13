@@ -9,15 +9,19 @@ use App\Enums\Product\Ayar;
 use App\Enums\Product\MetalType;
 use App\Enums\Product\ProductShape;
 use App\Models\Brand;
+use App\Models\ProductInventoryAudit;
 use App\Models\ProductSerial;
 use App\Models\ProductStockReservation;
+use App\Models\SerialImportRow;
 use App\Models\Setting;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
 use Modules\Product\Database\Factories\ProductFactory;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -108,6 +112,24 @@ class Product extends Model implements HasMedia
         ];
     }
 
+    public function delete(): ?bool
+    {
+        return $this->getConnection()->transaction(function (): ?bool {
+            $current = $this->newQuery()->lockForUpdate()->find($this->id);
+            if ($current) {
+                $serial = $current->serials()->lockForUpdate()->first(['id']);
+                $manual = $current->manualReservations()->lockForUpdate()->first(['id']);
+                $import = SerialImportRow::on($current->getConnectionName())->where('product_id', $current->id)->lockForUpdate()->first(['id']);
+                $audit = ProductInventoryAudit::on($current->getConnectionName())->where('product_id', $current->id)->lockForUpdate()->first(['id']);
+                if ($serial || $manual || $import || $audit) {
+                    throw ValidationException::withMessages(['product' => 'محصول دارای تاریخچه موجودی، ایمپورت یا تغییرات انبار قابل حذف نیست.']);
+                }
+            }
+
+            return parent::delete();
+        }, 3);
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(ProductCategory::class);
@@ -142,6 +164,12 @@ class Product extends Model implements HasMedia
      * Free serial bars. Reads the withCount aggregate when the product was
      * loaded with one (listings) instead of querying per product.
      */
+    public function scopeWithInventoryCounts(Builder $query): Builder
+    {
+        return $query->withCount(['serials as available_serial_count' => fn ($query) => $query->where('status', 'available')])
+            ->withSum(['manualReservations as active_manual_reserved' => fn ($query) => $query->where('status', 'reserved')], 'quantity');
+    }
+
     public function availableSerialCount(): int
     {
         if (array_key_exists('available_serial_count', $this->attributes)) {

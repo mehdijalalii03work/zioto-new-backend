@@ -17,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Order\Models\Order;
+use Modules\Product\Models\Product;
 
 class OrderSubmitController extends Controller
 {
@@ -108,6 +109,20 @@ class OrderSubmitController extends Controller
         }
 
         $result = DB::transaction(function () use ($validated, $user, $cartItems) {
+            $products = Product::whereIn('id', $cartItems->pluck('product_id'))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            foreach ($cartItems as $item) {
+                if (! $products->has($item->product_id)) {
+                    return response()->json(['message' => 'محصول سبد خرید دیگر در دسترس نیست.', 'error_code' => 'PRODUCT_NOT_FOUND'], 422);
+                }
+                $item->setRelation('product', $products->get($item->product_id));
+            }
+            $stockCheck = $this->validateCartStock($cartItems, currentRead: true);
+            if (! $stockCheck['valid']) {
+                return response()->json(['message' => 'موجودی برخی محصولات کافی نیست: '.$stockCheck['product'], 'error_code' => 'INSUFFICIENT_STOCK', 'products' => $stockCheck['items'] ?? []], 422);
+            }
+            if (Platform::isNopay() && $cartItems->contains(fn (Cart $item): bool => ! $item->product->is_nopay)) {
+                return response()->json(['message' => 'برخی محصولات سبد خرید برای نوپی در دسترس نیستند.', 'error_code' => 'PRODUCT_NOT_ELIGIBLE_FOR_NOPAY'], 422);
+            }
             $address = empty($validated['user_address_id']) ? null : $user->addresses()->with(['province', 'city'])->find($validated['user_address_id']);
 
             $buyerName = $address?->receiver_name ?: $user->name;
@@ -162,13 +177,17 @@ class OrderSubmitController extends Controller
             ];
         });
 
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
         return response()->json([
             'message' => 'سفارش با موفقیت ثبت شد',
             'order' => new OrderResource($result['order']),
         ], 201);
     }
 
-    private function validateCartStock($cartItems): array
+    private function validateCartStock($cartItems, bool $currentRead = false): array
     {
         $lines = [];
 
@@ -180,7 +199,7 @@ class OrderSubmitController extends Controller
             ];
         }
 
-        return AvailabilityCheck::check($lines, Platform::fromRequest());
+        return AvailabilityCheck::check($lines, Platform::fromRequest(), currentRead: $currentRead);
     }
 
     private function calculateOrderData($cartItems, array $validated, ?object $address = null): array

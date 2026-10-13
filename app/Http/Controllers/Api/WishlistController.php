@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreWishlistRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Wishlist;
+use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,7 @@ class WishlistController extends Controller
         $user = Auth::user();
 
         $wishlistItems = Wishlist::where('user_id', $user->id)
-            ->with(['product.category:id,name,slug', 'product.brand:id,name,slug', 'product.images'])
+            ->with(['product' => fn ($query) => $query->withInventoryCounts(), 'product.category:id,name,slug', 'product.brand:id,name,slug', 'product.images'])
             ->get()
             ->map(fn (Wishlist $item) => $item->product ? ProductResource::withoutImages(new ProductResource($item->product)) : null)
             ->filter()
@@ -45,7 +46,7 @@ class WishlistController extends Controller
         Wishlist::create([
             'user_id' => $user->id,
             'product_id' => $validated['product_id'],
-            'platform' => \App\Support\Platform::fromRequest($request),
+            'platform' => Platform::fromRequest($request),
         ]);
 
         return response()->json([
@@ -94,7 +95,7 @@ class WishlistController extends Controller
         Wishlist::create([
             'user_id' => $user->id,
             'product_id' => $validated['product_id'],
-            'platform' => \App\Support\Platform::fromRequest($request),
+            'platform' => Platform::fromRequest($request),
         ]);
 
         return response()->json([

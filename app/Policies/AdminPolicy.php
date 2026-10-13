@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 abstract class AdminPolicy
 {
@@ -13,7 +14,7 @@ abstract class AdminPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo(static::entity().'.view');
+        return $user->checkPermissionTo(static::entity().'.view');
     }
 
     public function view(User $user, mixed $model = null): bool
@@ -23,17 +24,17 @@ abstract class AdminPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo(static::entity().'.create');
+        return $user->checkPermissionTo(static::entity().'.create');
     }
 
     public function update(User $user, mixed $model = null): bool
     {
-        return $user->hasPermissionTo(static::entity().'.edit');
+        return $user->checkPermissionTo(static::entity().'.edit');
     }
 
-    public function delete(User $user, mixed $model = null): bool
+    public function delete(User $user, mixed $model = null): bool|Response
     {
-        return $user->hasPermissionTo(static::entity().'.delete');
+        return $user->checkPermissionTo(static::entity().'.delete');
     }
 
     public function deleteAny(User $user): bool
@@ -41,7 +42,7 @@ abstract class AdminPolicy
         return $this->delete($user);
     }
 
-    public function forceDelete(User $user, mixed $model = null): bool
+    public function forceDelete(User $user, mixed $model = null): bool|Response
     {
         return $this->delete($user, $model);
     }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Orders\Tables;
 
 use App\Filament\Resources\Orders\Exports\OrderExcelExport;
+use App\Services\Inventory\SerialInventoryService;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -343,7 +344,13 @@ class OrdersTable
                                 ->required(),
                         ])
                         ->action(function ($records, array $data) {
-                            $records->each(fn ($record) => $record->update(['status' => $data['status']]));
+                            $records->each(function ($record) use ($data): void {
+                                if ($data['status'] === 'cancelled') {
+                                    app(SerialInventoryService::class)->cancelUnpaidOrder($record->id, $record->platform, 'لغو گروهی از پنل');
+                                } else {
+                                    $record->update(['status' => $data['status']]);
+                                }
+                            });
 
                             Notification::make()
                                 ->title('وضعیت سفارش‌ها با موفقیت تغییر یافت')
@@ -353,13 +360,13 @@ class OrdersTable
                         ->deselectRecordsAfterCompletion()
                         ->requiresConfirmation(),
 
-                    DeleteBulkAction::make()
+                    DeleteBulkAction::make()->authorizeIndividualRecords()
                         ->label('حذف انتخاب شده‌ها'),
 
                     RestoreBulkAction::make()
                         ->label('بازیابی انتخاب شده‌ها'),
 
-                    ForceDeleteBulkAction::make()
+                    ForceDeleteBulkAction::make()->authorizeIndividualRecords()
                         ->label('حذف دائمی انتخاب شده‌ها'),
                 ]),
             ]);

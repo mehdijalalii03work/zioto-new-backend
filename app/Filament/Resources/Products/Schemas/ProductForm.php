@@ -14,7 +14,6 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
-use Modules\Product\Models\Product;
 
 class ProductForm
 {
@@ -193,8 +192,8 @@ class ProductForm
                                     ->default('manual')
                                     ->required()
                                     ->live()
-                                    ->disabled(fn (?Product $record): bool => $record?->serials()->exists() ?? false)
-                                    ->helperText('تغییر روش محصول دارای سریال ممنوع است.'),
+                                    ->disabled(fn (): bool => ! (auth()->user()?->checkPermissionTo(Permission::SerialManage->value) ?? false))
+                                    ->helperText('تغییر روش تنها پس از تعیین تکلیف تعهدهای باز امکان‌پذیر است.'),
 
                                 TextInput::make('serial_prefix')
                                     ->label('پیشوند سریال')
@@ -204,18 +203,20 @@ class ProductForm
                                     ->regex('/\A[a-z]{3}9?\z/i')
                                     ->validationMessages(['regex' => 'پیشوند باید ۳ حرف و در صورت نیاز رقم ۹ باشد (مثل ton یا ton9).'])
                                     ->unique(ignoreRecord: true)
-                                    ->disabled(fn (?Product $record): bool => $record?->serials()->exists() ?? false),
+                                    ->disabled(fn (): bool => ! (auth()->user()?->checkPermissionTo(Permission::SerialManage->value) ?? false)),
 
                                 Toggle::make('track_serials')
                                     ->label('رهگیری سریال تحویل')
                                     ->helperText('مستقل از روش موجودی؛ برای محصول دستی یعنی سریال تولیدشده رهگیری شود.')
                                     ->inline(false)
-                                    ->disabled(fn (?Product $record): bool => $record?->serials()->exists() ?? false),
+                                    ->disabled(fn (): bool => ! (auth()->user()?->checkPermissionTo(Permission::SerialManage->value) ?? false)),
 
                                 Toggle::make('made_to_order')
                                     ->label('تولید پس از سفارش')
                                     ->inline(false)
                                     ->live(),
+
+                                TextInput::make('inventory_reason')->label('دلیل تغییر موجودی')->nullable()->maxLength(500),
 
                                 TextInput::make('production_lead_time_text')
                                     ->label('زمان آماده‌سازی')

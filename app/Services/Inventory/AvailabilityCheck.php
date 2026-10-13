@@ -12,7 +12,10 @@ use Modules\Order\Models\Order;
 use Modules\Product\Models\Product;
 
 /**
- * Read-only availability check shared by order submit and payment init.
+ * Availability check shared by order submit and payment init.
+ *
+ * currentRead is used only while the caller holds sorted product mutexes.
+ * It reads current holding rows even inside an older surrounding transaction.
  *
  * Buckets per product (quantities aggregated across lines first):
  * - serial mode: free serials plus this order's own holdings.
@@ -29,7 +32,7 @@ use Modules\Product\Models\Product;
  */
 final class AvailabilityCheck
 {
-    public static function check(iterable $lines, string $platform, ?Order $order = null): array
+    public static function check(iterable $lines, string $platform, ?Order $order = null, bool $currentRead = false): array
     {
         if ($platform === Platform::TAPSI) {
             return ['valid' => true];
@@ -63,7 +66,7 @@ final class AvailabilityCheck
                 continue;
             }
 
-            $available = self::availableFor($product, $need['quantity'], $order);
+            $available = self::availableFor($product, $need['quantity'], $order, $currentRead);
 
             if ($need['quantity'] > $available) {
                 $insufficient[] = "{$product->name}: موجودی {$available}، درخواست {$need['quantity']}";
@@ -88,32 +91,30 @@ final class AvailabilityCheck
         return ['valid' => true];
     }
 
-    private static function availableFor(Product $product, int $needed, ?Order $order): int
+    private static function availableFor(Product $product, int $needed, ?Order $order, bool $currentRead): int
     {
         $snapshot = $order?->items()->where('product_id', $product->id)->first();
         $mode = $snapshot?->inventory_mode ?? $product->inventory_mode ?? InventoryMode::Manual;
 
         if ($mode === InventoryMode::Serial) {
-            return self::serialAvailable($product, $order);
+            return self::serialAvailable($product, $order, $currentRead, $needed);
         }
 
-        return self::capacityAvailable($product, $order);
+        return self::capacityAvailable($product, $order, $currentRead);
     }
 
-    private static function serialAvailable(Product $product, ?Order $order): int
+    private static function serialAvailable(Product $product, ?Order $order, bool $currentRead, int $needed): int
     {
-        $free = ProductSerial::where('product_id', $product->id)
-            ->where('status', SerialStatus::Available->value)
-            ->count();
+        $query = $product->serials()->where('status', SerialStatus::Available->value);
+        $free = $currentRead ? $query->orderBy('id')->limit($needed)->lockForUpdate()->get(['id'])->count() : $query->count();
 
         return $free + self::ownSerialHoldings($product, $order);
     }
 
-    private static function capacityAvailable(Product $product, ?Order $order): int
+    private static function capacityAvailable(Product $product, ?Order $order, bool $currentRead): int
     {
-        $active = ProductStockReservation::where('product_id', $product->id)
-            ->where('status', StockReservationStatus::Reserved->value)
-            ->sum('quantity');
+        $query = $product->manualReservations()->where('status', StockReservationStatus::Reserved->value);
+        $active = $currentRead ? $query->lockForUpdate()->get(['quantity'])->sum('quantity') : $query->sum('quantity');
 
         $own = 0;
 

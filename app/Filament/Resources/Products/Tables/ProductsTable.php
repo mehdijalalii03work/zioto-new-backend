@@ -178,7 +178,7 @@ class ProductsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()
+                    DeleteBulkAction::make()->authorizeIndividualRecords()
                         ->label('حذف انتخاب شده‌ها'),
                 ]),
             ]);

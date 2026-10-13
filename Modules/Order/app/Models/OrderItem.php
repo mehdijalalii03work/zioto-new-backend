@@ -5,6 +5,7 @@ namespace Modules\Order\Models;
 use App\Enums\Inventory\InventoryMode;
 use App\Enums\Inventory\SerialFulfillmentStatus;
 use App\Models\ProductSerial;
+use App\Models\SerialEvent;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -56,5 +57,10 @@ class OrderItem extends Model
     public function serials(): HasMany
     {
         return $this->hasMany(ProductSerial::class, 'current_order_item_id');
+    }
+
+    public function serialEvents(): HasMany
+    {
+        return $this->hasMany(SerialEvent::class)->with('serial');
     }
 }

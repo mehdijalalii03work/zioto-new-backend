@@ -23,6 +23,7 @@ class NopayProductEligibilityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['serial_inventory.enabled' => true]);
         $this->app['router']->aliasMiddleware('auth.token', AuthenticateApiToken::class);
     }
 
@@ -191,6 +192,7 @@ class NopayProductEligibilityTest extends TestCase
         $product = $this->nonEligibleProduct();
 
         $order = Order::factory()->create([
+            'serial_inventory_enabled' => true,
             'user_id' => $user->id,
             'status' => 'pending',
             'payment_status' => 'pending',

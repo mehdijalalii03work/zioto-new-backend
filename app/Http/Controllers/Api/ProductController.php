@@ -21,7 +21,7 @@ class ProductController extends Controller
         $cacheKey = 'api:products:'.($slugs ? md5($slugs) : ($skus ? md5($skus) : 'all'));
 
         $products = Cache::remember($cacheKey, 60, function () use ($slugs, $skus) {
-            $query = Product::publiclyListed()
+            $query = Product::publiclyListed()->withInventoryCounts()
                 ->with(['category:id,name,slug', 'brand:id,name,slug', 'images']);
 
             if ($slugs) {
@@ -74,10 +74,8 @@ class ProductController extends Controller
 
     public function show(string $slugOrId): JsonResponse
     {
-        $product = Product::published()
+        $product = Product::published()->withInventoryCounts()
             ->with(['category:id,name,slug', 'brand:id,name,slug', 'images'])
-            ->withCount(['serials as available_serial_count' => fn ($query) => $query->where('status', 'available')])
-            ->withSum(['manualReservations as active_manual_reserved' => fn ($query) => $query->where('status', 'reserved')], 'quantity')
             ->where(function ($q) use ($slugOrId) {
                 $q->where('slug', $slugOrId)
                     ->orWhere('id', $slugOrId);

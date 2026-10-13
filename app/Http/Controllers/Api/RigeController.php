@@ -17,25 +17,22 @@ class RigeController extends Controller
 {
     public function products(): JsonResponse
     {
-        $products = Cache::remember('rige:products', 60, function () {
-            return Product::publiclyListed()
+        $products = Cache::remember('rige:products:v2', 60, function () {
+            return Product::publiclyListed()->withInventoryCounts()
                 ->with(['category:id,name', 'brand:id,name'])
                 ->orderBy('sort_order')
                 ->orderBy('id')
                 ->get()
-                ->map(fn (Product $p) => (new RigeProductResource($p))->toArray(request()))
+                ->map(fn (Product $p) => ['_product_id' => $p->id] + (new RigeProductResource($p))->toArray(request()))
                 ->toArray();
         });
 
         // Catalog rides the cache; stock never does — overlay live numbers.
-        $idsByCode = Product::whereIn('sku', collect($products)->pluck('code')->filter()->unique()->all())
-            ->pluck('id', 'sku');
-
-        $counts = app(SerialAvailabilityService::class)->countsForProducts($idsByCode->values()->all());
+        $counts = app(SerialAvailabilityService::class)->countsForProducts(array_column($products, '_product_id'));
 
         foreach ($products as $index => $product) {
-            $id = $idsByCode->get($product['code'] ?? null);
-            $products[$index]['in_stock'] = (($id !== null ? $counts[$id] ?? 0 : 0) > 0);
+            $products[$index]['in_stock'] = ($counts[$product['_product_id']] ?? 0) > 0;
+            unset($products[$index]['_product_id']);
         }
 
         return response()->json($products);

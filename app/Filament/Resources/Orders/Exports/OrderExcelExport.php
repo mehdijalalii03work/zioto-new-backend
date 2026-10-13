@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Orders\Exports;
 
+use App\Enums\Inventory\SerialEventType;
+use App\Enums\Inventory\SerialStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Response;
@@ -15,7 +17,7 @@ class OrderExcelExport
 {
     public function export(Collection $orders): StreamedResponse
     {
-        $orders->load(['user', 'items.serials', 'shipping.shippingMethod', 'address.city', 'address.province']);
+        $orders->load(['user', 'items.serials', 'items.serialEvents.serial', 'shipping.shippingMethod', 'address.city', 'address.province']);
 
         $spreadsheet = new Spreadsheet;
         $ordersData = [];
@@ -46,7 +48,7 @@ class OrderExcelExport
         $spreadsheet = new Spreadsheet;
         $ordersData = [];
 
-        $query->with(['user', 'items.serials', 'shipping.shippingMethod', 'address.city', 'address.province'])
+        $query->with(['user', 'items.serials', 'items.serialEvents.serial', 'shipping.shippingMethod', 'address.city', 'address.province'])
             ->chunk(100, function ($orders) use (&$ordersData) {
                 foreach ($orders as $order) {
                     $ordersData[] = $this->prepareOrderData($order);
@@ -142,9 +144,11 @@ class OrderExcelExport
 
         $serialsText = '';
         foreach ($order->items as $item) {
-            $codes = $item->relationLoaded('serials')
-                ? $item->serials->sortBy('unit_number')->pluck('serial_code')->all()
-                : $item->serials()->orderBy('unit_number')->pluck('serial_code')->all();
+            $item->loadMissing(['serials', 'serialEvents.serial']);
+            $codes = $item->serials->whereIn('status', [SerialStatus::Allocated, SerialStatus::Shipped])
+                ->sortBy('unit_number')->pluck('serial_code')
+                ->merge($item->serialEvents->where('event_type', SerialEventType::Shipped)->pluck('serial.serial_code'))
+                ->filter()->unique()->values()->all();
 
             if ($codes !== []) {
                 $serialsText .= $item->product_name.': '.implode('، ', $codes)."\n";
