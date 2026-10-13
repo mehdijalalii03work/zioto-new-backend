@@ -193,7 +193,7 @@ class ProductForm
                                     ->required()
                                     ->live()
                                     ->disabled(fn (): bool => ! (auth()->user()?->checkPermissionTo(Permission::SerialManage->value) ?? false))
-                                    ->helperText('تغییر روش تنها پس از تعیین تکلیف تعهدهای باز امکان‌پذیر است.'),
+                                    ->helperText('تغییر روش تنها پس از تعیین تکلیف تعهدهای باز امکان‌پذیر است. با ورود به حالت سریالی، ظرفیت دستی خودکار صفر می‌شود.'),
 
                                 TextInput::make('serial_prefix')
                                     ->label('پیشوند سریال')

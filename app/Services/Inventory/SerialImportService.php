@@ -44,6 +44,11 @@ final class SerialImportService
 
     public function dispatchAnalyze(SerialImportBatch $batch): void
     {
+        if ($this->runsSynchronously()) {
+            $this->analyze($batch->id);
+
+            return;
+        }
         DB::transaction(function () use ($batch): void {
             $locked = SerialImportBatch::lockForUpdate()->findOrFail($batch->id);
             if (! in_array($locked->status, [SerialImportBatchStatus::Analyzing, SerialImportBatchStatus::Failed], true) || $locked->rows()->whereIn('result_status', ['imported', 'duplicate_in_db'])->exists()) {
@@ -56,6 +61,11 @@ final class SerialImportService
 
     public function dispatchImport(SerialImportBatch $batch): void
     {
+        if ($this->runsSynchronously()) {
+            $this->import($batch->id);
+
+            return;
+        }
         DB::transaction(function () use ($batch): void {
             $locked = SerialImportBatch::lockForUpdate()->findOrFail($batch->id);
             if (! in_array($locked->status, [SerialImportBatchStatus::Ready, SerialImportBatchStatus::Failed], true) || empty($locked->mapping_snapshot['mapping_hash'])) {
@@ -64,6 +74,11 @@ final class SerialImportService
             $locked->update(['status' => SerialImportBatchStatus::Queued->value, 'last_error' => null, 'completed_at' => null]);
             ProcessSerialImport::dispatch($locked->id)->onQueue((string) config('serial_inventory.queue', 'serial-imports'))->afterCommit();
         });
+    }
+
+    private function runsSynchronously(): bool
+    {
+        return (bool) config('serial_inventory.sync', false);
     }
 
     /**

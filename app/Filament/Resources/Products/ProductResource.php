@@ -6,6 +6,7 @@ use App\Filament\Resources\Products\Pages\CreateProduct;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\Pages\ListProducts;
 use App\Filament\Resources\Products\RelationManagers\ProductImagesRelationManager;
+use App\Filament\Resources\Products\RelationManagers\ProductSerialsRelationManager;
 use App\Filament\Resources\Products\Schemas\ProductForm;
 use App\Filament\Resources\Products\Tables\ProductsTable;
 use BackedEnum;
@@ -61,6 +62,7 @@ class ProductResource extends Resource
     {
         return [
             ProductImagesRelationManager::make(),
+            ProductSerialsRelationManager::make(),
         ];
     }
 

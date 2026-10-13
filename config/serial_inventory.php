@@ -37,4 +37,9 @@ return [
     'reserve_minutes' => 20,
 
     'queue' => 'serial-imports',
+
+    // Run analyze/import inline in the web request instead of queueing.
+    // Suitable for the usual small files; keep false for large files to
+    // avoid HTTP/proxy timeouts (the queue path stays available).
+    'sync' => env('SERIAL_IMPORT_SYNC', false),
 ];

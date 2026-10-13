@@ -275,6 +275,25 @@ class SerialImportTest extends TestCase
         Livewire::actingAs($manager)->withQueryParams(['batch' => $batch->id])->test(SerialImport::class)->assertSet('summary.imported', 2);
     }
 
+    public function test_sync_mode_analyzes_and_imports_inline_without_queue(): void
+    {
+        config(['serial_inventory.sync' => true]);
+        Queue::fake([AnalyzeSerialImport::class, ProcessSerialImport::class]);
+        $this->makeProduct('ton');
+        $manager = $this->staffUser(Role::Manager);
+        Storage::fake('local');
+        $storedPath = Storage::disk('local')->putFileAs('serial-imports', new File($this->makeXlsx(['ton001', 'ton002'])), 'upload.xlsx');
+        $component = Livewire::actingAs($manager)->test(SerialImport::class)
+            ->call('analyzeStoredFile', $storedPath, 'upload.xlsx')
+            ->assertSet('summary.status', 'ready')
+            ->assertSet('summary.eligible_for_import', 2);
+        Queue::assertNotPushed(AnalyzeSerialImport::class);
+        $component->call('runImport')
+            ->assertSet('summary.status', 'completed')
+            ->assertSet('summary.imported', 2);
+        Queue::assertNotPushed(ProcessSerialImport::class);
+    }
+
     public function test_upload_method_rejects_arbitrary_private_paths(): void
     {
         Storage::fake('local');

@@ -173,7 +173,12 @@ class SerialImport extends Page
         if ($batch === null) {
             return;
         }
-        app(SerialImportService::class)->dispatchImport($batch);
+        try {
+            app(SerialImportService::class)->dispatchImport($batch);
+        } catch (SerialImportException $e) {
+            report($e);
+            Notification::make()->title(SerialImportException::publicMessage($e))->danger()->send();
+        }
         $this->loadBatch($batch->id);
     }
 
