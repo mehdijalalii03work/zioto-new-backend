@@ -19,7 +19,7 @@ class PriceHistoryService
 
         $this->write([
             'type' => 'board',
-            'source' => 'zioto_board',
+            'source' => ! empty($prices['raw']['tokeniko']) ? 'tokeniko_board' : 'zioto_board',
             'items_count' => count($boardItems),
             'data' => $prices,
         ]);
