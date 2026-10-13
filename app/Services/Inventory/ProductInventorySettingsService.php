@@ -2,6 +2,7 @@
 
 namespace App\Services\Inventory;
 
+use App\Enums\Inventory\InventoryMode;
 use App\Models\ProductInventoryAudit;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -28,6 +29,15 @@ final class ProductInventorySettingsService
             $candidate = clone $record;
             $candidate->fill(array_intersect_key($data, array_flip(self::FIELDS)));
             $after = $this->settings($candidate);
+
+            // Serial products sell from free serials only: stock_quantity is
+            // history in that mode, and a stale value would silently go live
+            // again on a future switch back to manual. Retire it on the spot,
+            // whether this save switches the mode or only heals a stale value.
+            if (($after['inventory_mode'] ?? null) === InventoryMode::Serial->value) {
+                $after['stock_quantity'] = 0;
+            }
+
             $changes = array_diff_assoc($after, $before);
 
             if ($changes !== []) {
