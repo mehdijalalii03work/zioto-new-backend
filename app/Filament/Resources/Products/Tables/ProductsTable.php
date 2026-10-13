@@ -2,6 +2,10 @@
 
 namespace App\Filament\Resources\Products\Tables;
 
+use App\Enums\Permission;
+use App\Filament\Resources\Products\Pages\ViewProductSerials;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -168,13 +172,21 @@ class ProductsTable
             ->defaultPaginationPageOption(25)
             ->reorderable('sort_order')
             ->recordActions([
-                ViewAction::make()
-                    ->label('مشاهده در سایت')
-                    ->url(fn ($record): string => config('app.frontend_url').'/product/'.$record->slug)
-                    ->openUrlInNewTab(),
+                ActionGroup::make([
+                    ViewAction::make()
+                        ->label('مشاهده در سایت')
+                        ->url(fn ($record): string => config('app.frontend_url').'/product/'.$record->slug)
+                        ->openUrlInNewTab(),
 
-                EditAction::make()
-                    ->label('ویرایش'),
+                    EditAction::make()
+                        ->label('ویرایش'),
+
+                    Action::make('serials')
+                        ->label('سریال‌ها')
+                        ->icon('heroicon-o-qr-code')
+                        ->url(fn ($record): string => ViewProductSerials::getUrl(['record' => $record]))
+                        ->visible(fn (): bool => auth()->user()?->checkPermissionTo(Permission::SerialView->value) ?? false),
+                ])->label('عملیات'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
