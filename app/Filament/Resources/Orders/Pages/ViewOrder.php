@@ -279,12 +279,12 @@ class ViewOrder extends ViewRecord
                                             ->label('رویدادها')
                                             ->schema([
                                                 TextEntry::make('serial.serial_code')->label('سریال'),
-                                                TextEntry::make('event_type')->label('رویداد')->formatStateUsing(fn ($state): string => $state?->value ?? '—'),
+                                                TextEntry::make('event_type')->label('رویداد')->formatStateUsing(fn ($state): string => $state?->label() ?? '—'),
                                                 TextEntry::make('to_status')->label('وضعیت')->formatStateUsing(fn ($state): string => $state?->label() ?? '—'),
-                                                TextEntry::make('created_at')->label('زمان')->dateTime(),
+                                                TextEntry::make('created_at')->label('زمان')->jalaliDateTime(),
                                                 TextEntry::make('actor.name')->label('کاربر')->placeholder('—'),
                                                 TextEntry::make('reason')->label('دلیل')->placeholder('—'),
-                                            ])->columns(3),
+                                            ])->columnSpanFull(),
                                     ]),
 
                                 // ---------- تأمین سریال ----------
