@@ -12,6 +12,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Modules\Product\Models\Product;
@@ -199,9 +200,9 @@ class ProductForm
                             ->schema([
                                 Select::make('base_product_id')
                                     ->label('محصول پایه (موجودی مشترک)')
-                                    ->options(fn () => Product::query()
+                                    ->options(fn (Get $get): array => Product::query()
                                         ->whereNull('base_product_id')
-                                        ->where('id', '!=', $get('id'))
+                                        ->when($recordId = $get('id'), fn ($query) => $query->whereKeyNot($recordId))
                                         ->orderBy('name')
                                         ->pluck('name', 'id')
                                         ->all())
