@@ -18,16 +18,20 @@ class RecalculateReservedStock extends Command
 
         $reservedStatuses = ['confirmed'];
         $totals = DB::table('order_items')
-            ->select('product_id', DB::raw('SUM(quantity) as total_reserved'))
-            ->whereIn('order_id', function ($q) use ($reservedStatuses) {
+            ->join('products', 'products.id', '=', 'order_items.product_id')
+            ->select(
+                DB::raw('COALESCE(products.base_product_id, order_items.product_id) as stock_product_id'),
+                DB::raw('SUM(order_items.quantity * products.pack_size) as total_reserved')
+            )
+            ->whereIn('order_items.order_id', function ($q) use ($reservedStatuses) {
                 $q->select('id')
                     ->from('orders')
                     ->whereIn('status', $reservedStatuses);
             })
-            ->whereNotNull('product_id')
-            ->groupBy('product_id')
+            ->whereNotNull('order_items.product_id')
+            ->groupBy('stock_product_id')
             ->get()
-            ->keyBy('product_id');
+            ->keyBy('stock_product_id');
 
         $products = Product::all();
         $updated = 0;

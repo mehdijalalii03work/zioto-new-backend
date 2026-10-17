@@ -19,7 +19,8 @@ class CartController extends Controller
         $userId = Auth::id();
 
         $items = Cart::where('user_id', $userId)
-            ->with('product:id,name,price,weight,stock_quantity')
+            ->with('product:id,name,price,weight,stock_quantity,pack_size,base_product_id,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved')
+            ->with('product.baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved')
             ->get();
 
         return response()->json([

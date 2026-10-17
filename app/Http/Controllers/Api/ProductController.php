@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
 use App\Models\User;
+use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Modules\Product\Models\Product;
@@ -20,7 +21,7 @@ class ProductController extends Controller
 
         $products = Cache::remember($cacheKey, 60, function () use ($slugs, $skus) {
             $query = Product::publiclyListed()
-                ->with(['category:id,name,slug', 'brand:id,name,slug', 'images']);
+                ->with(['category:id,name,slug', 'brand:id,name,slug', 'images', 'baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved']);
 
             if ($slugs) {
                 $slugList = array_map('trim', explode(',', $slugs));
@@ -45,7 +46,7 @@ class ProductController extends Controller
             $tokenHash = hash('sha256', $token);
             $user = User::withoutTenantScope()
                 ->where('api_token_hash', $tokenHash)
-                ->where('platform', \App\Support\Platform::fromRequest())
+                ->where('platform', Platform::fromRequest())
                 ->first();
             if ($user) {
                 $wishlistIds = $user->wishlists()->pluck('products.id')->toArray();
@@ -64,7 +65,7 @@ class ProductController extends Controller
     public function show(string $slugOrId): JsonResponse
     {
         $product = Product::published()
-            ->with(['category:id,name,slug', 'brand:id,name,slug', 'images'])
+            ->with(['category:id,name,slug', 'brand:id,name,slug', 'images', 'baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved'])
             ->where(function ($q) use ($slugOrId) {
                 $q->where('slug', $slugOrId)
                     ->orWhere('id', $slugOrId);
@@ -84,7 +85,7 @@ class ProductController extends Controller
             $tokenHash = hash('sha256', $token);
             $user = User::withoutTenantScope()
                 ->where('api_token_hash', $tokenHash)
-                ->where('platform', \App\Support\Platform::fromRequest())
+                ->where('platform', Platform::fromRequest())
                 ->first();
             if ($user) {
                 $data['is_wishlist'] = $user->wishlists()

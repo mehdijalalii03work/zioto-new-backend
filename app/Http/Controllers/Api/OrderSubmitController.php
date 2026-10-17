@@ -65,7 +65,8 @@ class OrderSubmitController extends Controller
         $validated = $request->validated();
 
         $cartItems = Cart::where('user_id', $user->id)
-            ->with('product:id,name,price,is_nopay,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved')
+            ->with('product:id,name,price,is_nopay,weight,stock_quantity,pack_size,base_product_id,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved')
+            ->with('product.baseProduct:id,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved,stock_quantity')
             ->get();
 
         if ($cartItems->isEmpty()) {
@@ -177,10 +178,7 @@ class OrderSubmitController extends Controller
                 continue;
             }
 
-            $physical = (int) ($product->hesabfa_physical_stock ?? $product->stock_quantity ?? 0);
-            $reserved = (int) ($product->hesabfa_reserved_stock ?? 0);
-            $manualReserved = (int) ($product->hesabfa_manual_reserved ?? 0);
-            $sellable = max(0, $physical - $reserved - $manualReserved);
+            $sellable = $product->sellable_stock;
 
             if ($cartItem->quantity > $sellable) {
                 $insufficient[] = "{$product->name}: موجودی {$sellable}، درخواست {$cartItem->quantity}";
@@ -311,7 +309,7 @@ class OrderSubmitController extends Controller
 
         $totalWeight = 0;
         foreach ($cartItems as $item) {
-            $totalWeight += ($item->product->weight ?? 0) * $item->quantity;
+            $totalWeight += ($item->product->weight ?? 0) * $item->product->pack_size * $item->quantity;
         }
 
         $rate = $this->findMatchingRate($method, $totalWeight, $cartTotal, $provinceId, $cityId);

@@ -343,11 +343,13 @@ class HesabfaObserver
                 }
             }
 
+            $packSize = $product?->pack_size ?? 1;
+
             $items[] = [
                 'rowNumber' => $rowNumber++,
                 'description' => $orderItem->product_name,
                 'itemCode' => $itemCode,
-                'unit' => config('hesabfa.default_unit', 'عدد'),
+                'unit' => $packSize > 1 ? 'بسته' : config('hesabfa.default_unit', 'عدد'),
                 'quantity' => $orderItem->quantity,
                 'unitPrice' => (int) $unitPrice,
                 'discount' => $this->calculateItemDiscount($orderItem),

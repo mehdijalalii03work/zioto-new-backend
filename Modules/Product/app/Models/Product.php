@@ -45,6 +45,8 @@ class Product extends Model implements HasMedia
         'fee_off_hours',
         'fee_business_hours',
         'price',
+        'pack_size',
+        'base_product_id',
         'stock_quantity',
         'sort_order',
         'hesabfa_physical_stock',
@@ -67,6 +69,7 @@ class Product extends Model implements HasMedia
             'fee_business_hours' => 'decimal:2',
             'price' => 'decimal:2',
             'stock_quantity' => 'integer',
+            'pack_size' => 'integer',
             'sort_order' => 'integer',
             'hesabfa_physical_stock' => 'decimal:2',
             'hesabfa_reserved_stock' => 'decimal:2',
@@ -99,13 +102,35 @@ class Product extends Model implements HasMedia
         return $this->hasOne(ProductImage::class)->where('is_primary', true);
     }
 
-    public function getSellableStockAttribute(): int
+    public function baseProduct(): BelongsTo
     {
-        $physical = (int) ($this->hesabfa_physical_stock ?? $this->stock_quantity ?? 0);
-        $reserved = (int) ($this->hesabfa_reserved_stock ?? 0);
-        $manualReserved = (int) ($this->hesabfa_manual_reserved ?? 0);
+        return $this->belongsTo(self::class, 'base_product_id');
+    }
+
+    public function packProducts(): HasMany
+    {
+        return $this->hasMany(self::class, 'base_product_id');
+    }
+
+    public function getPackSizeAttribute(): int
+    {
+        return max(1, (int) ($this->attributes['pack_size'] ?? 1));
+    }
+
+    public function sellableSingles(): int
+    {
+        $source = $this->baseProduct ?? $this;
+
+        $physical = (int) ($source->hesabfa_physical_stock ?? $source->stock_quantity ?? 0);
+        $reserved = (int) ($source->hesabfa_reserved_stock ?? 0);
+        $manualReserved = (int) ($source->hesabfa_manual_reserved ?? 0);
 
         return max(0, $physical - $reserved - $manualReserved);
+    }
+
+    public function getSellableStockAttribute(): int
+    {
+        return intdiv($this->sellableSingles(), $this->pack_size);
     }
 
     public function calculatePrice(): ?float
@@ -151,7 +176,7 @@ class Product extends Model implements HasMedia
         $taxKey = str_starts_with($this->price_board_item, 'Gold') ? 'tax_gold' : 'tax_silver';
         $taxPercentage = (float) Setting::getValue($taxKey, 0);
 
-        return round($basePrice * (1 + $taxPercentage / 100));
+        return round($basePrice * (1 + $taxPercentage / 100)) * $this->pack_size;
     }
 
     public function scopePublished($query)

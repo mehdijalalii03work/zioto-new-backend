@@ -14,6 +14,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Modules\Product\Models\Product;
 
 class ProductForm
 {
@@ -156,16 +157,29 @@ class ProductForm
                                     ->required(),
 
                                 TextInput::make('price')
-                                    ->label('قیمت')
+                                    ->label(fn ($get) => ((int) ($get('pack_size') ?? 1)) > 1 ? 'قیمت هر بسته' : 'قیمت')
                                     ->required(fn ($get) => ($get('price_type') ?? 'fixed') === 'fixed')
                                     ->disabled(fn ($get) => ($get('price_type') ?? 'fixed') === 'dynamic')
                                     ->dehydrated(fn ($get) => ($get('price_type') ?? 'fixed') === 'fixed')
                                     ->numeric()
                                     ->suffix('ریال')
-                                    ->minValue(0),
+                                    ->minValue(0)
+                                    ->helperText(fn ($get) => ((int) ($get('pack_size') ?? 1)) > 1
+                                        ? 'قیمت کل بسته؛ قیمت هر عدد به‌صورت خودکار محاسبه می‌شود'
+                                        : null),
+
+                                TextInput::make('pack_size')
+                                    ->label('تعداد در بسته')
+                                    ->numeric()
+                                    ->default(1)
+                                    ->minValue(1)
+                                    ->maxValue(1000)
+                                    ->step(1)
+                                    ->live(onBlur: true)
+                                    ->helperText('۱ = فروش تکی؛ بیشتر از ۱ = فروش بسته‌ای'),
 
                                 TextInput::make('weight')
-                                    ->label('وزن')
+                                    ->label(fn ($get) => ((int) ($get('pack_size') ?? 1)) > 1 ? 'وزن هر عدد' : 'وزن')
                                     ->numeric()
                                     ->suffix('گرم')
                                     ->step(0.01)
@@ -176,7 +190,25 @@ class ProductForm
                                     ->required()
                                     ->numeric()
                                     ->default(0)
-                                    ->minValue(0),
+                                    ->minValue(0)
+                                    ->helperText('بر حسب عدد واحد (تکی)، نه بسته'),
+                            ]),
+
+                        Grid::make(2)
+                            ->visible(fn ($get): bool => (int) ($get('pack_size') ?? 1) > 1)
+                            ->schema([
+                                Select::make('base_product_id')
+                                    ->label('محصول پایه (موجودی مشترک)')
+                                    ->options(fn () => Product::query()
+                                        ->whereNull('base_product_id')
+                                        ->where('id', '!=', $get('id'))
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id')
+                                        ->all())
+                                    ->searchable()
+                                    ->preload()
+                                    ->placeholder('بدون محصول پایه')
+                                    ->helperText('موجودی پک از این محصول تکی محاسبه می‌شود. خالی = موجودی مستقل.'),
                             ]),
                     ])
                     ->columnSpanFull(),

@@ -59,7 +59,8 @@ class TokenikoDirectSyncService
                 continue;
             }
 
-            $newPrice = (float) $prices[$sku];
+            $unitPrice = (float) $prices[$sku];
+            $newPrice = $unitPrice * max(1, $product->pack_size);
             $currentPrice = (float) $product->price;
             $priceChanged = $currentPrice !== $newPrice;
 

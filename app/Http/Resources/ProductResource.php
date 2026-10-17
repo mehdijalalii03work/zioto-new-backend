@@ -11,12 +11,19 @@ class ProductResource extends JsonResource
     public function toArray(Request $request): array
     {
         $price = (int) $this->price;
+        $packSize = $this->pack_size;
+        $unitPrice = $packSize > 1 ? (int) round($price / $packSize) : $price;
         $primaryImage = $this->images->firstWhere('is_primary', true) ?? $this->images->first();
 
         $taxKey = str_starts_with($this->price_board_item ?? '', 'Gold') ? 'tax_gold' : 'tax_silver';
         $taxRate = (float) Setting::getValue($taxKey, 0);
         $priceBeforeTax = $taxRate > 0 ? round($price / (1 + $taxRate / 100)) : $price;
         $taxAmount = $price - $priceBeforeTax;
+
+        $weight = $this->weight ? $this->weight.' گرم' : '';
+        if ($packSize > 1 && $weight !== '') {
+            $weight .= ' × '.$packSize.' عدد';
+        }
 
         return [
             'id' => $this->id,
@@ -34,14 +41,16 @@ class ProductResource extends JsonResource
             'form_label' => $this->form?->label() ?? null,
             'ayar' => $this->ayar?->value ?? null,
             'ayar_label' => $this->ayar?->label() ?? null,
-            'weight' => $this->weight ? $this->weight.' گرم' : '',
+            'weight' => $weight,
+            'pack_size' => $packSize,
+            'unit_price' => $unitPrice,
             'price' => $price,
             'price_before_tax' => $priceBeforeTax,
             'tax_amount' => $taxAmount,
             'tax_rate' => $taxRate,
             'old' => null,
-            'badge' => null,
-            'stock' => $this->stock_quantity > 0,
+            'badge' => $packSize > 1 ? 'پک '.$packSize.' عددی' : null,
+            'stock' => $this->sellable_stock > 0,
             'contact_only' => (bool) $this->contact_only,
             'is_nopay' => (bool) $this->is_nopay,
             'desc' => strip_tags($this->description ?? ''),

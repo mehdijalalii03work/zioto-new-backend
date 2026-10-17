@@ -98,6 +98,14 @@ class ProductsTable
                     ->sortable()
                     ->formatStateUsing(fn ($state): string => number_format((int) $state / 10)),
 
+                TextColumn::make('pack_size')
+                    ->label('تعداد بسته')
+                    ->numeric()
+                    ->sortable()
+                    ->badge()
+                    ->color(fn ($state): string => $state > 1 ? 'info' : 'gray')
+                    ->formatStateUsing(fn ($state): string => $state > 1 ? "{$state} عددی" : 'تکی'),
+
                 TextColumn::make('stock_quantity')
                     ->label('موجودی')
                     ->numeric()
