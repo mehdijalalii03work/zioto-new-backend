@@ -85,6 +85,16 @@ class PricingSettings
         return (int) self::get('round_to', 1000);
     }
 
+    public static function roundingMode(): string
+    {
+        return (string) self::get('rounding_mode', 'nearest');
+    }
+
+    public static function silverRoundTo(): int
+    {
+        return max(1, (int) self::get('silver_round_to', 10000));
+    }
+
     /**
      * VAT charged on the labor (making) fee of gold products, in percent.
      *

@@ -5,6 +5,7 @@ namespace App\Filament\Pages\Pricing;
 use App\Enums\Permission;
 use App\Models\Setting;
 use App\Services\Pricing\PricingSettings;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -42,6 +43,8 @@ class ProductSettingsPage extends Page
             'enable_dynamic_pricing' => PricingSettings::enableDynamicPricing(),
             'round_prices' => PricingSettings::roundPrices(),
             'round_to' => PricingSettings::roundTo(),
+            'rounding_mode' => PricingSettings::roundingMode(),
+            'silver_round_to' => PricingSettings::silverRoundTo(),
             'tax_gold_labor' => PricingSettings::taxGoldLabor(),
             'show_discount' => PricingSettings::showDiscountBadge(),
             'enable_sales_hours' => PricingSettings::enableSalesHours(),
@@ -60,7 +63,22 @@ class ProductSettingsPage extends Page
                         Grid::make(2)->schema([
                             Toggle::make('enable_dynamic_pricing')->label('قیمت‌گذاری پویا')->inline(false),
                             Toggle::make('round_prices')->label('گردکردن قیمت محصول')->inline(false),
-                            TextInput::make('round_to')->label('مضرب گردکردن')->numeric()->default(1000),
+                            Select::make('rounding_mode')
+                                ->label('روش گردکردن')
+                                ->options([
+                                    'nearest' => 'نزدیک‌ترین مضرب پس از مالیات',
+                                    'reference' => 'رو به بالا؛ طلا پس از مالیات، نقره پیش از مالیات',
+                                ])
+                                ->required()
+                                ->in(['nearest', 'reference'])
+                                ->helperText('فقط هنگام فعال بودن گردکردن قیمت محصول اعمال می‌شود.'),
+                            TextInput::make('round_to')
+                                ->label('مضرب گردکردن نهایی (طلا در روش رو به بالا)')
+                                ->integer()->required()->minValue(1)->suffix('تومان')->default(1000),
+                            TextInput::make('silver_round_to')
+                                ->label('مضرب نقره پیش از مالیات')
+                                ->integer()->required()->minValue(1)->suffix('تومان')->default(10000)
+                                ->helperText('فقط در روش رو به بالا؛ ابتدا فلز و اجرت گرد می‌شوند، سپس مالیات اعمال می‌شود.'),
                             TextInput::make('tax_gold_labor')
                                 ->label('درصد مالیات اجرت طلا')
                                 ->numeric()
@@ -107,7 +125,7 @@ class ProductSettingsPage extends Page
             ]);
         }
 
-        $strings = ['sales_start_time', 'sales_end_time'];
+        $strings = ['sales_start_time', 'sales_end_time', 'rounding_mode'];
         foreach ($strings as $key) {
             Setting::updateOrCreate(['key' => "zioto_pricing_{$key}"], [
                 'value' => (string) ($data[$key] ?? ''),
@@ -117,7 +135,7 @@ class ProductSettingsPage extends Page
             ]);
         }
 
-        $ints = ['round_to'];
+        $ints = ['round_to', 'silver_round_to'];
         foreach ($ints as $key) {
             Setting::updateOrCreate(['key' => "zioto_pricing_{$key}"], [
                 'value' => (string) (int) ($data[$key] ?? 0),

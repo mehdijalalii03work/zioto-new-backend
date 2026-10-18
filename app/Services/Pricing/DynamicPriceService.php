@@ -9,9 +9,8 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Computes per-user dynamic product prices using labor coefficients.
  *
- * board is stored in Toman, products.price is stored in Rial:
- *
- * price(Rial) = weight × board(metal, Toman) × (1 + coefficient)  → round → tax → labor tax (gold) → step rounding → ×10
+ * Board and product prices are stored in Rial; admin calculations use Toman.
+ * Reference rounding ceilings gold after tax and silver before tax.
  */
 class DynamicPriceService
 {
@@ -72,9 +71,7 @@ class DynamicPriceService
         $role = $roleSlug ?? $this->labor->getUserLaborRole($userId);
         $coefficient = $this->labor->coefficientFor($product, $period, $role);
 
-        $labor = $weight * $boardPrice * $coefficient;
-        $withTaxes = $this->priceWithTaxes($product, round($weight * $boardPrice * (1 + $coefficient)), $labor);
-        $calculated = $this->applyStepRounding($withTaxes['price']);
+        $calculated = $this->calculatePrice($product, $weight, $boardPrice, $coefficient)['price'];
 
         return (float) ($calculated * self::RIAL_PER_TOMAN);
     }
@@ -160,9 +157,8 @@ class DynamicPriceService
         $role = $roleSlug ?? $this->labor->getUserLaborRole();
         $coefficient = $this->labor->coefficientFor($product, $period, $role);
 
-        $labor = $weight * $basePrice * $coefficient;
-        $withTaxes = $this->priceWithTaxes($product, round($weight * $basePrice * (1 + $coefficient)), $labor);
-        $calculated = $this->applyStepRounding($withTaxes['price']);
+        $withTaxes = $this->calculatePrice($product, $weight, $basePrice, $coefficient);
+        $calculated = $withTaxes['price'];
 
         $prices = $this->priceBoard->getBoardPrices();
 
@@ -216,8 +212,8 @@ class DynamicPriceService
                 $coefficient = $this->labor->coefficientFor($product, $periodSlug, $roleSlug);
                 $labor = $rawCost * $coefficient;
 
-                $withTaxes = $this->priceWithTaxes($product, round($rawCost * (1 + $coefficient)), $labor);
-                $finalPrice = $this->applyStepRounding($withTaxes['price']);
+                $withTaxes = $this->calculatePrice($product, $weight, $basePrice, $coefficient);
+                $finalPrice = $withTaxes['price'];
 
                 $matrix[$periodSlug][$roleSlug] = [
                     'coefficient' => $coefficient,
@@ -229,6 +225,74 @@ class DynamicPriceService
         }
 
         return $matrix;
+    }
+
+    /**
+     * All public price outputs share the selected rounding and tax order.
+     *
+     * @return array{price: float, taxes: list<array{scope: string, rate: float, amount: float}>}
+     */
+    private function calculatePrice(object $product, float $weight, float $boardPrice, float $coefficient): array
+    {
+        if (! PricingSettings::roundPrices() || PricingSettings::roundingMode() !== 'reference') {
+            $labor = $weight * $boardPrice * $coefficient;
+            $result = $this->priceWithTaxes($product, round($weight * $boardPrice * (1 + $coefficient)), $labor);
+            $result['price'] = $this->applyStepRounding($result['price']);
+
+            return $result;
+        }
+
+        $base = bcmul($this->decimalString($weight), $this->decimalString($boardPrice), 10);
+        $labor = bcmul($base, $this->decimalString($coefficient), 10);
+        $price = bcadd($base, $labor, 10);
+        $isGold = $this->isGold($product);
+        $taxes = [];
+
+        if (! $isGold) {
+            $price = $this->ceilToStep($price, PricingSettings::silverRoundTo());
+        }
+
+        $metalRate = (float) Setting::getValue($isGold ? 'tax_gold' : 'tax_silver', 0);
+        if ($metalRate > 0) {
+            $amount = bcdiv(bcmul($price, $this->decimalString($metalRate), 10), '100', 10);
+            $taxes[] = ['scope' => 'total', 'rate' => $metalRate, 'amount' => (float) $amount];
+            $price = bcadd($price, $amount, 10);
+        }
+
+        if ($isGold && bccomp($labor, '0', 10) > 0) {
+            $laborRate = PricingSettings::taxGoldLabor();
+            if ($laborRate > 0) {
+                $amount = bcdiv(bcmul($labor, $this->decimalString($laborRate), 10), '100', 10);
+                $taxes[] = ['scope' => 'labor', 'rate' => $laborRate, 'amount' => (float) $amount];
+                $price = bcadd($price, $amount, 10);
+            }
+        }
+
+        if ($isGold) {
+            $price = $this->ceilToStep($price, PricingSettings::roundTo());
+        }
+
+        return ['price' => (float) $price, 'taxes' => $taxes];
+    }
+
+    /**
+     * BCMath rejects scientific notation produced by small PHP floats.
+     */
+    private function decimalString(float $value): string
+    {
+        $decimal = (string) $value;
+
+        return str_contains(strtolower($decimal), 'e') ? sprintf('%.10F', $value) : $decimal;
+    }
+
+    private function ceilToStep(string $price, int $step): string
+    {
+        $step = max(1, $step);
+        $rounded = bcmul(bcdiv($price, (string) $step, 0), (string) $step, 10);
+
+        return bccomp($rounded, $price, 10) < 0
+            ? bcadd($rounded, (string) $step, 10)
+            : $rounded;
     }
 
     /**

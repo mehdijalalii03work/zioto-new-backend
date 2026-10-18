@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\Permission;
 use App\Enums\Role;
 use App\Filament\Pages\Pricing\ProductSettingsPage;
 use App\Models\Setting;
@@ -10,6 +11,7 @@ use App\Services\Pricing\PricingSettings;
 use Database\Seeders\RolePermissionSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -60,5 +62,57 @@ class ProductSettingsPageTest extends TestCase
         Livewire::actingAs($user, 'web')
             ->test(ProductSettingsPage::class)
             ->assertForbidden();
+    }
+
+    public function test_admin_can_save_and_reload_reference_rounding_settings(): void
+    {
+        Http::preventStrayRequests();
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        Livewire::actingAs($user, 'web')->test(ProductSettingsPage::class)
+            ->set('data.round_prices', true)
+            ->set('data.rounding_mode', 'reference')
+            ->set('data.round_to', 1000)
+            ->set('data.silver_round_to', 10000)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('reference', PricingSettings::roundingMode());
+        $this->assertSame(10000, PricingSettings::silverRoundTo());
+        $this->assertTrue(PricingSettings::roundPrices());
+        Livewire::test(ProductSettingsPage::class)
+            ->assertSet('data.rounding_mode', 'reference')
+            ->assertSet('data.silver_round_to', 10000);
+        Http::assertNothingSent();
+    }
+
+    public function test_invalid_rounding_options_do_not_save(): void
+    {
+        Http::preventStrayRequests();
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        Livewire::actingAs($user, 'web')->test(ProductSettingsPage::class)
+            ->set('data.rounding_mode', 'invalid')
+            ->set('data.silver_round_to', 0)
+            ->call('save')
+            ->assertHasFormErrors(['rounding_mode', 'silver_round_to']);
+
+        $this->assertDatabaseMissing('settings', ['key' => 'zioto_pricing_rounding_mode']);
+        $this->assertDatabaseMissing('settings', ['key' => 'zioto_pricing_silver_round_to']);
+        Http::assertNothingSent();
+    }
+
+    public function test_view_only_user_cannot_save_rounding_settings(): void
+    {
+        Http::preventStrayRequests();
+        $user = User::factory()->create();
+        $user->givePermissionTo(Permission::PricingView->value);
+
+        Livewire::actingAs($user, 'web')->test(ProductSettingsPage::class)
+            ->set('data.rounding_mode', 'reference')
+            ->call('save');
+
+        $this->assertDatabaseMissing('settings', ['key' => 'zioto_pricing_rounding_mode']);
+        Http::assertNothingSent();
     }
 }
