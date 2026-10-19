@@ -16,7 +16,7 @@
                 @forelse ($records as $record)
                     @foreach ($record->changes as $field => $change)
                         <tr>
-                            <td class="whitespace-nowrap px-4 py-3">{{ $record->created_at?->format('Y/m/d H:i:s') }}</td>
+                            <td class="whitespace-nowrap px-4 py-3">{{ $record->created_at?->format('H:i:s Y/m/d')->jalali() }}</td>
                             <td class="whitespace-nowrap px-4 py-3">{{ $this->actorName($record) }}</td>
                             <td class="px-4 py-3">{{ $this->subjectLabel($record) }}</td>
                             <td class="whitespace-nowrap px-4 py-3">{{ $this->fieldLabel($field) }}</td>
