@@ -33,5 +33,5 @@
         </table>
     </div>
 
-    <div>{{ $records->links() }}</div>
+    <x-filament::pagination :paginator="$records" class="mt-4" />
 </x-filament-panels::page>
