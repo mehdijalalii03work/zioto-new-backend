@@ -71,52 +71,55 @@ class WeightSalesReport extends Page
     {
         return $schema
             ->components([
-                Section::make('بازه زمانی')
-                    ->icon('heroicon-o-calendar-days')
+                Grid::make(2)
                     ->schema([
-                        Radio::make('dateRange')
-                            ->label('بازه زمانی')
-                            ->options([
-                                'all' => 'همه',
-                                'today' => 'امروز',
-                                'week' => 'هفته جاری',
-                                'month' => 'ماه جاری',
-                                'year' => 'سال جاری',
-                                'custom' => 'سفارشی',
-                            ])
-                            ->live()
-                            ->default('all')
-                            ->inline(),
+                        Section::make('بازه زمانی')
+                            ->icon('heroicon-o-calendar-days')
+                            ->schema([
+                                Radio::make('dateRange')
+                                    ->label('بازه زمانی')
+                                    ->options([
+                                        'all' => 'همه',
+                                        'today' => 'امروز',
+                                        'week' => 'هفته جاری',
+                                        'month' => 'ماه جاری',
+                                        'year' => 'سال جاری',
+                                        'custom' => 'سفارشی',
+                                    ])
+                                    ->live()
+                                    ->default('all')
+                                    ->inline(),
 
-                        Grid::make(2)
-                            ->schema(fn (Get $get): array => $get('dateRange') === 'custom' ? [
-                                DatePicker::make('dateFrom')
-                                    ->label('از تاریخ')
-                                    ->native(false)
-                                    ->jalali()
-                                    ->displayFormat('Y/m/d'),
-                                DatePicker::make('dateTo')
-                                    ->label('تا تاریخ')
-                                    ->native(false)
-                                    ->jalali()
-                                    ->displayFormat('Y/m/d'),
-                            ] : []),
-                    ]),
+                                Grid::make(2)
+                                    ->schema(fn (Get $get): array => $get('dateRange') === 'custom' ? [
+                                        DatePicker::make('dateFrom')
+                                            ->label('از تاریخ')
+                                            ->native(false)
+                                            ->jalali()
+                                            ->displayFormat('Y/m/d'),
+                                        DatePicker::make('dateTo')
+                                            ->label('تا تاریخ')
+                                            ->native(false)
+                                            ->jalali()
+                                            ->displayFormat('Y/m/d'),
+                                    ] : []),
+                            ]),
 
-                Section::make('درگاه پرداخت')
-                    ->icon('heroicon-o-credit-card')
-                    ->schema([
-                        Select::make('gateway')
-                            ->label('درگاه پرداخت')
-                            ->placeholder('همه')
-                            ->options([
-                                'parsian' => 'پارسیان',
-                                'digipay' => 'دیجی‌پی',
-                                'kamanlend' => 'کمان‌لند',
-                                'smartis' => 'اسمارتیس',
-                                'nopay' => 'نوپی',
-                            ])
-                            ->native(false),
+                        Section::make('درگاه پرداخت')
+                            ->icon('heroicon-o-credit-card')
+                            ->schema([
+                                Select::make('gateway')
+                                    ->label('درگاه پرداخت')
+                                    ->placeholder('همه')
+                                    ->options([
+                                        'parsian' => 'پارسیان',
+                                        'digipay' => 'دیجی‌پی',
+                                        'kamanlend' => 'کمان‌لند',
+                                        'smartis' => 'اسمارتیس',
+                                        'nopay' => 'نوپی',
+                                    ])
+                                    ->native(false),
+                            ]),
                     ]),
             ]);
     }
