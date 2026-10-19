@@ -18,11 +18,11 @@ class ProductSettingsPage extends Page
 {
     protected static ?string $slug = 'pricing/product-settings';
 
-    protected static ?string $title = 'تنظیمات محصول';
+    protected static ?string $title = 'تنظیمات فروش و قیمت گذاری';
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cube';
 
-    protected static ?string $navigationLabel = 'تنظیمات محصول';
+    protected static ?string $navigationLabel = 'تنظیمات فروش و قیمت گذاری';
 
     protected static string|\UnitEnum|null $navigationGroup = 'قیمت‌گذاری زیوتو';
 
@@ -153,7 +153,7 @@ class ProductSettingsPage extends Page
         ]);
 
         Notification::make()
-            ->title('تنظیمات محصول ذخیره شد')
+            ->title('تنظیمات فروش و قیمت گذاری ذخیره شد')
             ->success()
             ->send();
     }

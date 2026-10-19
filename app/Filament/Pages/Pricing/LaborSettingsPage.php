@@ -21,7 +21,7 @@ class LaborSettingsPage extends Page
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
 
-    protected static ?string $navigationLabel = 'تنظیمات اجرت';
+    protected static ?string $navigationLabel = 'نقش‌ها و بازه‌های زمانی';
 
     protected static string|\UnitEnum|null $navigationGroup = 'قیمت‌گذاری زیوتو';
 
