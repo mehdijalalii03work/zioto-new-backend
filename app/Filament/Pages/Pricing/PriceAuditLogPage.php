@@ -6,10 +6,13 @@ use App\Enums\Permission;
 use App\Models\PriceAuditLog;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Livewire\WithPagination;
 use Morilog\Jalali\Jalalian;
 
 class PriceAuditLogPage extends Page
 {
+    use WithPagination;
+
     protected static ?string $slug = 'pricing/audit-logs';
 
     protected static ?string $title = 'تاریخچه تغییرات قیمت';
