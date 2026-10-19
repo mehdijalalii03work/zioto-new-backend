@@ -6,10 +6,13 @@ use App\Listeners\ConvertMediaToWebp;
 use App\Listeners\LogRolePermissionChanges;
 use App\Models\Brand;
 use App\Models\ContactMessage;
+use App\Models\Setting;
 use App\Models\ShippingMethod;
 use App\Models\User;
 use App\Observers\HesabfaObserver;
+use App\Observers\PricingSettingAuditObserver;
 use App\Observers\ProductImageObserver;
+use App\Observers\ProductPricingAuditObserver;
 use App\Observers\RolePermissionAuditObserver;
 use App\Observers\StockReservationObserver;
 use App\Policies\BlogCategoryPolicy;
@@ -70,6 +73,8 @@ class AppServiceProvider extends ServiceProvider
         Order::observe(HesabfaObserver::class);
         Order::observe(StockReservationObserver::class);
         ProductImage::observe(ProductImageObserver::class);
+        Product::observe(ProductPricingAuditObserver::class);
+        Setting::observe(PricingSettingAuditObserver::class);
 
         $this->app['events']->listen(MediaAdded::class, ConvertMediaToWebp::class);
 

@@ -199,6 +199,15 @@ class ManageProductPricing extends Page
 
     public function save(): void
     {
+        if (! auth()->user()?->can(Permission::ProductEdit->value)) {
+            Notification::make()
+                ->title('دسترسی غیرمجاز')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
         if ($this->values === []) {
             Notification::make()
                 ->title('خطا')
@@ -227,8 +236,12 @@ class ManageProductPricing extends Page
                 }
             }
 
-            Product::where('id', $productId)->update(['labor_coefficients' => $matrix]);
-            $updated++;
+            $product = Product::find($productId);
+
+            if ($product !== null) {
+                $product->update(['labor_coefficients' => $matrix]);
+                $updated++;
+            }
         }
 
         $this->isEditing = false;
