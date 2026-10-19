@@ -105,7 +105,7 @@
                                             type="number"
                                             min="0"
                                             max="1000"
-                                            step="0.01"
+                                            step="0.0000001"
                                             wire:model="values.{{ $row['id'] }}.{{ $activePeriod }}.{{ $role['slug'] }}"
                                             @disabled(! $isEditing)
                                             class="w-24 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-center text-sm shadow-sm outline-none transition focus:border-primary-500 focus:ring-1 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"

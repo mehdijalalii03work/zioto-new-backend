@@ -120,7 +120,7 @@ class ManageProductPricing extends Page
             foreach ($this->periods as $period) {
                 foreach ($this->roles as $role) {
                     $coefficient = (float) ($matrix[$period['slug']][$role['slug']] ?? 1.0);
-                    $this->values[$product->getKey()][$period['slug']][$role['slug']] = round($coefficient * 100, 4);
+                    $this->values[$product->getKey()][$period['slug']][$role['slug']] = round($coefficient * 100, 7);
                 }
             }
         }
@@ -185,7 +185,7 @@ class ManageProductPricing extends Page
                     continue;
                 }
 
-                $this->values[$productId]['nightly'][$role['slug']] = round((float) $daily * $factor, 4);
+                $this->values[$productId]['nightly'][$role['slug']] = round((float) $daily * $factor, 7);
                 $applied++;
             }
         }
@@ -231,7 +231,7 @@ class ManageProductPricing extends Page
             foreach ($periodValues as $periodSlug => $roleValues) {
                 foreach ($roleValues as $roleSlug => $percent) {
                     $matrix[$periodSlug][$roleSlug] = is_numeric($percent)
-                        ? round(max(0, (float) $percent) / 100, 6)
+                        ? round(max(0, (float) $percent) / 100, 9)
                         : (float) ($stored[$periodSlug][$roleSlug] ?? 1.0);
                 }
             }

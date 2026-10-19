@@ -65,6 +65,20 @@ class ManageProductPricingTest extends TestCase
         $this->assertFalse($component->get('isEditing'));
     }
 
+    public function test_labor_percent_preserves_precision_for_price_calibration(): void
+    {
+        $product = $this->product();
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        Livewire::actingAs($user, 'web')
+            ->test(ManageProductPricing::class)
+            ->call('toggleEdit')
+            ->set("values.{$product->id}.daily.basic", 2.3000967)
+            ->call('save');
+
+        $this->assertSame(0.023000967, $product->fresh()->labor_coefficients['daily']['basic']);
+    }
+
     public function test_page_renders_the_matrix_table(): void
     {
         $this->product();
