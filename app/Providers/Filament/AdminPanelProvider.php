@@ -12,6 +12,7 @@ use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Enums\Width;
 use Filament\Support\Facades\FilamentIcon;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsIconAlias;
@@ -46,6 +47,7 @@ class AdminPanelProvider extends PanelProvider
             ->login(CustomLogin::class)
             ->darkMode(false)
             ->spa()
+            ->maxContentWidth(Width::Full)
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('19rem')
             ->favicon(asset('favicon.ico'))
