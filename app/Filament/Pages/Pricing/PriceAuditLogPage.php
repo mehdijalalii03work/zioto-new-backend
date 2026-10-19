@@ -6,6 +6,7 @@ use App\Enums\Permission;
 use App\Models\PriceAuditLog;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Morilog\Jalali\Jalalian;
 
 class PriceAuditLogPage extends Page
 {
@@ -34,6 +35,13 @@ class PriceAuditLogPage extends Page
             ->with('actor:id,name,first_name,last_name')
             ->latest()
             ->paginate(50);
+    }
+
+    public function formatCreatedAt(PriceAuditLog $record): string
+    {
+        return $record->created_at
+            ? Jalalian::fromCarbon($record->created_at)->format('H:i:s Y/m/d')
+            : '—';
     }
 
     public function actorName(PriceAuditLog $record): string
