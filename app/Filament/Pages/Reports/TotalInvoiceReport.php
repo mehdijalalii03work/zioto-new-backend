@@ -5,6 +5,7 @@ namespace App\Filament\Pages\Reports;
 use App\Enums\Permission;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -54,6 +55,8 @@ class TotalInvoiceReport extends Page
 
     public ?string $dateTo = null;
 
+    public ?string $gateway = null;
+
     /** @var Collection<int, array{date: string, invoice_count: int, net_amount: float, gold_count: int, gold_amount: float, silver_count: int, silver_amount: float, total_count: int}> */
     public $report;
 
@@ -99,6 +102,22 @@ class TotalInvoiceReport extends Page
                                     ->displayFormat('Y/m/d'),
                             ] : []),
                     ]),
+
+                Section::make('درگاه پرداخت')
+                    ->icon('heroicon-o-credit-card')
+                    ->schema([
+                        Select::make('gateway')
+                            ->label('درگاه پرداخت')
+                            ->placeholder('همه')
+                            ->options([
+                                'parsian' => 'پارسیان',
+                                'digipay' => 'دیجی‌پی',
+                                'kamanlend' => 'کمان‌لند',
+                                'smartis' => 'اسمارتیس',
+                                'nopay' => 'نوپی',
+                            ])
+                            ->native(false),
+                    ]),
             ]);
     }
 
@@ -119,6 +138,10 @@ class TotalInvoiceReport extends Page
 
         if ($gregorianTo) {
             $query->whereDate('created_at', '<=', $gregorianTo);
+        }
+
+        if (filled($this->gateway)) {
+            $query->whereHas('payments', fn ($q) => $q->where('gateway', $this->gateway));
         }
 
         $orders = $query->get();

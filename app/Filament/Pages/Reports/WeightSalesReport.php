@@ -5,6 +5,7 @@ namespace App\Filament\Pages\Reports;
 use App\Enums\Permission;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -54,6 +55,8 @@ class WeightSalesReport extends Page
 
     public ?string $dateTo = null;
 
+    public ?string $gateway = null;
+
     /** @var Collection<int, array{date: string, total_rial: float, total_items: int, bar_count: int, bar_weight: float, bar_avg_weight: float, bar_rial: float, bar_price: float, gold750_count: int, gold750_weight: float, gold750_avg_weight: float, gold750_rial: float, gold750_price: float, silver_count: int, silver_weight: float, silver_avg_weight: float, silver_rial: float, silver_price: float}> */
     public $report;
 
@@ -99,6 +102,22 @@ class WeightSalesReport extends Page
                                     ->displayFormat('Y/m/d'),
                             ] : []),
                     ]),
+
+                Section::make('درگاه پرداخت')
+                    ->icon('heroicon-o-credit-card')
+                    ->schema([
+                        Select::make('gateway')
+                            ->label('درگاه پرداخت')
+                            ->placeholder('همه')
+                            ->options([
+                                'parsian' => 'پارسیان',
+                                'digipay' => 'دیجی‌پی',
+                                'kamanlend' => 'کمان‌لند',
+                                'smartis' => 'اسمارتیس',
+                                'nopay' => 'نوپی',
+                            ])
+                            ->native(false),
+                    ]),
             ]);
     }
 
@@ -119,6 +138,10 @@ class WeightSalesReport extends Page
 
         if ($gregorianTo) {
             $query->whereDate('created_at', '<=', $gregorianTo);
+        }
+
+        if (filled($this->gateway)) {
+            $query->whereHas('payments', fn ($q) => $q->where('gateway', $this->gateway));
         }
 
         $orders = $query->get();
