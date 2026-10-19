@@ -67,6 +67,7 @@ class ProductPricingAuditObserver
 
         PriceAuditLog::create([
             'actor_id' => auth()->id(),
+            'actor_ip' => request()->ip(),
             'actor_name' => auth()->user()?->first_name
                 ? trim(auth()->user()->first_name.' '.auth()->user()->last_name)
                 : auth()->user()?->name,

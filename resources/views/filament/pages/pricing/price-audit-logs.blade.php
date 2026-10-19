@@ -6,6 +6,7 @@
                 <tr>
                     <th class="px-4 py-3 text-right font-medium">زمان</th>
                     <th class="px-4 py-3 text-right font-medium">کاربر</th>
+                    <th class="px-4 py-3 text-right font-medium">IP</th>
                     <th class="px-4 py-3 text-right font-medium">مورد تغییر</th>
                     <th class="px-4 py-3 text-right font-medium">فیلد</th>
                     <th class="px-4 py-3 text-right font-medium">مقدار قبلی</th>
@@ -18,6 +19,7 @@
                         <tr>
                             <td class="whitespace-nowrap px-4 py-3">{{ $this->formatCreatedAt($record) }}</td>
                             <td class="whitespace-nowrap px-4 py-3">{{ $this->actorName($record) }}</td>
+                            <td class="whitespace-nowrap px-4 py-3 font-mono text-xs">{{ $record->actor_ip ?? '—' }}</td>
                             <td class="px-4 py-3">{{ $this->subjectLabel($record) }}</td>
                             <td class="whitespace-nowrap px-4 py-3">{{ $this->fieldLabel($field) }}</td>
                             <td class="max-w-xs whitespace-pre-wrap break-all px-4 py-3 font-mono text-xs">{{ $this->formatValue($change['old'] ?? null) }}</td>
@@ -26,7 +28,7 @@
                     @endforeach
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">هنوز تغییری در قیمت‌ها ثبت نشده است.</td>
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">هنوز تغییری در قیمت‌ها ثبت نشده است.</td>
                     </tr>
                 @endforelse
             </tbody>

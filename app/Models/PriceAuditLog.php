@@ -10,6 +10,7 @@ class PriceAuditLog extends Model
     protected $fillable = [
         'actor_id',
         'actor_name',
+        'actor_ip',
         'subject_type',
         'subject_id',
         'subject_label',
