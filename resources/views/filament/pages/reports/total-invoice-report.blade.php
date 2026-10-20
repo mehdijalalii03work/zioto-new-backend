@@ -63,7 +63,7 @@
                 color: black !important;
             }
             table.tir-table .plaque-col {
-                background-color: #ffc107 !important;
+                background-color: #fffd01 !important;
                 color: black !important;
             }
             table.tir-table > tfoot.tir-tfoot-secondary > tr > td {
