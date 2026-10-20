@@ -57,7 +57,7 @@ class TotalInvoiceReport extends Page
 
     public ?string $gateway = null;
 
-    /** @var Collection<int, array{date: string, invoice_count: int, net_amount: float, gold_count: int, gold_amount: float, silver_count: int, silver_amount: float, total_count: int}> */
+    /** @var Collection<int, array{date: string, invoice_count: int, net_amount: float, gold_count: int, gold_amount: float, silver_count: int, silver_amount: float, plaque_count: int, plaque_amount: float}> */
     public $report;
 
     public bool $submitted = false;
@@ -154,25 +154,43 @@ class TotalInvoiceReport extends Page
             ->map(static function ($orders, $date) {
                 $allItems = $orders->flatMap->items;
 
+                $goldItems = $allItems->filter(
+                    static fn ($item) => $item->product
+                        && $item->product->metal_type?->value === 'gold'
+                        && in_array($item->product->form?->value, ['shammesh', 'saachmeh'], true),
+                );
+
                 $goldCount = $orders->filter(
                     static fn ($order) => $order->items->contains(
-                        static fn ($item) => $item->product && $item->product->metal_type?->value === 'gold',
+                        static fn ($item) => $item->product
+                            && $item->product->metal_type?->value === 'gold'
+                            && in_array($item->product->form?->value, ['shammesh', 'saachmeh'], true),
                     ),
                 )->count();
 
                 $silverCount = $orders->filter(
                     static fn ($order) => $order->items->contains(
-                        static fn ($item) => $item->product && $item->product->metal_type?->value === 'silver',
+                        static fn ($item) => $item->product
+                            && $item->product->metal_type?->value === 'silver'
+                            && in_array($item->product->form?->value, ['shammesh', 'saachmeh'], true),
                     ),
                 )->count();
 
-                $goldItems = $allItems->filter(
-                    static fn ($item) => $item->product && $item->product->metal_type?->value === 'gold',
+                $silverItems = $allItems->filter(
+                    static fn ($item) => $item->product
+                        && $item->product->metal_type?->value === 'silver'
+                        && in_array($item->product->form?->value, ['shammesh', 'saachmeh'], true),
                 );
 
-                $silverItems = $allItems->filter(
-                    static fn ($item) => $item->product && $item->product->metal_type?->value === 'silver',
+                $plaqueItems = $allItems->filter(
+                    static fn ($item) => $item->product && $item->product->form?->value === 'pelak',
                 );
+
+                $plaqueCount = $orders->filter(
+                    static fn ($order) => $order->items->contains(
+                        static fn ($item) => $item->product && $item->product->form?->value === 'pelak',
+                    ),
+                )->count();
 
                 return [
                     'date' => $date,
@@ -182,6 +200,8 @@ class TotalInvoiceReport extends Page
                     'gold_amount' => (float) $goldItems->sum('subtotal'),
                     'silver_count' => $silverCount,
                     'silver_amount' => (float) $silverItems->sum('subtotal'),
+                    'plaque_count' => $plaqueCount,
+                    'plaque_amount' => (float) $plaqueItems->sum('subtotal'),
                 ];
             })
             ->sortByDesc('date')

@@ -80,6 +80,8 @@
                         <th scope="col" class="gold-col">ریال شمش</th>
                         <th scope="col" class="silver-col">تعداد نقره</th>
                         <th scope="col" class="silver-col">ریال نقره</th>
+                        <th scope="col">تعداد پلاک</th>
+                        <th scope="col">ریال پلاک</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -92,6 +94,8 @@
                             <td class="text-end gold-col">{{ number_format($row['gold_amount']) }}</td>
                             <td class="text-end silver-col">{{ number_format($row['silver_count']) }}</td>
                             <td class="text-end silver-col">{{ number_format($row['silver_amount']) }}</td>
+                            <td>{{ number_format($row['plaque_count']) }}</td>
+                            <td class="text-end">{{ number_format($row['plaque_amount']) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -104,6 +108,8 @@
                         <td class="text-end gold-col">{{ number_format($report->sum('gold_amount')) }}</td>
                         <td class="silver-col">{{ number_format($report->sum('silver_count')) }}</td>
                         <td class="text-end silver-col">{{ number_format($report->sum('silver_amount')) }}</td>
+                        <td>{{ number_format($report->sum('plaque_count')) }}</td>
+                        <td class="text-end">{{ number_format($report->sum('plaque_amount')) }}</td>
                     </tr>
                 </tfoot>
             </table>
