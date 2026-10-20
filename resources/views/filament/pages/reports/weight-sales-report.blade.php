@@ -15,12 +15,13 @@
             .wsr-responsive { overflow-x: auto; margin-top: 1.5rem !important; }
             table.wsr-table {
                 width: 100%;
+                table-layout: fixed;
                 margin-bottom: 1rem;
                 color: #212529;
                 vertical-align: middle;
                 border-color: #dee2e6;
                 border-collapse: collapse;
-                font-size: 1rem;
+                font-size: .8rem;
                 font-weight: 400;
                 line-height: 1.5;
                 background-color: #fff;
@@ -32,17 +33,18 @@
                 background-color: #212529;
                 border-color: #373b3e;
                 color: #fff;
-                padding: .65rem .6rem;
+                padding: .35rem .25rem;
                 border: 1px solid #373b3e;
-                font-size: 1.05rem;
+                font-size: .85rem;
                 font-weight: 800;
                 text-align: center;
                 vertical-align: middle;
-                white-space: nowrap;
+                white-space: normal;
+                overflow-wrap: anywhere;
             }
             table.wsr-table > tbody > tr > td,
             table.wsr-table > tfoot.wsr-tfoot-secondary > tr > td {
-                padding: .6rem .6rem;
+                padding: .35rem .25rem;
                 border: 1px solid #dee2e6;
                 font-size: 1rem;
                 font-weight: 600;
