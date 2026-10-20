@@ -95,9 +95,9 @@
             }
             table.wsr-table > tfoot.wsr-tfoot-secondary > tr > td.text-start { text-align: left; }
 
-            @media (max-width: 1280px) {
+            @media (max-width: 1600px) {
                 table.wsr-table {
-                    min-width: 1450px;
+                    min-width: 1800px;
                 }
             }
         </style>
