@@ -315,10 +315,11 @@ class HesabfaObserver
             $sku = $product?->sku ?? '';
 
             if (! isset($skuCache[$sku])) {
-                $skuCache[$sku] = $this->findHesabfaItemCode($sku);
+                $skuCache[$sku] = $this->findHesabfaItem($sku);
             }
 
-            $itemCode = $skuCache[$sku];
+            $hesabfaItem = $skuCache[$sku];
+            $itemCode = $hesabfaItem['Code'] ?? $hesabfaItem['ItemCode'] ?? null;
 
             if (! $itemCode) {
                 $missingSkus[] = $sku;
@@ -326,7 +327,9 @@ class HesabfaObserver
                 continue;
             }
 
-            $price = (int) $orderItem->product_price;
+            $packSize = $product?->pack_size ?? 1;
+            $quantity = (int) $orderItem->quantity * $packSize;
+            $price = (int) round((int) $orderItem->product_price / $packSize);
             $tax = 0;
             $unitPrice = $price;
 
@@ -339,20 +342,18 @@ class HesabfaObserver
                 $taxRate = (float) Setting::getValue('tax_silver', 10);
                 if ($taxRate > 0) {
                     $unitPrice = (int) round($price / (1 + $taxRate / 100));
-                    $tax = ($price - $unitPrice) * $orderItem->quantity;
+                    $tax = ($price - $unitPrice) * $quantity;
                 }
             }
-
-            $packSize = $product?->pack_size ?? 1;
 
             $items[] = [
                 'rowNumber' => $rowNumber++,
                 'description' => $orderItem->product_name,
                 'itemCode' => $itemCode,
-                'unit' => $packSize > 1 ? 'بسته' : config('hesabfa.default_unit', 'عدد'),
-                'quantity' => $orderItem->quantity,
+                'unit' => $hesabfaItem['Unit'] ?? config('hesabfa.default_unit', 'عدد'),
+                'quantity' => $quantity,
                 'unitPrice' => (int) $unitPrice,
-                'discount' => $this->calculateItemDiscount($orderItem),
+                'discount' => (int) round($this->calculateItemDiscount($orderItem) / $packSize),
                 'tax' => (int) $tax,
             ];
         }
@@ -525,7 +526,7 @@ class HesabfaObserver
         ];
     }
 
-    private function findHesabfaItemCode(string $sku): ?string
+    private function findHesabfaItem(string $sku): ?array
     {
         if (empty($sku)) {
             return null;
@@ -539,7 +540,7 @@ class HesabfaObserver
             'item_code' => $item['Code'] ?? $item['ItemCode'] ?? null,
         ]);
 
-        return $item['Code'] ?? $item['ItemCode'] ?? null;
+        return $item;
     }
 
     private function extractNationalCode(Order $order): ?string

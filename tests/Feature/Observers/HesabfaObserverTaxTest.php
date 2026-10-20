@@ -19,10 +19,11 @@ class HesabfaObserverTaxTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function buildProductItems(Order $order, string $itemCode = '000001'): array
+    private function buildProductItems(Order $order, string|array $hesabfaItem = '000001'): array
     {
         $service = $this->createMock(HesabfaService::class);
-        $service->method('findItemBySku')->willReturn(['Code' => $itemCode]);
+        $item = is_array($hesabfaItem) ? $hesabfaItem : ['Code' => $hesabfaItem];
+        $service->method('findItemBySku')->willReturn($item);
 
         $observer = new HesabfaObserver($service);
 
@@ -102,5 +103,35 @@ class HesabfaObserverTaxTest extends TestCase
         $this->assertCount(1, $items);
         $this->assertSame(1000000, $items[0]['unitPrice']);
         $this->assertSame(400000, $items[0]['tax']);
+    }
+
+    public function test_pack_product_is_sent_as_single_items_with_expanded_quantity(): void
+    {
+        $product = Product::create([
+            'name' => 'شمش نقره زیوتو ۱ گرم (پک ۵ عددی)',
+            'slug' => 'silver-pack-'.uniqid(),
+            'sku' => 'SILVER-PACK-001',
+            'metal_type' => 'silver',
+            'pack_size' => 5,
+        ]);
+
+        $order = Order::factory()->create();
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_price' => 5000000,
+            'quantity' => 2,
+            'subtotal' => 10000000,
+        ]);
+        $order->load('items.product');
+
+        $items = $this->buildProductItems($order, ['Code' => '000001', 'Unit' => 'عدد']);
+
+        $this->assertCount(1, $items);
+        $this->assertSame('عدد', $items[0]['unit']);
+        $this->assertSame(10, $items[0]['quantity']);
+        $this->assertSame(909091, $items[0]['unitPrice']);
+        $this->assertSame(9090910, $items[0]['unitPrice'] * $items[0]['quantity']);
+        $this->assertSame(909090, $items[0]['tax']);
     }
 }
