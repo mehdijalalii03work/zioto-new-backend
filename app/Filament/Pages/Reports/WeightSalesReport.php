@@ -147,9 +147,16 @@ class WeightSalesReport extends Page
             $query->whereHas('payments', fn ($q) => $q->where('gateway', $this->gateway));
         }
 
-        $orders = $query->get();
+        $this->report = $this->buildReportRows($query->get());
+    }
 
-        $this->report = $orders
+    /**
+     * @param  Collection<int, Order>  $orders
+     * @return Collection<int, array{date: string, total_rial: float, total_items: int, bar_count: int, bar_weight: float, bar_avg_weight: float, bar_rial: float, bar_price: float, gold750_count: int, gold750_weight: float, gold750_avg_weight: float, gold750_rial: float, gold750_price: float, silver_count: int, silver_weight: float, silver_avg_weight: float, silver_rial: float, silver_price: float}>
+     */
+    protected function buildReportRows(Collection $orders): Collection
+    {
+        return $orders
             ->groupBy(static fn (Order $order) => $order->created_at->format('Y-m-d'))
             ->map(static function ($orders, $date) {
                 $allItems = $orders->flatMap->items;
@@ -207,7 +214,7 @@ class WeightSalesReport extends Page
             ->values();
     }
 
-    private function resolveDateRange(): array
+    protected function resolveDateRange(): array
     {
         $now = Jalalian::now();
 
@@ -236,7 +243,7 @@ class WeightSalesReport extends Page
         };
     }
 
-    private function parseDate(string $date): ?string
+    protected function parseDate(string $date): ?string
     {
         try {
             if (str_contains($date, '/')) {
