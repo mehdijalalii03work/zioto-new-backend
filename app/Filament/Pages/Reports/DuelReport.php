@@ -25,7 +25,7 @@ class DuelReport extends WeightSalesReport
 
     public static function getNavigationIcon(): string|\BackedEnum|null
     {
-        return 'heroicon-o-scale';
+        return 'heroicon-o-arrows-right-left';
     }
 
     public static function getNavigationLabel(): string
@@ -94,7 +94,13 @@ class DuelReport extends WeightSalesReport
         [$gregorianFrom, $gregorianTo] = $this->resolveDateRange();
 
         $query = Order::withoutTenantScope()
-            ->whereIn('status', ['completed', 'confirmed'])
+            ->where(static function ($query): void {
+                $query->whereIn('status', ['completed', 'confirmed'])
+                    ->orWhere(static function ($query): void {
+                        $query->where('platform', Platform::TAPSI)
+                            ->where('status', 'pending');
+                    });
+            })
             ->whereDoesntHave('items.product', static fn ($query) => $query->where('slug', 'test'))
             ->with(['items.product', 'payments']);
 

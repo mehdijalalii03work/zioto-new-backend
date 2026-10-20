@@ -29,6 +29,7 @@ class DuelReportTest extends TestCase
     public function test_duel_report_page_exists(): void
     {
         $this->assertTrue(class_exists(DuelReport::class));
+        $this->assertSame('heroicon-o-arrows-right-left', DuelReport::getNavigationIcon());
     }
 
     public function test_duel_report_separates_parsian_site_tapsi_and_digipay_orders(): void
@@ -76,11 +77,25 @@ class DuelReportTest extends TestCase
         $this->assertSame(100000, (int) $reports['digipay']->first()['total_rial']);
     }
 
-    private function createOrder(string $platform, string $gateway, int $amount): Order
+    public function test_pending_tapsi_orders_are_included_but_pending_site_orders_are_not(): void
+    {
+        $this->createOrder('tapsi', 'parsian', 600000, 'pending');
+        $this->createOrder('main', 'parsian', 700000, 'pending');
+
+        $reports = Livewire::actingAs(User::factory()->create()->assignRole(Role::Admin->value), 'web')
+            ->test(DuelReport::class)
+            ->call('loadReport')
+            ->get('reports');
+
+        $this->assertSame(600000, (int) $reports['tapsi']->first()['total_rial']);
+        $this->assertCount(0, $reports['site']);
+    }
+
+    private function createOrder(string $platform, string $gateway, int $amount, string $status = 'completed'): Order
     {
         $order = Order::factory()->create([
             'platform' => $platform,
-            'status' => 'completed',
+            'status' => $status,
             'total_amount' => $amount,
         ]);
 
