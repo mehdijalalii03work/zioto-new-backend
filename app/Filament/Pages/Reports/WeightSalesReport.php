@@ -203,7 +203,7 @@ class WeightSalesReport extends Page
                     'silver_price' => $silverWeight > 0 ? $silverRial / $silverWeight : 0,
                 ];
             })
-            ->sortByDesc('date')
+            ->sortBy('date')
             ->values();
     }
 

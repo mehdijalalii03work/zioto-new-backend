@@ -204,7 +204,7 @@ class TotalInvoiceReport extends Page
                     'plaque_amount' => (float) $plaqueItems->sum('subtotal'),
                 ];
             })
-            ->sortByDesc('date')
+            ->sortBy('date')
             ->values();
     }
 
