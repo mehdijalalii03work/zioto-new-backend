@@ -12,7 +12,13 @@
 
     @if($report->count())
         <style>
-            .wsr-responsive { overflow-x: auto; margin-top: 1.5rem !important; }
+            .wsr-responsive {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                margin-top: 1.5rem !important;
+            }
             table.wsr-table {
                 width: 100%;
                 table-layout: fixed;
@@ -88,6 +94,12 @@
                 font-weight: 700;
             }
             table.wsr-table > tfoot.wsr-tfoot-secondary > tr > td.text-start { text-align: left; }
+
+            @media (max-width: 768px) {
+                table.wsr-table {
+                    min-width: 1450px;
+                }
+            }
         </style>
         <div class="table-responsive mt-4 wsr-responsive">
             <table class="table table-hover table-bordered align-middle text-center shadow-sm rounded-3 overflow-hidden wsr-table">
