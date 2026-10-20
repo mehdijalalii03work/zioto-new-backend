@@ -44,7 +44,7 @@ class DuelReportTest extends TestCase
             ->test(DuelReport::class)
             ->call('loadReport')
             ->assertSee('فروش نقدی از سایت زیوتو')
-            ->assertSee('فروش اقساطی دیجی‌پی')
+            ->assertSee('فروش اقساطی دیجی‌پی از سایت زیوتو')
             ->assertSee('فروش تپسی‌شاپ');
 
         $reports = $component->get('reports');
