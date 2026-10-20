@@ -46,10 +46,11 @@
             table.wsr-table > tfoot.wsr-tfoot-secondary > tr > td {
                 padding: .35rem .25rem;
                 border: 1px solid #dee2e6;
-                font-size: 1rem;
+                font-size: .8rem;
                 font-weight: 600;
                 vertical-align: middle;
                 text-align: center;
+                white-space: nowrap;
             }
             table.wsr-table > tbody > tr:hover > td { background-color: rgba(0, 0, 0, .075); }
             table.wsr-table > tbody > tr > td.fw-medium,
@@ -90,6 +91,26 @@
         </style>
         <div class="table-responsive mt-4 wsr-responsive">
             <table class="table table-hover table-bordered align-middle text-center shadow-sm rounded-3 overflow-hidden wsr-table">
+                <colgroup>
+                    <col style="width: 5%">
+                    <col style="width: 8%">
+                    <col style="width: 4%">
+                    <col style="width: 4%">
+                    <col style="width: 4%">
+                    <col style="width: 4%">
+                    <col style="width: 8%">
+                    <col style="width: 7%">
+                    <col style="width: 5%">
+                    <col style="width: 5%">
+                    <col style="width: 5%">
+                    <col style="width: 8%">
+                    <col style="width: 7%">
+                    <col style="width: 4%">
+                    <col style="width: 4%">
+                    <col style="width: 4%">
+                    <col style="width: 8%">
+                    <col style="width: 6%">
+                </colgroup>
                 <thead class="table-dark wsr-thead-dark">
                     <tr>
                         <th scope="col">تاریخ شمسی</th>
