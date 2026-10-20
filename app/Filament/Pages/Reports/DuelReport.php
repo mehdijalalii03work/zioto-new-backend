@@ -35,7 +35,7 @@ class DuelReport extends WeightSalesReport
 
     public static function getNavigationSort(): ?int
     {
-        return 3;
+        return 5;
     }
 
     public function mount(): void
