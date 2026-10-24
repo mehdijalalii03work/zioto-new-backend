@@ -150,6 +150,20 @@ class ViewOrder extends ViewRecord
                                                     ->state(fn ($record): ?string => data_get(json_decode($record->notes, true), 'installment_fee'))
                                                     ->formatStateUsing(fn ($state): string => $state ? number_format($state).' ریال' : '—')
                                                     ->placeholder('—'),
+
+                                                TextEntry::make('discount_status')
+                                                    ->label('وضعیت تخفیف')
+                                                    ->state(fn ($record): string => (int) $record->discount_amount > 0 ? 'تخفیف اعمال شده' : 'تخفیفی اعمال نشده')
+                                                    ->badge()
+                                                    ->color(fn ($record): string => (int) $record->discount_amount > 0 ? 'success' : 'gray'),
+
+                                                TextEntry::make('discount_code_snapshot')
+                                                    ->label('کد تخفیف')
+                                                    ->placeholder('—'),
+
+                                                TextEntry::make('discount_amount')
+                                                    ->label('مبلغ تخفیف')
+                                                    ->formatStateUsing(fn ($state): string => (int) $state > 0 ? number_format((int) $state).' ریال' : '—'),
                                             ])->columnSpanFull(),
                                     ]),
 
