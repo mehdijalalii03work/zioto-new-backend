@@ -13,7 +13,12 @@ class DiscountCodesTable
     {
         return $table
             ->columns([
-                TextColumn::make('code')->label('کد')->searchable()->copyable(),
+                TextColumn::make('code')
+                    ->label('کد')
+                    ->searchable()
+                    ->copyable()
+                    ->copyMessage('کد تخفیف کپی شد')
+                    ->copyMessageDuration(1500),
                 TextColumn::make('discount_amount')->label('تخفیف (تومان)')->formatStateUsing(fn ($state): string => number_format((int) $state / 10)),
                 TextColumn::make('usages_count')->label('مصرف‌شده')->counts('usages'),
                 TextColumn::make('max_uses')->label('سقف مصرف')->placeholder('بدون محدودیت'),

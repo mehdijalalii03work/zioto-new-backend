@@ -9,6 +9,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 
 class DiscountCodeForm
 {
@@ -27,11 +28,13 @@ class DiscountCodeForm
                         TextInput::make('discount_amount')
                             ->label('مبلغ تخفیف (تومان)')
                             ->required()
+                            ->mask(RawJs::make('$money($input)'))
+                            ->stripCharacters(',')
                             ->numeric()
                             ->integer()
                             ->minValue(1)
-                            ->formatStateUsing(fn ($state): int => (int) ($state / 10))
-                            ->dehydrateStateUsing(fn ($state): int => (int) $state * 10),
+                            ->formatStateUsing(fn ($state): string => number_format((int) ($state / 10)))
+                            ->dehydrateStateUsing(fn ($state): int => (int) preg_replace('/[^\d]/', '', (string) $state) * 10),
                         Select::make('platforms')
                             ->label('فروشگاه‌های مجاز')
                             ->multiple()
