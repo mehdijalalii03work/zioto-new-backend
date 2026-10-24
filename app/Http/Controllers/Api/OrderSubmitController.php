@@ -7,14 +7,17 @@ use App\Http\Requests\StoreOrderRequest;
 use App\Http\Resources\OrderNoteResource;
 use App\Http\Resources\OrderResource;
 use App\Models\Cart;
+use App\Models\DiscountCodeUsage;
 use App\Models\OrderShipping;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
+use App\Services\DiscountCodeService;
 use App\Services\InstallmentService;
 use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Modules\Order\Models\Order;
 
 class OrderSubmitController extends Controller
@@ -59,7 +62,7 @@ class OrderSubmitController extends Controller
         ]);
     }
 
-    public function store(StoreOrderRequest $request): JsonResponse
+    public function store(StoreOrderRequest $request, DiscountCodeService $discountCodeService): JsonResponse
     {
         $user = $request->user();
         $validated = $request->validated();
@@ -93,7 +96,10 @@ class OrderSubmitController extends Controller
             ], 422);
         }
 
-        $existingOrder = $this->findExistingSimilarOrder($user, $cartItems, $validated);
+        $requestedDiscountCode = filled($validated['discount_code'] ?? null)
+            ? Str::upper(trim($validated['discount_code']))
+            : null;
+        $existingOrder = $this->findExistingSimilarOrder($user, $cartItems, $validated, $requestedDiscountCode);
 
         if ($existingOrder) {
             return response()->json([
@@ -103,7 +109,23 @@ class OrderSubmitController extends Controller
             ]);
         }
 
-        $result = DB::transaction(function () use ($validated, $user, $cartItems) {
+        $result = DB::transaction(function () use ($validated, $user, $cartItems, $requestedDiscountCode, $discountCodeService) {
+            $discountCode = null;
+            if ($requestedDiscountCode !== null) {
+                $discountCodeResult = $discountCodeService->validate(
+                    $requestedDiscountCode,
+                    $user,
+                    Platform::fromRequest(),
+                    lock: true,
+                );
+
+                if ($discountCodeResult['error']) {
+                    return ['error' => $discountCodeResult['error']];
+                }
+
+                $discountCode = $discountCodeResult['code'];
+            }
+
             $address = empty($validated['user_address_id']) ? null : $user->addresses()->with(['province', 'city'])->find($validated['user_address_id']);
 
             $buyerName = $address?->receiver_name ?: $user->name;
@@ -111,7 +133,7 @@ class OrderSubmitController extends Controller
             $nationalId = $user->national_code;
 
             $gateway = $validated['gateway'] ?? 'parsian';
-            $orderData = $this->calculateOrderData($cartItems, $validated, $address);
+            $orderData = $this->calculateOrderData($cartItems, $validated, $address, (int) ($discountCode?->discount_amount ?? 0));
 
             $notesData = [
                 'name' => $buyerName,
@@ -128,6 +150,9 @@ class OrderSubmitController extends Controller
                 'platform' => Platform::fromRequest(),
                 'status' => 'pending',
                 'total_amount' => $orderData['total_amount'],
+                'discount_code_id' => $discountCode?->id,
+                'discount_code_snapshot' => $discountCode?->code,
+                'discount_amount' => $orderData['discount_amount'],
                 'payment_method' => $orderData['payment_method'],
                 'payment_status' => 'pending',
                 'user_address_id' => $validated['user_address_id'] ?? null,
@@ -136,6 +161,14 @@ class OrderSubmitController extends Controller
 
             foreach ($orderData['items'] as $orderItem) {
                 $order->items()->create($orderItem);
+            }
+
+            if ($discountCode) {
+                DiscountCodeUsage::create([
+                    'discount_code_id' => $discountCode->id,
+                    'user_id' => $user->id,
+                    'order_id' => $order->id,
+                ]);
             }
 
             $method = ShippingMethod::find($validated['shipping_method_id']);
@@ -156,6 +189,13 @@ class OrderSubmitController extends Controller
                 'shippingCost' => $orderData['shipping_cost'],
             ];
         });
+
+        if (isset($result['error'])) {
+            return response()->json([
+                'message' => $result['error'],
+                'error_code' => 'DISCOUNT_CODE_INVALID',
+            ], 422);
+        }
 
         return response()->json([
             'message' => 'سفارش با موفقیت ثبت شد',
@@ -203,7 +243,7 @@ class OrderSubmitController extends Controller
         return ['valid' => true];
     }
 
-    private function calculateOrderData($cartItems, array $validated, ?object $address = null): array
+    private function calculateOrderData($cartItems, array $validated, ?object $address = null, int $requestedDiscountAmount = 0): array
     {
         $baseAmount = 0;
         $orderItems = [];
@@ -234,7 +274,8 @@ class OrderSubmitController extends Controller
             ? (InstallmentService::isFeeGateway($gateway) ? 'installment' : 'installment_nofee')
             : 'online';
 
-        $totalAmount = $baseAmount + $shippingResult['total'];
+        $discountAmount = min(max(0, $requestedDiscountAmount), $baseAmount + $shippingResult['total']);
+        $totalAmount = $baseAmount + $shippingResult['total'] - $discountAmount;
         $installmentFee = 0;
 
         if (InstallmentService::isFeeGateway($gateway)) {
@@ -245,6 +286,7 @@ class OrderSubmitController extends Controller
         return [
             'items' => $orderItems,
             'total_amount' => $totalAmount,
+            'discount_amount' => $discountAmount,
             'payment_method' => $paymentMethod,
             'installment_fee' => $installmentFee,
             'shipping_cost' => $shippingResult['total'],
@@ -253,12 +295,12 @@ class OrderSubmitController extends Controller
         ];
     }
 
-    private function findExistingSimilarOrder($user, $cartItems, array $validated): ?Order
+    private function findExistingSimilarOrder($user, $cartItems, array $validated, ?string $requestedDiscountCode): ?Order
     {
         $cartItemData = collect($cartItems)->map(fn (Cart $item) => [
             'product_id' => $item->product_id,
             'quantity' => $item->quantity,
-            'product_price' => $item->product->price,
+            'product_price' => (int) $item->product->price,
         ])->sortBy('product_id')->values()->toArray();
 
         $pendingOrders = Order::where('user_id', $user->id)
@@ -275,14 +317,18 @@ class OrderSubmitController extends Controller
                 ->map(fn ($item) => [
                     'product_id' => $item->product_id,
                     'quantity' => $item->quantity,
-                    'product_price' => $item->product_price,
+                    'product_price' => (int) $item->product_price,
                 ])
                 ->sortBy('product_id')
                 ->values()
                 ->toArray();
 
             if ($cartItemData === $orderItemData) {
-                $orderData = $this->calculateOrderData($cartItems, $validated);
+                if ($order->discount_code_snapshot !== $requestedDiscountCode) {
+                    continue;
+                }
+
+                $orderData = $this->calculateOrderData($cartItems, $validated, requestedDiscountAmount: (int) $order->discount_amount);
                 $order->update([
                     'total_amount' => $orderData['total_amount'],
                     'payment_method' => $orderData['payment_method'],

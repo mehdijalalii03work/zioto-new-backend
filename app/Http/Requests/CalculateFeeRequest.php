@@ -20,6 +20,7 @@ class CalculateFeeRequest extends FormRequest
             'user_address_id' => ['nullable', 'integer', 'exists:user_addresses,id'],
             'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
             'gateway' => ['required', 'in:parsian,digipay,kamanlend,smartis,nopay'],
+            'discount_code' => ['nullable', 'string', 'max:64'],
         ];
     }
 

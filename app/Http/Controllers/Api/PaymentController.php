@@ -9,7 +9,9 @@ use App\Http\Resources\PaymentResource;
 use App\Models\Cart;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
+use App\Services\DiscountCodeService;
 use App\Services\InstallmentService;
+use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +27,7 @@ use Shetabit\Multipay\Payment as ShetabitPayment;
 
 class PaymentController extends Controller
 {
-    public function calculateFee(CalculateFeeRequest $request): JsonResponse
+    public function calculateFee(CalculateFeeRequest $request, DiscountCodeService $discountCodeService): JsonResponse
     {
         $validated = $request->validated();
         $user = $request->user();
@@ -49,6 +51,25 @@ class PaymentController extends Controller
 
         $baseTotal += $shippingCost;
 
+        $discountAmount = 0;
+        if (filled($validated['discount_code'] ?? null)) {
+            $discountResult = $discountCodeService->validate(
+                $validated['discount_code'],
+                $user,
+                Platform::fromRequest($request),
+            );
+
+            if ($discountResult['error']) {
+                return response()->json([
+                    'message' => $discountResult['error'],
+                    'error_code' => 'DISCOUNT_CODE_INVALID',
+                ], 422);
+            }
+
+            $discountAmount = min((int) $discountResult['code']->discount_amount, $baseTotal);
+            $baseTotal -= $discountAmount;
+        }
+
         $isFeeGateway = InstallmentService::isFeeGateway($validated['gateway']);
         $feeAmount = 0;
 
@@ -59,6 +80,7 @@ class PaymentController extends Controller
         return response()->json([
             'base_total' => (int) $baseTotal,
             'shipping_cost' => $shippingCost,
+            'discount_amount' => $discountAmount,
             'fee_amount' => $feeAmount,
             'total_with_fee' => (int) $baseTotal + $feeAmount,
         ]);

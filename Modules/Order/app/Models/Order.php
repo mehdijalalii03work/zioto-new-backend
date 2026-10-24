@@ -2,6 +2,7 @@
 
 namespace Modules\Order\Models;
 
+use App\Models\DiscountCode;
 use App\Models\HesabfaSyncLog;
 use App\Models\OrderNote;
 use App\Models\OrderShipping;
@@ -78,6 +79,9 @@ class Order extends Model
         'tapsi_delivery_method',
         'tapsi_service_fee',
         'tapsi_voucher_fee',
+        'discount_code_id',
+        'discount_code_snapshot',
+        'discount_amount',
     ];
 
     protected function casts(): array
@@ -121,6 +125,11 @@ class Order extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function discountCode(): BelongsTo
+    {
+        return $this->belongsTo(DiscountCode::class);
     }
 
     public function addNote(string $note, string $type = 'general', bool $isCustomerNote = false): OrderNote

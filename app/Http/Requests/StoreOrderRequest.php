@@ -17,6 +17,7 @@ class StoreOrderRequest extends FormRequest
             'gateway' => ['nullable', 'in:parsian,digipay,kamanlend,smartis,nopay'],
             'user_address_id' => ['nullable', 'integer', 'exists:user_addresses,id'],
             'shipping_method_id' => ['required', 'integer', 'exists:shipping_methods,id'],
+            'discount_code' => ['nullable', 'string', 'max:64'],
         ];
     }
 
