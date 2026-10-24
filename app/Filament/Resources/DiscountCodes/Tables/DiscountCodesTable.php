@@ -20,7 +20,12 @@ class DiscountCodesTable
                     ->copyMessage('کد تخفیف کپی شد')
                     ->copyMessageDuration(1500),
                 TextColumn::make('discount_amount')->label('تخفیف (تومان)')->formatStateUsing(fn ($state): string => number_format((int) $state / 10)),
-                TextColumn::make('usages_count')->label('مصرف‌شده')->counts('usages'),
+                TextColumn::make('usages_count')
+                    ->label('مصرف‌شده')
+                    ->counts(['usages as usages_count' => fn ($query) => $query->where('status', 'redeemed')]),
+                TextColumn::make('reservations_count')
+                    ->label('رزرو پرداخت')
+                    ->counts(['usages as reservations_count' => fn ($query) => $query->where('status', 'reserved')]),
                 TextColumn::make('max_uses')->label('سقف مصرف')->placeholder('بدون محدودیت'),
                 TextColumn::make('max_uses_per_customer')->label('سقف هر مشتری')->placeholder('بدون محدودیت'),
                 TextColumn::make('starts_at')->label('شروع')->jalaliDateTime('Y/m/d H:i')->placeholder('همیشه'),

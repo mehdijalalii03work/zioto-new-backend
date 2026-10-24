@@ -27,7 +27,9 @@ use Shetabit\Multipay\Payment as ShetabitPayment;
 
 class PaymentController extends Controller
 {
-    public function calculateFee(CalculateFeeRequest $request, DiscountCodeService $discountCodeService): JsonResponse
+    public function __construct(private DiscountCodeService $discountCodeService) {}
+
+    public function calculateFee(CalculateFeeRequest $request): JsonResponse
     {
         $validated = $request->validated();
         $user = $request->user();
@@ -53,7 +55,7 @@ class PaymentController extends Controller
 
         $discountAmount = 0;
         if (filled($validated['discount_code'] ?? null)) {
-            $discountResult = $discountCodeService->validate(
+            $discountResult = $this->discountCodeService->validate(
                 $validated['discount_code'],
                 $user,
                 Platform::fromRequest($request),
@@ -536,6 +538,8 @@ class PaymentController extends Controller
                     'payment_status' => 'paid',
                     'status' => 'confirmed',
                 ])->saveQuietly();
+
+                $this->discountCodeService->redeemUsage($order->id);
 
                 Cart::where('user_id', $order->user_id)->delete();
 

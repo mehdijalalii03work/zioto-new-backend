@@ -8,7 +8,7 @@ use Modules\Order\Models\Order;
 
 class DiscountCodeUsage extends Model
 {
-    protected $fillable = ['discount_code_id', 'user_id', 'order_id'];
+    protected $fillable = ['discount_code_id', 'user_id', 'order_id', 'status'];
 
     public function discountCode(): BelongsTo
     {

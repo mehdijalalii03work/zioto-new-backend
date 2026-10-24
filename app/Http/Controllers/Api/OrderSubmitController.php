@@ -7,7 +7,7 @@ use App\Http\Requests\StoreOrderRequest;
 use App\Http\Resources\OrderNoteResource;
 use App\Http\Resources\OrderResource;
 use App\Models\Cart;
-use App\Models\DiscountCodeUsage;
+use App\Models\DiscountCode;
 use App\Models\OrderShipping;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
@@ -99,102 +99,36 @@ class OrderSubmitController extends Controller
         $requestedDiscountCode = filled($validated['discount_code'] ?? null)
             ? Str::upper(trim($validated['discount_code']))
             : null;
-        $existingOrder = $this->findExistingSimilarOrder($user, $cartItems, $validated, $requestedDiscountCode);
-
-        if ($existingOrder) {
-            return response()->json([
-                'message' => 'سفارش مشابه قبلی شما برگردانده شد',
-                'order' => new OrderResource($existingOrder->load(['shipping', 'items'])),
-                'is_existing' => true,
-            ]);
-        }
-
         $result = DB::transaction(function () use ($validated, $user, $cartItems, $requestedDiscountCode, $discountCodeService) {
-            $discountCode = null;
             if ($requestedDiscountCode !== null) {
-                $discountCodeResult = $discountCodeService->validate(
-                    $requestedDiscountCode,
-                    $user,
-                    Platform::fromRequest(),
-                    lock: true,
-                );
-
-                if ($discountCodeResult['error']) {
-                    return ['error' => $discountCodeResult['error']];
-                }
-
-                $discountCode = $discountCodeResult['code'];
+                DiscountCode::query()
+                    ->where('code', $requestedDiscountCode)
+                    ->lockForUpdate()
+                    ->first();
             }
 
-            $address = empty($validated['user_address_id']) ? null : $user->addresses()->with(['province', 'city'])->find($validated['user_address_id']);
+            $existingOrder = $this->findExistingSimilarOrder($user, $cartItems, $validated, $requestedDiscountCode, $discountCodeService);
 
-            $buyerName = $address?->receiver_name ?: $user->name;
-            $buyerPhone = $user->phone;
-            $nationalId = $user->national_code;
-
-            $gateway = $validated['gateway'] ?? 'parsian';
-            $orderData = $this->calculateOrderData($cartItems, $validated, $address, (int) ($discountCode?->discount_amount ?? 0));
-
-            $notesData = [
-                'name' => $buyerName,
-                'phone' => $buyerPhone,
-                'national_code' => $nationalId,
-            ];
-
-            if ($orderData['installment_fee'] > 0) {
-                $notesData['installment_fee'] = $orderData['installment_fee'];
+            if ($existingOrder) {
+                return ['order' => $existingOrder, 'is_existing' => true];
             }
 
-            $order = Order::create([
-                'user_id' => $user->id,
-                'platform' => Platform::fromRequest(),
-                'status' => 'pending',
-                'total_amount' => $orderData['total_amount'],
-                'discount_code_id' => $discountCode?->id,
-                'discount_code_snapshot' => $discountCode?->code,
-                'discount_amount' => $orderData['discount_amount'],
-                'payment_method' => $orderData['payment_method'],
-                'payment_status' => 'pending',
-                'user_address_id' => $validated['user_address_id'] ?? null,
-                'notes' => json_encode($notesData),
-            ]);
-
-            foreach ($orderData['items'] as $orderItem) {
-                $order->items()->create($orderItem);
-            }
-
-            if ($discountCode) {
-                DiscountCodeUsage::create([
-                    'discount_code_id' => $discountCode->id,
-                    'user_id' => $user->id,
-                    'order_id' => $order->id,
-                ]);
-            }
-
-            $method = ShippingMethod::find($validated['shipping_method_id']);
-
-            OrderShipping::create([
-                'order_id' => $order->id,
-                'shipping_method_id' => $validated['shipping_method_id'],
-                'shipping_method_name' => $method?->name ?? '',
-                'shipping_cost' => $orderData['shipping_cost'],
-                'tax_amount' => $orderData['tax_amount'],
-                'tax_rate' => $orderData['tax_rate'],
-            ]);
-
-            return [
-                'order' => $order->load(['shipping', 'items']),
-                'method' => $method,
-                'installmentFee' => $orderData['installment_fee'],
-                'shippingCost' => $orderData['shipping_cost'],
-            ];
-        });
+            return $this->createOrder($validated, $user, $cartItems, $requestedDiscountCode, $discountCodeService);
+        }, attempts: 3);
 
         if (isset($result['error'])) {
             return response()->json([
                 'message' => $result['error'],
                 'error_code' => 'DISCOUNT_CODE_INVALID',
             ], 422);
+        }
+
+        if ($result['is_existing'] ?? false) {
+            return response()->json([
+                'message' => 'سفارش مشابه قبلی شما برگردانده شد',
+                'order' => new OrderResource($result['order']->load(['shipping', 'items'])),
+                'is_existing' => true,
+            ]);
         }
 
         return response()->json([
@@ -241,6 +175,69 @@ class OrderSubmitController extends Controller
         }
 
         return ['valid' => true];
+    }
+
+    private function createOrder(array $validated, $user, $cartItems, ?string $requestedDiscountCode, DiscountCodeService $discountCodeService): array
+    {
+        $discountCode = null;
+        if ($requestedDiscountCode !== null) {
+            $discountCodeResult = $discountCodeService->validate(
+                $requestedDiscountCode,
+                $user,
+                Platform::fromRequest(),
+                lock: true,
+            );
+
+            if ($discountCodeResult['error']) {
+                return ['error' => $discountCodeResult['error']];
+            }
+
+            $discountCode = $discountCodeResult['code'];
+        }
+
+        $address = empty($validated['user_address_id']) ? null : $user->addresses()->with(['province', 'city'])->find($validated['user_address_id']);
+        $orderData = $this->calculateOrderData($cartItems, $validated, $address, (int) ($discountCode?->discount_amount ?? 0));
+        $notesData = [
+            'name' => $address?->receiver_name ?: $user->name,
+            'phone' => $user->phone,
+            'national_code' => $user->national_code,
+        ];
+
+        if ($orderData['installment_fee'] > 0) {
+            $notesData['installment_fee'] = $orderData['installment_fee'];
+        }
+
+        $order = Order::create([
+            'user_id' => $user->id,
+            'platform' => Platform::fromRequest(),
+            'status' => 'pending',
+            'total_amount' => $orderData['total_amount'],
+            'discount_code_id' => $discountCode?->id,
+            'discount_code_snapshot' => $discountCode?->code,
+            'discount_amount' => $orderData['discount_amount'],
+            'payment_method' => $orderData['payment_method'],
+            'payment_status' => 'pending',
+            'user_address_id' => $validated['user_address_id'] ?? null,
+            'notes' => json_encode($notesData),
+        ]);
+
+        foreach ($orderData['items'] as $orderItem) {
+            $order->items()->create($orderItem);
+        }
+
+        $discountCodeService->reserveUsage($order);
+
+        $method = ShippingMethod::find($validated['shipping_method_id']);
+        OrderShipping::create([
+            'order_id' => $order->id,
+            'shipping_method_id' => $validated['shipping_method_id'],
+            'shipping_method_name' => $method?->name ?? '',
+            'shipping_cost' => $orderData['shipping_cost'],
+            'tax_amount' => $orderData['tax_amount'],
+            'tax_rate' => $orderData['tax_rate'],
+        ]);
+
+        return ['order' => $order->load(['shipping', 'items']), 'is_existing' => false];
     }
 
     private function calculateOrderData($cartItems, array $validated, ?object $address = null, int $requestedDiscountAmount = 0): array
@@ -295,7 +292,7 @@ class OrderSubmitController extends Controller
         ];
     }
 
-    private function findExistingSimilarOrder($user, $cartItems, array $validated, ?string $requestedDiscountCode): ?Order
+    private function findExistingSimilarOrder($user, $cartItems, array $validated, ?string $requestedDiscountCode, DiscountCodeService $discountCodeService): ?Order
     {
         $cartItemData = collect($cartItems)->map(fn (Cart $item) => [
             'product_id' => $item->product_id,
@@ -326,6 +323,29 @@ class OrderSubmitController extends Controller
             if ($cartItemData === $orderItemData) {
                 if ($order->discount_code_snapshot !== $requestedDiscountCode) {
                     continue;
+                }
+
+                if ($order->discount_code_id && (int) $order->discount_amount > 0) {
+                    $discountCode = DiscountCode::query()
+                        ->whereKey($order->discount_code_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $discountCode) {
+                        continue;
+                    }
+
+                    $validation = $discountCodeService->validate(
+                        $order->discount_code_snapshot,
+                        $user,
+                        (string) $order->platform,
+                        lock: true,
+                        excludeOrderId: $order->id,
+                    );
+
+                    if ($validation['error'] || ! $validation['code'] || $validation['code']->id !== $discountCode->id) {
+                        continue;
+                    }
                 }
 
                 $orderData = $this->calculateOrderData($cartItems, $validated, requestedDiscountAmount: (int) $order->discount_amount);

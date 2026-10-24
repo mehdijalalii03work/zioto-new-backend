@@ -102,7 +102,11 @@ class DiscountCodeTest extends TestCase
             ->assertJsonPath('order.total_amount', '1800000')
             ->assertJsonPath('order.discount_amount', 200_000)
             ->assertJsonPath('order.discount_code', 'ORDER200');
-        $this->assertDatabaseCount('discount_code_usages', 1);
+        $this->assertDatabaseHas('discount_code_usages', [
+            'discount_code_id' => DB::table('discount_codes')->where('code', 'ORDER200')->value('id'),
+            'order_id' => $response->json('order.id'),
+            'status' => 'reserved',
+        ]);
 
         $retry = $this->withHeaders([
             'Authorization' => 'Bearer '.$user->api_token,

@@ -236,6 +236,17 @@ class HesabfaObserver
 
     private function preValidateInvoiceItems(Order $order): array
     {
+        if ((int) $order->discount_amount > 0) {
+            $discountItemCode = config('hesabfa.discount_item_code');
+            if (empty($discountItemCode)) {
+                return ['success' => false, 'message' => 'کد کالای تخفیف در تنظیمات حسابفا وارد نشده است'];
+            }
+            $discountItem = $this->hesabfa->getItemByCode($discountItemCode);
+            if (! $discountItem || isset($discountItem['error'])) {
+                return ['success' => false, 'message' => "کد کالای تخفیف '{$discountItemCode}' در حسابفا یافت نشد"];
+            }
+        }
+
         if ($order->shipping && $order->shipping->shipping_cost > 0) {
             $shippingCode = config('hesabfa.shipping_item_code');
             if (empty($shippingCode)) {
@@ -295,12 +306,37 @@ class HesabfaObserver
             $rowNumber++;
         }
 
+        $discountItem = $this->buildDiscountItem($order, $rowNumber);
+        if ($discountItem) {
+            $items[] = $discountItem;
+            $rowNumber++;
+        }
+
         $installmentItem = $this->buildInstallmentFeeItem($order, $rowNumber);
         if ($installmentItem) {
             $items[] = $installmentItem;
         }
 
         return $items;
+    }
+
+    private function buildDiscountItem(Order $order, int $rowNumber): ?array
+    {
+        $discountAmount = (int) $order->discount_amount;
+        if ($discountAmount <= 0) {
+            return null;
+        }
+
+        return [
+            'rowNumber' => $rowNumber,
+            'description' => $order->discount_code_snapshot ? "تخفیف کد {$order->discount_code_snapshot}" : 'تخفیف سفارش',
+            'itemCode' => config('hesabfa.discount_item_code'),
+            'unit' => config('hesabfa.default_unit', 'عدد'),
+            'quantity' => 1,
+            'unitPrice' => -$discountAmount,
+            'discount' => 0,
+            'tax' => 0,
+        ];
     }
 
     private function buildProductItems(Order $order, int $startRowNumber): array|false
@@ -425,7 +461,7 @@ class HesabfaObserver
             return null;
         }
 
-        $baseAmount = $order->items->sum('subtotal') + ($order->shipping?->shipping_cost ?? 0);
+        $baseAmount = max(0, $order->items->sum('subtotal') + ($order->shipping?->shipping_cost ?? 0) - (int) $order->discount_amount);
         $totalIncludingTax = InstallmentService::calculateFee((int) $baseAmount);
 
         if ($totalIncludingTax <= 0) {

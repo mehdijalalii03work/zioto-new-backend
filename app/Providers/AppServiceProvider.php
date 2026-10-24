@@ -8,6 +8,7 @@ use App\Models\Brand;
 use App\Models\ContactMessage;
 use App\Models\ShippingMethod;
 use App\Models\User;
+use App\Observers\DiscountCodeUsageObserver;
 use App\Observers\HesabfaObserver;
 use App\Observers\ProductImageObserver;
 use App\Observers\RolePermissionAuditObserver;
@@ -68,6 +69,7 @@ class AppServiceProvider extends ServiceProvider
         $this->registerPolicies();
 
         Order::observe(HesabfaObserver::class);
+        Order::observe(DiscountCodeUsageObserver::class);
         Order::observe(StockReservationObserver::class);
         ProductImage::observe(ProductImageObserver::class);
 
