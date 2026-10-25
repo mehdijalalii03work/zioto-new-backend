@@ -103,12 +103,23 @@ class PaymentController extends Controller
         }
 
         $existingPending = Payment::where('order_id', $order->id)
-            ->whereIn('status', ['pending', 'processing'])
+            ->where('status', 'processing')
             ->first();
 
         if ($existingPending) {
             return response()->json(['message' => 'درخواست پرداخت قبلاً ثبت شده است', 'error_code' => 'PAYMENT_ALREADY_INITIATED'], 422);
         }
+
+        Payment::where('order_id', $order->id)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'failed',
+                'gateway_response' => [
+                    'error' => 'درخواست پرداخت قبلی با تلاش مجدد مشتری جایگزین شد.',
+                ],
+                'description' => 'درخواست قبلی با تلاش مجدد جایگزین شد',
+                'updated_at' => now(),
+            ]);
 
         if ($validated['gateway'] === 'nopay') {
             $order->load('items.product:id,is_nopay');

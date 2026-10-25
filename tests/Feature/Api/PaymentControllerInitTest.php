@@ -79,7 +79,7 @@ class PaymentControllerInitTest extends TestCase
         ]);
     }
 
-    public function test_init_rejects_duplicate_pending_payment(): void
+    public function test_init_retries_immediately_when_previous_payment_is_still_pending(): void
     {
         $order = Order::factory()->create([
             'status' => 'pending',
@@ -103,9 +103,41 @@ class PaymentControllerInitTest extends TestCase
             'gateway' => 'parsian',
         ]);
 
-        $response->assertStatus(422);
-        $response->assertJson([
-            'error_code' => 'PAYMENT_ALREADY_INITIATED',
+        $this->assertNotSame(422, $response->getStatusCode());
+        $this->assertDatabaseHas('payments', [
+            'id' => Payment::where('transaction_id', 'existing-txn')->value('id'),
+            'status' => 'failed',
+        ]);
+    }
+
+    public function test_init_retries_immediately_for_abandoned_pending_payment(): void
+    {
+        $this->travelTo(now()->startOfSecond());
+        $order = Order::factory()->create([
+            'status' => 'pending',
+            'payment_status' => 'pending',
+            'total_amount' => 100000,
+        ]);
+
+        $payment = Payment::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'transaction_id' => 'abandoned-txn',
+            'amount' => 100000,
+            'payment_method' => 'online',
+            'gateway' => 'parsian',
+            'status' => 'pending',
+            'description' => 'در انتظار پرداخت',
+        ]);
+        $response = $this->postJson('/api/payment/init', [
+            'order_id' => $order->id,
+            'gateway' => 'parsian',
+        ]);
+
+        $this->assertNotSame(422, $response->getStatusCode());
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'status' => 'failed',
         ]);
     }
 
