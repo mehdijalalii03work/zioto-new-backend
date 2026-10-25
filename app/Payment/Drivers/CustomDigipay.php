@@ -2,6 +2,7 @@
 
 namespace App\Payment\Drivers;
 
+use App\Exceptions\DigipayVerificationPendingException;
 use GuzzleHttp\RequestOptions;
 use Shetabit\Multipay\Contracts\ReceiptInterface;
 use Shetabit\Multipay\Drivers\Digipay\Digipay;
@@ -14,11 +15,7 @@ class CustomDigipay extends Digipay
 {
     const VERIFY_URL_V2 = '/digipay/api/purchases/verify';
 
-    private const MAX_VERIFY_RETRIES = 3;
-
-    private int $verifyRetries = 0;
-
-    private int $verifyRetryDelay = 5;
+    private const DEFINITIVE_FAILURE_STATUSES = [9007];
 
     protected function oauth()
     {
@@ -37,6 +34,8 @@ class CustomDigipay extends Digipay
                         'grant_type' => 'password',
                     ],
                     RequestOptions::HTTP_ERRORS => false,
+                    RequestOptions::CONNECT_TIMEOUT => 3,
+                    RequestOptions::TIMEOUT => 8,
                 ]
             );
 
@@ -63,9 +62,24 @@ class CustomDigipay extends Digipay
      */
     public function verify(): ReceiptInterface
     {
-        $digipayTicketType = Request::input('type');
-        $trackingCode = Request::input('trackingCode');
-        $providerId = Request::input('providerId') ?? $this->invoice->getUuid();
+        return $this->verifyWithContext([
+            'type' => Request::input('type'),
+            'trackingCode' => Request::input('trackingCode'),
+            'providerId' => Request::input('providerId') ?? $this->invoice->getUuid(),
+        ]);
+    }
+
+    /**
+     * @param  array{type: string|int, trackingCode: string, providerId: string}  $context
+     *
+     * @throws InvalidPaymentException
+     * @throws DigipayVerificationPendingException
+     */
+    public function verifyWithContext(array $context): ReceiptInterface
+    {
+        $digipayTicketType = $context['type'];
+        $trackingCode = $context['trackingCode'];
+        $providerId = $context['providerId'];
 
         $response = $this->client->request(
             'POST',
@@ -82,6 +96,8 @@ class CustomDigipay extends Digipay
                     'Authorization' => 'Bearer '.$this->oauthToken,
                 ],
                 RequestOptions::HTTP_ERRORS => false,
+                RequestOptions::CONNECT_TIMEOUT => 3,
+                RequestOptions::TIMEOUT => 8,
             ]
         );
 
@@ -90,20 +106,21 @@ class CustomDigipay extends Digipay
 
         if ($response->getStatusCode() != 200) {
             $message = $body['result']['message'] ?? 'تراکنش تایید نشد';
-            throw new InvalidPaymentException($message, (int) $response->getStatusCode());
+            throw new DigipayVerificationPendingException($message, (int) $response->getStatusCode());
         }
 
-        // Pending status → retry a few times before giving up.
-        if ($status === 9011 && $this->verifyRetries < self::MAX_VERIFY_RETRIES) {
-            $this->verifyRetries++;
-            sleep($this->verifyRetryDelay);
-
-            return $this->verify();
+        if ($status === 9011 || $status === null) {
+            throw new DigipayVerificationPendingException($body['result']['message'] ?? 'نتیجه پرداخت هنوز مشخص نیست', $response->getStatusCode(), is_numeric($status) ? (int) $status : null);
         }
 
         if ($status !== 0) {
             $message = $body['result']['message'] ?? 'تراکنش تایید نشد';
-            throw new InvalidPaymentException($message, (int) $response->getStatusCode());
+
+            if (in_array((int) $status, self::DEFINITIVE_FAILURE_STATUSES, true)) {
+                throw new InvalidPaymentException($message, (int) $status);
+            }
+
+            throw new DigipayVerificationPendingException($message, $response->getStatusCode(), is_numeric($status) ? (int) $status : null);
         }
 
         return (new Receipt('digipay', $body['trackingCode'] ?? $trackingCode))->detail($body);

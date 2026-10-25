@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Orders\Pages;
 
 use App\Enums\Permission;
 use App\Filament\Resources\Orders\OrderResource;
+use App\Jobs\VerifyDigipayPayment;
 use App\Observers\HesabfaObserver;
 use App\Support\Platform;
 use Filament\Actions\Action;
@@ -129,6 +130,30 @@ class ViewOrder extends ViewRecord
                                                         'failed' => 'ناموفق',
                                                         'refunded' => 'مسترد شده',
                                                         default => $state,
+                                                    }),
+
+                                                TextEntry::make('digipay_verification_status')
+                                                    ->label('وضعیت استعلام دیجی‌پی')
+                                                    ->state(fn ($record): ?string => $record->payments()
+                                                        ->where('gateway', 'digipay')
+                                                        ->latest('id')
+                                                        ->value('status'))
+                                                    ->placeholder('—')
+                                                    ->badge()
+                                                    ->color(fn (?string $state): string => match ($state) {
+                                                        'needs_review' => 'danger',
+                                                        'verification_pending' => 'warning',
+                                                        'paid' => 'success',
+                                                        'failed' => 'gray',
+                                                        default => 'gray',
+                                                    })
+                                                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                                        'needs_review' => 'نیازمند بررسی',
+                                                        'verification_pending' => 'در حال استعلام',
+                                                        'paid' => 'تایید شده',
+                                                        'failed' => 'ناموفق',
+                                                        'pending' => 'در انتظار پرداخت',
+                                                        default => $state ?? '—',
                                                     }),
 
                                                 TextEntry::make('total_amount')
@@ -365,6 +390,36 @@ class ViewOrder extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('recheckDigipayPayment')
+                ->label('بررسی مجدد از دیجی‌پی')
+                ->icon('heroicon-o-arrow-path')
+                ->color('warning')
+                ->authorize(Permission::OrderEdit->value)
+                ->visible(fn ($record): bool => $record->payments()
+                    ->where('gateway', 'digipay')
+                    ->where('status', 'needs_review')
+                    ->exists())
+                ->requiresConfirmation()
+                ->modalDescription('وضعیت پرداخت مستقیماً از دیجی‌پی استعلام می‌شود. وضعیت پرداخت دستی تغییر نخواهد کرد.')
+                ->action(function ($record): void {
+                    $payment = $record->payments()
+                        ->where('gateway', 'digipay')
+                        ->where('status', 'needs_review')
+                        ->latest('id')
+                        ->first();
+
+                    if (! $payment) {
+                        return;
+                    }
+
+                    VerifyDigipayPayment::dispatch($payment->id, restart: true);
+
+                    Notification::make()
+                        ->title('استعلام مجدد از دیجی‌پی در صف قرار گرفت')
+                        ->success()
+                        ->send();
+                }),
+
             Action::make('changeStatus')
                 ->label('تغییر وضعیت')
                 ->icon('heroicon-o-arrow-path')

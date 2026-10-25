@@ -19,6 +19,12 @@ class Payment extends Model
         'order_id',
         'platform',
         'transaction_id',
+        'provider_id',
+        'verification_context',
+        'verification_started_at',
+        'verification_attempts',
+        'verification_deadline_at',
+        'next_verification_at',
         'amount',
         'payment_method',
         'status',
@@ -34,6 +40,10 @@ class Payment extends Model
             'amount' => 'decimal:0',
             'gateway_response' => 'array',
             'paid_at' => 'datetime',
+            'verification_context' => 'encrypted:array',
+            'verification_started_at' => 'datetime',
+            'verification_deadline_at' => 'datetime',
+            'next_verification_at' => 'datetime',
         ];
     }
 

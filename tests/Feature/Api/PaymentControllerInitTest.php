@@ -109,6 +109,36 @@ class PaymentControllerInitTest extends TestCase
         ]);
     }
 
+    public function test_init_rejects_an_order_with_an_unresolved_digipay_payment(): void
+    {
+        foreach (['verification_pending', 'needs_review'] as $paymentStatus) {
+            $order = Order::factory()->create([
+                'status' => 'pending',
+                'payment_status' => 'pending',
+                'total_amount' => 100000,
+            ]);
+
+            Payment::create([
+                'user_id' => $order->user_id,
+                'order_id' => $order->id,
+                'transaction_id' => 'unresolved-'.$paymentStatus,
+                'amount' => $order->total_amount,
+                'payment_method' => 'online',
+                'gateway' => 'digipay',
+                'status' => $paymentStatus,
+                'description' => 'در حال بررسی پرداخت',
+            ]);
+
+            $response = $this->postJson('/api/payment/init', [
+                'order_id' => $order->id,
+                'gateway' => 'parsian',
+            ]);
+
+            $response->assertUnprocessable();
+            $response->assertJson(['error_code' => 'PAYMENT_ALREADY_INITIATED']);
+        }
+    }
+
     public function test_init_allows_new_payment_for_order_with_previous_failed_payment(): void
     {
         $order = Order::factory()->create([

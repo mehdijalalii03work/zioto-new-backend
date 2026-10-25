@@ -2,12 +2,17 @@
 
 namespace Tests\Feature\Api;
 
+use App\Jobs\VerifyDigipayPayment;
+use App\Services\DiscountCodeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Mockery;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
 use Modules\Product\Models\Product;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
+use Shetabit\Multipay\Exceptions\InvalidPaymentException;
 use Shetabit\Multipay\Payment as ShetabitPayment;
 use Shetabit\Multipay\Receipt;
 use Tests\TestCase;
@@ -65,9 +70,9 @@ class PaymentControllerCallbackTest extends TestCase
     }
 
     #[RunInSeparateProcess]
-    public function test_generic_verify_exception_marks_failed_not_pending(): void
+    public function test_generic_verify_exception_on_other_gateway_marks_failed(): void
     {
-        [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+        [$order, $payment] = $this->makeOrderWithPendingPayment('parsian');
 
         $mock = Mockery::mock('overload:'.ShetabitPayment::class);
         $mock->shouldReceive('via')->andReturnSelf();
@@ -77,8 +82,8 @@ class PaymentControllerCallbackTest extends TestCase
             new \RuntimeException('Undefined property: stdClass::$Message')
         );
 
-        $response = $this->post("/api/payment/callback/{$order->id}/digipay", [
-            'result' => 'CANCEL',
+        $response = $this->post("/api/payment/callback/{$order->id}/parsian", [
+            'status' => '0',
         ]);
 
         $response->assertRedirect();
@@ -93,9 +98,107 @@ class PaymentControllerCallbackTest extends TestCase
     }
 
     #[RunInSeparateProcess]
+    public function test_digipay_transient_verify_exception_keeps_payment_pending_and_queues_retry(): void
+    {
+        [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+        $payment->update(['provider_id' => 'provider-123']);
+        Queue::fake();
+
+        $mock = Mockery::mock('overload:'.ShetabitPayment::class);
+        $mock->shouldReceive('via')->andReturnSelf();
+        $mock->shouldReceive('amount')->andReturnSelf();
+        $mock->shouldReceive('transactionId')->andReturnSelf();
+        $mock->shouldReceive('verify')->andThrow(new \RuntimeException('Connection timed out'));
+
+        $response = $this->post("/api/payment/callback/{$order->id}/digipay", [
+            'result' => 'SUCCESS',
+            'type' => '11',
+            'trackingCode' => 'track-456',
+            'providerId' => 'provider-123',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertStringContainsString('/confirm?order_id='.$order->id, $response->headers->get('Location'));
+        $this->assertSame('verification_pending', $payment->fresh()->status);
+        $this->assertSame('pending', $order->fresh()->payment_status);
+        Queue::assertPushed(VerifyDigipayPayment::class);
+    }
+
+    #[RunInSeparateProcess]
+    public function test_digipay_callback_without_provider_id_does_not_guess_latest_payment(): void
+    {
+        [$order, $firstPayment] = $this->makeOrderWithPendingPayment('digipay');
+        $secondPayment = Payment::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'transaction_id' => 'second-digipay-txn',
+            'amount' => $order->total_amount,
+            'payment_method' => 'online',
+            'gateway' => 'digipay',
+            'status' => 'pending',
+            'description' => 'در انتظار پرداخت',
+        ]);
+
+        $response = $this->post("/api/payment/callback/{$order->id}/digipay", [
+            'result' => 'SUCCESS',
+            'type' => '11',
+            'trackingCode' => 'track-456',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame('pending', $firstPayment->fresh()->status);
+        $this->assertSame('pending', $secondPayment->fresh()->status);
+        $this->assertSame('pending', $order->fresh()->payment_status);
+    }
+
+    #[RunInSeparateProcess]
+    public function test_definitive_digipay_failure_marks_order_failed_and_releases_discount_reservation(): void
+    {
+        [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+        $providerId = 'provider-terminal-failure';
+        $payment->update(['provider_id' => $providerId]);
+        $discountCodeId = DB::table('discount_codes')->insertGetId([
+            'code' => 'DIGIPAYFAIL',
+            'discount_amount' => 1000,
+            'platforms' => json_encode(['main']),
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $order->update([
+            'discount_code_id' => $discountCodeId,
+            'discount_code_snapshot' => 'DIGIPAYFAIL',
+            'discount_amount' => 1000,
+        ]);
+        app(DiscountCodeService::class)->reserveUsage($order);
+
+        $mock = Mockery::mock('overload:'.ShetabitPayment::class);
+        $mock->shouldReceive('via')->andReturnSelf();
+        $mock->shouldReceive('amount')->andReturnSelf();
+        $mock->shouldReceive('transactionId')->andReturnSelf();
+        $mock->shouldReceive('verify')->andThrow(new InvalidPaymentException('declined', 9007));
+
+        $response = $this->post("/api/payment/callback/{$order->id}/digipay", [
+            'providerId' => $providerId,
+            'type' => '11',
+            'trackingCode' => 'tracking-declined',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertStringContainsString('/payment-failed', $response->headers->get('Location'));
+        $this->assertSame('failed', $payment->fresh()->status);
+        $this->assertSame('failed', $order->fresh()->payment_status);
+        $this->assertDatabaseHas('discount_code_usages', [
+            'order_id' => $order->id,
+            'status' => 'released',
+        ]);
+    }
+
+    #[RunInSeparateProcess]
     public function test_successful_verify_marks_order_paid(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+        $payment->update(['provider_id' => 'provider-success']);
 
         $receipt = Mockery::mock(Receipt::class);
         $receipt->shouldReceive('getReferenceId')->andReturn('REF-123');
@@ -109,6 +212,9 @@ class PaymentControllerCallbackTest extends TestCase
 
         $response = $this->post("/api/payment/callback/{$order->id}/digipay", [
             'result' => 'SUCCESS',
+            'providerId' => 'provider-success',
+            'type' => '11',
+            'trackingCode' => 'tracking-success',
         ]);
 
         $response->assertRedirect();
@@ -127,6 +233,7 @@ class PaymentControllerCallbackTest extends TestCase
     public function test_post_verify_failure_still_persists_paid_status(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+        $payment->update(['provider_id' => 'provider-observer']);
 
         Order::updated(function () {
             throw new \RuntimeException('Simulated Hesabfa/observer failure (e.g. permission denied on log file)');
@@ -144,6 +251,9 @@ class PaymentControllerCallbackTest extends TestCase
 
         $response = $this->post("/api/payment/callback/{$order->id}/digipay", [
             'result' => 'SUCCESS',
+            'providerId' => 'provider-observer',
+            'type' => '11',
+            'trackingCode' => 'tracking-observer',
         ]);
 
         $response->assertRedirect();
@@ -222,6 +332,7 @@ class PaymentControllerCallbackTest extends TestCase
     public function test_duplicate_callback_after_success_does_not_overwrite_paid(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+        $payment->update(['provider_id' => 'provider-duplicate']);
 
         $receipt = Mockery::mock(Receipt::class);
         $receipt->shouldReceive('getReferenceId')->andReturn('REF-789');
@@ -235,6 +346,9 @@ class PaymentControllerCallbackTest extends TestCase
 
         $this->post("/api/payment/callback/{$order->id}/digipay", [
             'result' => 'SUCCESS',
+            'providerId' => 'provider-duplicate',
+            'type' => '11',
+            'trackingCode' => 'tracking-duplicate',
         ]);
 
         $payment->refresh();
@@ -243,6 +357,9 @@ class PaymentControllerCallbackTest extends TestCase
 
         $secondResponse = $this->post("/api/payment/callback/{$order->id}/digipay", [
             'result' => 'SUCCESS',
+            'providerId' => 'provider-duplicate',
+            'type' => '11',
+            'trackingCode' => 'tracking-duplicate',
         ]);
 
         $secondResponse->assertRedirect();

@@ -9,6 +9,7 @@ use App\Http\Resources\PaymentResource;
 use App\Models\Cart;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
+use App\Services\DigipayPaymentVerificationService;
 use App\Services\DiscountCodeService;
 use App\Services\InstallmentService;
 use App\Support\Platform;
@@ -27,7 +28,10 @@ use Shetabit\Multipay\Payment as ShetabitPayment;
 
 class PaymentController extends Controller
 {
-    public function __construct(private DiscountCodeService $discountCodeService) {}
+    public function __construct(
+        private DiscountCodeService $discountCodeService,
+        private DigipayPaymentVerificationService $digipayVerificationService,
+    ) {}
 
     public function calculateFee(CalculateFeeRequest $request): JsonResponse
     {
@@ -103,7 +107,7 @@ class PaymentController extends Controller
         }
 
         $existingPending = Payment::where('order_id', $order->id)
-            ->whereIn('status', ['pending', 'processing'])
+            ->whereIn('status', ['pending', 'processing', 'verification_pending', 'needs_review'])
             ->first();
 
         if ($existingPending) {
@@ -169,7 +173,7 @@ class PaymentController extends Controller
             $capturedTransactionId = null;
 
             $form = $payment->callbackUrl($callbackUrl)
-                ->purchase($invoice, function ($driver, $transactionId) use (&$capturedTransactionId, $order, $validated) {
+                ->purchase($invoice, function ($driver, $transactionId) use (&$capturedTransactionId, $order, $validated, $invoice) {
                     $capturedTransactionId = $transactionId;
 
                     Payment::create([
@@ -177,6 +181,7 @@ class PaymentController extends Controller
                         'order_id' => $order->id,
                         'platform' => $order->platform,
                         'transaction_id' => $transactionId,
+                        'provider_id' => $validated['gateway'] === 'digipay' ? $invoice->getUuid() : null,
                         'amount' => $order->total_amount,
                         'payment_method' => $order->payment_method,
                         'gateway' => $validated['gateway'],
@@ -224,11 +229,7 @@ class PaymentController extends Controller
     {
         $token = $request->input('tv') ?? $request->input('Token') ?? $request->input('token') ?? null;
 
-        Log::channel('payment')->info('Payment callback (bare) received', [
-            'method' => $request->method(),
-            'query' => $request->query(),
-            'post' => $request->post(),
-        ]);
+        Log::channel('payment')->info('Payment callback (bare) received', ['method' => $request->method()]);
 
         if (! $token) {
             return redirect(config('app.frontend_url', 'http://localhost:3000').'/checkout');
@@ -241,9 +242,7 @@ class PaymentController extends Controller
             ->first();
 
         if (! $payment) {
-            Log::channel('payment')->warning('Payment callback (bare) with unknown token', [
-                'token' => $token,
-            ]);
+            Log::channel('payment')->warning('Payment callback (bare) with unknown token');
 
             return redirect(config('app.frontend_url', 'http://localhost:3000').'/checkout');
         }
@@ -257,8 +256,6 @@ class PaymentController extends Controller
             'order_id' => $orderId,
             'gateway' => $gateway,
             'method' => $request->method(),
-            'query' => $request->query(),
-            'post' => $request->post(),
         ]);
 
         // Callback is a public gateway redirect (no X-Platform header):
@@ -268,6 +265,61 @@ class PaymentController extends Controller
 
         $callbackTransactionId = $request->input('Token') ?? $request->input('token')
             ?? $request->input('uuid') ?? $request->input('tv') ?? null;
+
+        if ($gateway === 'digipay') {
+            $providerId = $request->input('providerId');
+            $shouldVerify = false;
+            $payment = $providerId ? DB::transaction(function () use ($providerId, $order, $request, &$shouldVerify) {
+                $payment = Payment::withoutTenantScope()
+                    ->where('order_id', $order->id)
+                    ->where('platform', $order->platform)
+                    ->where('gateway', 'digipay')
+                    ->where('provider_id', $providerId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $payment || in_array($payment->status, ['paid', 'failed', 'processing', 'verification_pending'], true)) {
+                    return $payment;
+                }
+
+                $payment->forceFill([
+                    'status' => 'verification_pending',
+                    'verification_context' => [
+                        'type' => $request->input('type'),
+                        'trackingCode' => $request->input('trackingCode'),
+                        'providerId' => $providerId,
+                    ],
+                    'verification_started_at' => now(),
+                    'verification_deadline_at' => now()->addMinutes(5),
+                    'verification_attempts' => 0,
+                    'next_verification_at' => null,
+                ])->save();
+
+                $shouldVerify = true;
+
+                return $payment;
+            }) : null;
+
+            if (! $payment) {
+                Log::channel('payment')->warning('Digipay callback could not be matched to an exact payment attempt', [
+                    'order_id' => $order->id,
+                    'has_provider_id' => filled($providerId),
+                ]);
+
+                return redirect($frontendUrl.'/confirm?order_id='.$order->id);
+            }
+
+            if (! $shouldVerify || $order->payment_status === 'paid') {
+                return redirect($frontendUrl.'/confirm?order_id='.$order->id);
+            }
+
+            $this->digipayVerificationService->verify($payment);
+            $payment->refresh();
+
+            return redirect($payment->status === 'failed'
+                ? $frontendUrl.'/payment-failed'
+                : $frontendUrl.'/confirm?order_id='.$order->id);
+        }
 
         $resolvedPayment = null;
 

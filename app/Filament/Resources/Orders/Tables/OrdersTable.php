@@ -117,6 +117,25 @@ class OrdersTable
                         default => $state,
                     }),
 
+                TextColumn::make('digipay_verification_status')
+                    ->label('بررسی دیجی‌پی')
+                    ->badge()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'needs_review' => 'danger',
+                        'verification_pending' => 'warning',
+                        default => 'gray',
+                    })
+                    ->state(fn ($record): ?string => $record->payments
+                        ->where('gateway', 'digipay')
+                        ->sortByDesc('id')
+                        ->first()?->status)
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'needs_review' => 'نیازمند بررسی',
+                        'verification_pending' => 'در حال استعلام',
+                        default => '—',
+                    })
+                    ->toggleable(),
+
                 TextColumn::make('platform')
                     ->label('پلتفرم')
                     ->badge()
@@ -217,6 +236,12 @@ class OrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Filter::make('digipay_needs_review')
+                    ->label('پرداخت دیجی‌پی نیازمند بررسی')
+                    ->query(fn (Builder $query): Builder => $query->whereHas('payments', fn (Builder $payments): Builder => $payments
+                        ->where('gateway', 'digipay')
+                        ->where('status', 'needs_review'))),
+
                 Filter::make('created_at')
                     ->label('تاریخ ثبت')
                     ->schema([

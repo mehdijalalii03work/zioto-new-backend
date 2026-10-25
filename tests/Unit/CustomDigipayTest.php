@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Exceptions\DigipayVerificationPendingException;
 use App\Payment\Drivers\CustomDigipay;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
@@ -116,7 +117,7 @@ class CustomDigipayTest extends TestCase
         $this->assertSame($invoice->getUuid(), $sentBody['providerId']);
     }
 
-    public function test_verify_throws_when_status_is_not_zero(): void
+    public function test_verify_treats_unrecognized_provider_status_as_unresolved(): void
     {
         $invoice = (new Invoice)->amount(100000);
 
@@ -132,13 +133,29 @@ class CustomDigipayTest extends TestCase
             'providerId' => 'provider-456',
         ]);
 
-        $this->expectException(InvalidPaymentException::class);
+        $this->expectException(DigipayVerificationPendingException::class);
         $this->expectExceptionMessage('خطا در تایید تراکنش');
 
         $driver->verify();
     }
 
-    public function test_verify_throws_on_non_200_status(): void
+    public function test_verify_throws_for_a_known_terminal_provider_status(): void
+    {
+        $invoice = (new Invoice)->amount(100000);
+        $response = new Response(200, [], json_encode([
+            'result' => ['status' => 9007, 'message' => 'خرید با موفقیت انجام نشده است'],
+        ]));
+
+        [$driver] = $this->makeDriver($invoice, [$response]);
+        $this->mockCallbackInput(['type' => '11', 'trackingCode' => 'TC-123', 'providerId' => 'provider-456']);
+
+        $this->expectException(InvalidPaymentException::class);
+        $this->expectExceptionCode(9007);
+
+        $driver->verify();
+    }
+
+    public function test_verify_treats_http_errors_as_unresolved(): void
     {
         $invoice = (new Invoice)->amount(100000);
 
@@ -154,12 +171,12 @@ class CustomDigipayTest extends TestCase
             'providerId' => 'provider-456',
         ]);
 
-        $this->expectException(InvalidPaymentException::class);
+        $this->expectException(DigipayVerificationPendingException::class);
 
         $driver->verify();
     }
 
-    public function test_verify_throws_when_result_status_is_missing(): void
+    public function test_verify_treats_missing_result_status_as_unresolved(): void
     {
         $invoice = (new Invoice)->amount(100000);
 
@@ -175,63 +192,29 @@ class CustomDigipayTest extends TestCase
             'providerId' => 'provider-456',
         ]);
 
-        $this->expectException(InvalidPaymentException::class);
+        $this->expectException(DigipayVerificationPendingException::class);
 
         $driver->verify();
     }
 
-    public function test_verify_retries_on_pending_status_until_success(): void
+    public function test_verify_returns_pending_status_for_background_retry(): void
     {
         $invoice = (new Invoice)->amount(100000);
 
         $responses = [
             new Response(200, [], json_encode(['result' => ['status' => 9011]])),
-            new Response(200, [], json_encode([
-                'result' => ['status' => 0],
-                'trackingCode' => 'TC-123',
-            ])),
         ];
 
         [$driver, $requests] = $this->makeDriver($invoice, $responses);
 
-        (new \ReflectionProperty(CustomDigipay::class, 'verifyRetryDelay'))->setValue($driver, 0);
-
         $this->mockCallbackInput([
             'type' => '11',
             'trackingCode' => 'TC-123',
             'providerId' => 'provider-456',
         ]);
 
-        $receipt = $driver->verify();
-
-        $this->assertSame('TC-123', $receipt->getReferenceId());
-        $this->assertCount(2, $requests);
-    }
-
-    public function test_verify_throws_after_max_pending_retries(): void
-    {
-        $invoice = (new Invoice)->amount(100000);
-
-        $responses = array_map(
-            fn () => new Response(200, [], json_encode([
-                'result' => ['status' => 9011, 'message' => 'در انتظار پرداخت'],
-            ])),
-            range(1, 4)
-        );
-
-        [$driver, $handler] = $this->makeDriver($invoice, $responses);
-
-        (new \ReflectionProperty(CustomDigipay::class, 'verifyRetryDelay'))->setValue($driver, 0);
-
-        $this->mockCallbackInput([
-            'type' => '11',
-            'trackingCode' => 'TC-123',
-            'providerId' => 'provider-456',
-        ]);
-
-        $this->expectException(InvalidPaymentException::class);
-        $this->expectExceptionMessage('در انتظار پرداخت');
-
+        $this->expectException(DigipayVerificationPendingException::class);
         $driver->verify();
+        $this->assertCount(1, $requests);
     }
 }
