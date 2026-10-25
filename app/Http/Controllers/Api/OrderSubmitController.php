@@ -11,7 +11,6 @@ use App\Models\OrderShipping;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
 use App\Services\InstallmentService;
-use App\Services\Pricing\DiscountService;
 use App\Services\Pricing\DynamicPriceService;
 use App\Services\Pricing\SalesRestrictionService;
 use App\Support\Platform;
@@ -25,7 +24,6 @@ class OrderSubmitController extends Controller
     public function __construct(
         private readonly SalesRestrictionService $salesRestrictions,
         private readonly DynamicPriceService $dynamicPrice,
-        private readonly DiscountService $discounts,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -152,18 +150,11 @@ class OrderSubmitController extends Controller
                 'platform' => Platform::fromRequest(),
                 'status' => 'pending',
                 'total_amount' => $orderData['total_amount'],
-                'discount_code' => $orderData['discount_code'],
-                'discount_amount' => $orderData['discount_amount'],
                 'payment_method' => $orderData['payment_method'],
                 'payment_status' => 'pending',
                 'user_address_id' => $validated['user_address_id'] ?? null,
                 'notes' => json_encode($notesData),
             ]);
-
-            if ($orderData['discount'] !== null) {
-                $this->discounts->incrementUsage($orderData['discount']);
-                $this->discounts->removeForUser($user->id);
-            }
 
             foreach ($orderData['items'] as $orderItem) {
                 $order->items()->create($orderItem);
@@ -255,14 +246,7 @@ class OrderSubmitController extends Controller
             ? (InstallmentService::isFeeGateway($gateway) ? 'installment' : 'installment_nofee')
             : 'online';
 
-        $subtotalWithShipping = $baseAmount + $shippingResult['total'];
-
-        $discountResolved = $userId !== null
-            ? $this->discounts->resolveForOrder($userId)
-            : ['discount' => null, 'amount' => 0.0, 'code' => null];
-
-        $discountAmount = min((float) $discountResolved['amount'], $baseAmount);
-        $totalAmount = max(0, $subtotalWithShipping - $discountAmount);
+        $totalAmount = $baseAmount + $shippingResult['total'];
         $installmentFee = 0;
 
         if (InstallmentService::isFeeGateway($gateway)) {
@@ -278,9 +262,6 @@ class OrderSubmitController extends Controller
             'shipping_cost' => $shippingResult['total'],
             'tax_amount' => $shippingResult['tax_amount'],
             'tax_rate' => $shippingResult['tax_rate'],
-            'discount' => $discountResolved['discount'],
-            'discount_amount' => $discountAmount,
-            'discount_code' => $discountResolved['code'],
         ];
     }
 
@@ -317,8 +298,6 @@ class OrderSubmitController extends Controller
                 $order->update([
                     'total_amount' => $orderData['total_amount'],
                     'payment_method' => $orderData['payment_method'],
-                    'discount_code' => $orderData['discount_code'],
-                    'discount_amount' => $orderData['discount_amount'],
                 ]);
 
                 return $order;

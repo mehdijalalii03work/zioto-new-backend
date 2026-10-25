@@ -65,8 +65,6 @@ class RolePermissionSeeder extends Seeder
                 Permission::AnalyticsReportView,
                 Permission::PricingView,
                 Permission::PricingEdit,
-                Permission::DiscountView,
-                Permission::DiscountEdit,
             ],
             Role::Operator->value => [
                 Permission::DashboardView,

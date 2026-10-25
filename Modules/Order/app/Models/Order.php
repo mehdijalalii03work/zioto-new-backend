@@ -65,8 +65,6 @@ class Order extends Model
         'order_number',
         'status',
         'total_amount',
-        'discount_code',
-        'discount_amount',
         'payment_method',
         'payment_status',
         'shipping_address',
@@ -86,7 +84,6 @@ class Order extends Model
     {
         return [
             'total_amount' => 'decimal:0',
-            'discount_amount' => 'decimal:0',
             'hesabfa_synced_at' => 'datetime',
         ];
     }

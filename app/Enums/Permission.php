@@ -108,10 +108,6 @@ enum Permission: string
 
     case PricingEdit = 'pricing.edit';
 
-    case DiscountView = 'discount.view';
-
-    case DiscountEdit = 'discount.edit';
-
     public function label(): string
     {
         return match ($this) {
@@ -167,8 +163,6 @@ enum Permission: string
             self::AnalyticsReportView => 'مشاهده گزارش ترافیک (گوگل آنالیتیکس)',
             self::PricingView => 'مشاهده تنظیمات قیمت‌گذاری',
             self::PricingEdit => 'ویرایش تنظیمات قیمت‌گذاری',
-            self::DiscountView => 'مشاهده کدهای تخفیف',
-            self::DiscountEdit => 'مدیریت کدهای تخفیف',
         };
     }
 
@@ -191,7 +185,6 @@ enum Permission: string
             self::HesabfaView, self::HesabfaSync => 'حسابفا',
             self::ManagementReportView, self::AnalyticsReportView => 'گزارشات مدیریتی',
             self::PricingView, self::PricingEdit => 'قیمت‌گذاری',
-            self::DiscountView, self::DiscountEdit => 'کدهای تخفیف',
         };
     }
 

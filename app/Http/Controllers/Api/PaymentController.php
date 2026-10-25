@@ -10,7 +10,6 @@ use App\Models\Cart;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
 use App\Services\InstallmentService;
-use App\Services\Pricing\DiscountService;
 use App\Services\Pricing\DynamicPriceService;
 use App\Services\Pricing\SalesRestrictionService;
 use Illuminate\Http\JsonResponse;
@@ -31,7 +30,6 @@ class PaymentController extends Controller
     public function __construct(
         private readonly DynamicPriceService $dynamicPrice,
         private readonly SalesRestrictionService $salesRestrictions,
-        private readonly DiscountService $discounts,
     ) {}
 
     public function calculateFee(CalculateFeeRequest $request): JsonResponse
@@ -59,10 +57,6 @@ class PaymentController extends Controller
 
         $baseTotal += $shippingCost;
 
-        $discountResolved = $this->discounts->resolveForOrder($user->id);
-        $discountAmount = min((float) $discountResolved['amount'], max(0, $baseTotal - $shippingCost));
-        $baseTotal = max(0, $baseTotal - $discountAmount);
-
         $isFeeGateway = InstallmentService::isFeeGateway($validated['gateway']);
         $feeAmount = 0;
 
@@ -73,8 +67,6 @@ class PaymentController extends Controller
         return response()->json([
             'base_total' => (int) $baseTotal,
             'shipping_cost' => $shippingCost,
-            'discount_amount' => (int) $discountAmount,
-            'discount_code' => $discountResolved['code'],
             'fee_amount' => $feeAmount,
             'total_with_fee' => (int) $baseTotal + $feeAmount,
         ]);

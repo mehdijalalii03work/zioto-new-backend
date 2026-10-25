@@ -62,7 +62,7 @@ price(Rial) = round( weight × board(Toman) × (1 + coef) )
 - تابلو هر دقیقه با `priceboard:sync` رفرش می‌شود؛ خواندن کش `readCache` اعتبارسنجی زمانی ندارد
 - `round_prices` (پیش‌فرض `false`) و `round_to` (پیش‌فرض `1000` تومان)
 - مالیات با `tax_gold` / `tax_silver` (درصد روی **کل قیمت**)
-- تخفیف جداگانه با `DiscountService`؛ تاریخچه با `PriceHistory` (MongoDB)
+- تاریخچه با `PriceHistory` (MongoDB)
 
 ---
 
@@ -78,7 +78,7 @@ price(Rial) = round( weight × board(Toman) × (1 + coef) )
 | کلید مرجع | `Purpose` صریح خرید/فروش + `Ratio` | کلید `Sell`/`Buy` تابلو؛ `Ratio` نداریم |
 | تازگی تابلو | TTL ۹۰۰ ثانیه + `IsExpired` | کرون هر دقیقه؛ خواندن کش بدون اعتبارسنجی زمان |
 | قیمت دستی | ستون `IsOverride` | نداریم |
-| تخفیف | ندارد | `DiscountService` داریم |
+| کد تخفیف | ندارد | در این شاخه پیاده‌سازی نشده است |
 | تاریخچه | لاگ خروجی با `ExpiresAt` | `PriceHistory` (MongoDB — در حال حاضر خاموش/خطا) |
 | پیش‌نمایش در پنل | خروجی اکسل جداگانه | صفحهٔ `/admin/pricing/preview` با ماتریس زنده |
 
