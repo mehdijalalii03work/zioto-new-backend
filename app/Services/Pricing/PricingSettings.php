@@ -70,6 +70,11 @@ class PricingSettings
         return (bool) self::get('enable_dynamic_pricing', true);
     }
 
+    public static function salesEnabled(): bool
+    {
+        return (bool) self::get('sales_enabled', true);
+    }
+
     public static function emergencyModeEnabled(): bool
     {
         return (bool) self::get('emergency_mode_enabled', false);

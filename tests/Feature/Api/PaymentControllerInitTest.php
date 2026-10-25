@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserAddress;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
+use Modules\Product\Models\Product;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use Shetabit\Multipay\Payment as ShetabitPayment;
 use Tests\TestCase;
@@ -110,10 +112,29 @@ class PaymentControllerInitTest extends TestCase
 
     public function test_init_allows_new_payment_for_order_with_previous_failed_payment(): void
     {
+        Setting::updateOrCreate(['key' => 'zioto_pricing_sales_enabled'], [
+            'value' => 'false',
+            'type' => 'boolean',
+            'category' => 'pricing',
+            'label' => 'توقف فروش محصولات',
+        ]);
+        $product = Product::create([
+            'name' => 'محصول سفارش قبلی',
+            'slug' => 'old-order-product-'.uniqid(),
+            'price' => 100000,
+            'stock_quantity' => 10,
+        ]);
         $order = Order::factory()->create([
             'status' => 'pending',
             'payment_status' => 'failed',
             'total_amount' => 100000,
+        ]);
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_price' => $product->price,
+            'quantity' => 1,
+            'subtotal' => $product->price,
         ]);
 
         Payment::create([

@@ -40,6 +40,7 @@ class ProductSettingsPage extends Page
     public function mount(): void
     {
         $this->form->fill([
+            'sales_closed' => ! PricingSettings::salesEnabled(),
             'enable_dynamic_pricing' => PricingSettings::enableDynamicPricing(),
             'round_prices' => PricingSettings::roundPrices(),
             'round_to' => PricingSettings::roundTo(),
@@ -57,6 +58,16 @@ class ProductSettingsPage extends Page
     {
         return $schema
             ->components([
+                Section::make('وضعیت فروش')
+                    ->icon('heroicon-o-shopping-bag')
+                    ->schema([
+                        Toggle::make('sales_closed')
+                            ->label('توقف فروش محصولات')
+                            ->inline(false)
+                            ->helperText('با فعال‌کردن این گزینه، افزودن محصول به سبد و ثبت سفارش جدید برای همه محصولات متوقف می‌شود. سفارش‌های ثبت‌شده قبلی قابل پرداخت می‌مانند.'),
+                    ])
+                    ->columnSpanFull(),
+
                 Section::make('قیمت‌گذاری محصول')
                     ->icon('heroicon-o-adjustments-horizontal')
                     ->schema([
@@ -115,6 +126,13 @@ class ProductSettingsPage extends Page
         $data = $this->form->getState();
 
         $booleans = ['enable_dynamic_pricing', 'round_prices', 'show_discount', 'enable_sales_hours'];
+
+        Setting::updateOrCreate(['key' => 'zioto_pricing_sales_enabled'], [
+            'value' => ($data['sales_closed'] ?? false) ? 'false' : 'true',
+            'type' => 'boolean',
+            'category' => 'pricing',
+            'label' => 'توقف فروش محصولات',
+        ]);
 
         foreach ($booleans as $key) {
             Setting::updateOrCreate(['key' => "zioto_pricing_{$key}"], [

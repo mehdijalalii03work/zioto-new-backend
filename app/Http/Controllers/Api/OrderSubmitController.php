@@ -70,6 +70,13 @@ class OrderSubmitController extends Controller
 
     public function store(StoreOrderRequest $request): JsonResponse
     {
+        if (! $this->salesRestrictions->salesEnabled()) {
+            return response()->json([
+                'message' => $this->salesRestrictions->salesClosedMessage(),
+                'error_code' => 'SALES_CLOSED',
+            ], 422);
+        }
+
         $user = $request->user();
         $validated = $request->validated();
 

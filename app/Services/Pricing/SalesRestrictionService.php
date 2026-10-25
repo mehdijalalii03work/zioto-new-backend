@@ -11,6 +11,16 @@ use Modules\Product\Models\Product;
  */
 class SalesRestrictionService
 {
+    public function salesEnabled(): bool
+    {
+        return PricingSettings::salesEnabled();
+    }
+
+    public function salesClosedMessage(): string
+    {
+        return 'فروش محصولات موقتاً متوقف است.';
+    }
+
     /**
      * Whether the product can currently be purchased.
      */
@@ -62,6 +72,7 @@ class SalesRestrictionService
     public function humanMessage(?string $reason): string
     {
         return match ($reason) {
+            'sales_closed' => $this->salesClosedMessage(),
             'product_disabled' => 'فروش این محصول در حال حاضر غیرفعال است.',
             'category_disabled' => 'فروش محصولات این دسته‌بندی در حال حاضر غیرفعال است.',
             'outside_hours' => sprintf(

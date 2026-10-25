@@ -55,6 +55,41 @@ class ProductSettingsPageTest extends TestCase
         $this->assertSame(12.5, PricingSettings::taxGoldLabor());
     }
 
+    public function test_admin_can_stop_and_resume_sales_and_the_setting_is_reloaded(): void
+    {
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        Livewire::actingAs($user, 'web')
+            ->test(ProductSettingsPage::class)
+            ->assertSet('data.sales_closed', false)
+            ->assertSee('توقف فروش محصولات')
+            ->set('data.sales_closed', true)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('settings', [
+            'key' => 'zioto_pricing_sales_enabled',
+            'value' => 'false',
+            'type' => 'boolean',
+        ]);
+        $this->assertFalse(PricingSettings::salesEnabled());
+
+        Livewire::actingAs($user, 'web')
+            ->test(ProductSettingsPage::class)
+            ->assertSet('data.sales_closed', true);
+
+        Livewire::actingAs($user, 'web')
+            ->test(ProductSettingsPage::class)
+            ->set('data.sales_closed', false)
+            ->call('save');
+
+        $this->assertDatabaseHas('settings', [
+            'key' => 'zioto_pricing_sales_enabled',
+            'value' => 'true',
+        ]);
+        $this->assertTrue(PricingSettings::salesEnabled());
+    }
+
     public function test_operator_cannot_change_the_labor_tax(): void
     {
         $user = User::factory()->create()->assignRole(Role::Operator->value);
@@ -102,7 +137,7 @@ class ProductSettingsPageTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_view_only_user_cannot_save_rounding_settings(): void
+    public function test_view_only_user_cannot_save_pricing_settings(): void
     {
         Http::preventStrayRequests();
         $user = User::factory()->create();
@@ -110,9 +145,11 @@ class ProductSettingsPageTest extends TestCase
 
         Livewire::actingAs($user, 'web')->test(ProductSettingsPage::class)
             ->set('data.rounding_mode', 'reference')
+            ->set('data.sales_closed', true)
             ->call('save');
 
         $this->assertDatabaseMissing('settings', ['key' => 'zioto_pricing_rounding_mode']);
+        $this->assertDatabaseMissing('settings', ['key' => 'zioto_pricing_sales_enabled']);
         Http::assertNothingSent();
     }
 }

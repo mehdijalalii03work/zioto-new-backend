@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Http\Middleware\AuthenticateApiToken;
 use App\Models\Cart;
+use App\Models\Setting;
 use App\Models\ShippingMethod;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -183,6 +184,90 @@ class NopayProductEligibilityTest extends TestCase
 
         $response->assertStatus(201);
         $this->assertSame(1, Order::withoutTenantScope()->where('user_id', $user->id)->count());
+    }
+
+    public function test_sales_closed_rejects_cart_additions_and_new_orders(): void
+    {
+        Setting::updateOrCreate(['key' => 'zioto_pricing_sales_enabled'], [
+            'value' => 'false',
+            'type' => 'boolean',
+            'category' => 'pricing',
+            'label' => 'توقف فروش محصولات',
+        ]);
+
+        $user = User::factory()->create();
+        $product = $this->nonEligibleProduct();
+        $method = $this->shippingMethod();
+
+        $cartResponse = $this->withHeaders($this->mainHeaders($user))
+            ->postJson('/api/cart', ['product_id' => $product->id, 'quantity' => 1]);
+
+        $cartResponse->assertStatus(422);
+        $cartResponse->assertJson([
+            'error_code' => 'SALES_CLOSED',
+            'message' => 'فروش محصولات موقتاً متوقف است.',
+        ]);
+        $this->assertDatabaseMissing('carts', [
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+        ]);
+
+        Cart::withoutTenantScope()->create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'quantity' => 1,
+            'platform' => 'main',
+        ]);
+
+        $orderResponse = $this->withHeaders($this->mainHeaders($user))
+            ->postJson('/api/orders', [
+                'gateway' => 'parsian',
+                'shipping_method_id' => $method->id,
+            ]);
+
+        $orderResponse->assertStatus(422);
+        $orderResponse->assertJson([
+            'error_code' => 'SALES_CLOSED',
+            'message' => 'فروش محصولات موقتاً متوقف است.',
+        ]);
+        $this->assertSame(0, Order::withoutTenantScope()->where('user_id', $user->id)->count());
+    }
+
+    public function test_existing_cart_can_be_managed_while_sales_are_closed(): void
+    {
+        Setting::updateOrCreate(['key' => 'zioto_pricing_sales_enabled'], [
+            'value' => 'false',
+            'type' => 'boolean',
+            'category' => 'pricing',
+            'label' => 'توقف فروش محصولات',
+        ]);
+
+        $user = User::factory()->create();
+        $product = $this->nonEligibleProduct();
+        Cart::withoutTenantScope()->create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'quantity' => 1,
+            'platform' => 'main',
+        ]);
+
+        $headers = $this->mainHeaders($user);
+        $this->withHeaders($headers)
+            ->putJson('/api/cart/'.$product->id, ['quantity' => 2])
+            ->assertOk();
+        $this->assertDatabaseHas('carts', [
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'quantity' => 2,
+        ]);
+
+        $this->withHeaders($headers)
+            ->deleteJson('/api/cart/'.$product->id)
+            ->assertOk();
+        $this->assertDatabaseMissing('carts', [
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+        ]);
     }
 
     public function test_payment_init_with_nopay_gateway_rejects_non_eligible_order(): void

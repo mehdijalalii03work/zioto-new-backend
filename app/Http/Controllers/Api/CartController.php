@@ -34,6 +34,13 @@ class CartController extends Controller
 
     public function store(StoreCartRequest $request): JsonResponse
     {
+        if (! $this->salesRestrictions->salesEnabled()) {
+            return response()->json([
+                'message' => $this->salesRestrictions->salesClosedMessage(),
+                'error_code' => 'SALES_CLOSED',
+            ], 422);
+        }
+
         $userId = Auth::id();
         $validated = $request->validated();
         $productId = $validated['product_id'];

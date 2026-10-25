@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
 use App\Models\User;
 use App\Services\Pricing\DynamicPriceService;
+use App\Services\Pricing\PricingSettings;
 use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -73,12 +74,13 @@ class ProductController extends Controller
         $wishlistSet = array_flip($wishlistIds);
         $dynamicPrice = app(DynamicPriceService::class);
         $productModels = null;
+        $salesEnabled = PricingSettings::salesEnabled();
 
         if ($userId !== null) {
             $productModels = Product::whereIn('id', array_column($products, 'id'))->get()->keyBy('id');
         }
 
-        $products = array_map(function (array $p) use ($wishlistSet, $dynamicPrice, $userId, $productModels) {
+        $products = array_map(function (array $p) use ($wishlistSet, $dynamicPrice, $userId, $productModels, $salesEnabled) {
             $productId = $p['id'];
 
             if ($userId !== null && $productModels !== null) {
@@ -96,12 +98,20 @@ class ProductController extends Controller
                 }
             }
 
+            if (! $salesEnabled) {
+                $p['purchasable'] = false;
+                $p['unavailable_reason'] = 'sales_closed';
+            }
+
             return array_merge($p, [
                 'is_wishlist' => isset($wishlistSet[$productId]),
             ]);
         }, $products);
 
-        return response()->json(['data' => $products]);
+        return response()->json([
+            'data' => $products,
+            'sales_enabled' => $salesEnabled,
+        ]);
     }
 
     public function show(string $slugOrId): JsonResponse
@@ -136,6 +146,15 @@ class ProductController extends Controller
             }
         }
 
-        return response()->json(['data' => $data]);
+        $salesEnabled = PricingSettings::salesEnabled();
+        if (! $salesEnabled) {
+            $data['purchasable'] = false;
+            $data['unavailable_reason'] = 'sales_closed';
+        }
+
+        return response()->json([
+            'data' => $data,
+            'sales_enabled' => $salesEnabled,
+        ]);
     }
 }
