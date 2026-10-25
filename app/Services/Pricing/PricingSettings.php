@@ -87,6 +87,11 @@ class PricingSettings
         return (bool) self::get('emergency_mode_enabled', false);
     }
 
+    public static function forceNightlyPricing(): bool
+    {
+        return (bool) self::get('force_nightly_pricing', false);
+    }
+
     public static function roundPrices(): bool
     {
         return (bool) self::get('round_prices', false);

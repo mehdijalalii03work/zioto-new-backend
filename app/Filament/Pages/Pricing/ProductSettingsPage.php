@@ -47,6 +47,7 @@ class ProductSettingsPage extends Page
             'sales_closed' => ! PricingSettings::salesEnabled(),
             'tokeniko_product_prices_enabled' => PricingSettings::tokenikoProductPricesEnabled(),
             'enable_dynamic_pricing' => PricingSettings::enableDynamicPricing(),
+            'force_nightly_pricing' => PricingSettings::forceNightlyPricing(),
             'round_prices' => PricingSettings::roundPrices(),
             'round_to' => PricingSettings::roundTo(),
             'rounding_mode' => PricingSettings::roundingMode(),
@@ -122,6 +123,16 @@ class ProductSettingsPage extends Page
                         ]),
                     ])->columnSpanFull(),
 
+                Section::make('حالت بحران')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->schema([
+                        Toggle::make('force_nightly_pricing')
+                            ->label('حالت بحران: محاسبهٔ همیشگی با ضریب شبانه')
+                            ->inline(false)
+                            ->helperText('در حالت فعال، قیمت محصولات پویا حتی در ساعات روز و روزهای کاری با ضریب شبانه محاسبه می‌شود.'),
+                    ])
+                    ->columnSpanFull(),
+
                 Section::make('ساعات فروش')
                     ->icon('heroicon-o-clock')
                     ->schema([
@@ -180,7 +191,7 @@ class ProductSettingsPage extends Page
 
         $data = $this->form->getState();
 
-        $booleans = ['tokeniko_product_prices_enabled', 'enable_dynamic_pricing', 'round_prices', 'show_discount', 'enable_sales_hours'];
+        $booleans = ['tokeniko_product_prices_enabled', 'enable_dynamic_pricing', 'force_nightly_pricing', 'round_prices', 'show_discount', 'enable_sales_hours'];
 
         $weeklyHolidayDays = collect($data['weekly_holiday_days'] ?? [])
             ->filter(static fn (mixed $day): bool => (is_int($day) && $day >= 0 && $day <= 6)

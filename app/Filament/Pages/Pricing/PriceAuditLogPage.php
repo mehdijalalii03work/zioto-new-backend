@@ -78,6 +78,7 @@ class PriceAuditLogPage extends Page
             'round_to' => 'مضرب گردکردن قیمت',
             'silver_round_to' => 'مضرب گردکردن نقره',
             'enable_dynamic_pricing' => 'قیمت‌گذاری پویا',
+            'force_nightly_pricing' => 'حالت بحران: استفاده از ضریب شبانه',
             'labor_roles' => 'نقش‌های اجرت',
             'time_periods' => 'بازه‌های زمانی اجرت',
             'rounding_mode' => 'روش گردکردن قیمت',

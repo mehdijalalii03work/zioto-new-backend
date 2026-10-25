@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Enums\Permission;
 use App\Enums\Role;
+use App\Filament\Pages\Pricing\PriceAuditLogPage;
 use App\Filament\Pages\Pricing\ProductSettingsPage;
 use App\Models\Setting;
 use App\Models\User;
@@ -118,6 +119,33 @@ class ProductSettingsPageTest extends TestCase
             'key' => 'zioto_pricing_tokeniko_product_prices_enabled',
             'value' => 'false',
         ]);
+    }
+
+    public function test_admin_can_enable_crisis_mode_to_force_nightly_pricing(): void
+    {
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        Livewire::actingAs($user, 'web')->test(ProductSettingsPage::class)
+            ->assertSet('data.force_nightly_pricing', false)
+            ->assertSee('حالت بحران: محاسبهٔ همیشگی با ضریب شبانه')
+            ->set('data.force_nightly_pricing', true)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $setting = Setting::where('key', 'zioto_pricing_force_nightly_pricing')->first();
+
+        $this->assertNotNull($setting);
+        $this->assertSame('true', $setting->value);
+        $this->assertTrue(PricingSettings::forceNightlyPricing());
+        $this->assertDatabaseHas('price_audit_logs', [
+            'actor_id' => $user->id,
+            'subject_type' => 'setting',
+            'subject_id' => $setting->id,
+        ]);
+        $this->assertSame('حالت بحران: استفاده از ضریب شبانه', app(PriceAuditLogPage::class)->fieldLabel('force_nightly_pricing'));
+
+        Livewire::actingAs($user, 'web')->test(ProductSettingsPage::class)
+            ->assertSet('data.force_nightly_pricing', true);
     }
 
     public function test_admin_can_save_and_reload_weekly_and_special_holidays(): void

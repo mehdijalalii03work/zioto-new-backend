@@ -74,7 +74,7 @@ class DynamicPriceService
             return null;
         }
 
-        $period = $timePeriod ?? $this->labor->getCurrentTimePeriod();
+        $period = $this->resolveTimePeriod($timePeriod);
         $role = $roleSlug ?? $this->labor->getUserLaborRole($userId);
         $coefficient = $this->labor->coefficientFor($product, $period, $role);
 
@@ -176,7 +176,7 @@ class DynamicPriceService
             return null;
         }
 
-        $period = $timePeriod ?? $this->labor->getCurrentTimePeriod();
+        $period = $this->resolveTimePeriod($timePeriod);
         $role = $roleSlug ?? $this->labor->getUserLaborRole();
         $coefficient = $this->labor->coefficientFor($product, $period, $role);
 
@@ -255,6 +255,15 @@ class DynamicPriceService
     private function packSize(object $product): int
     {
         return max(1, (int) ($product->pack_size ?? 1));
+    }
+
+    private function resolveTimePeriod(?string $timePeriod): string
+    {
+        if (PricingSettings::forceNightlyPricing()) {
+            return 'nightly';
+        }
+
+        return $timePeriod ?? $this->labor->getCurrentTimePeriod();
     }
 
     /** @param list<array{scope: string, rate: float, amount: float}> $taxes

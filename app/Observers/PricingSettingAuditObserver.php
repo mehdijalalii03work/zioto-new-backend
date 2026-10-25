@@ -52,6 +52,7 @@ class PricingSettingAuditObserver
                 'zioto_pricing_time_periods',
                 'zioto_pricing_emergency_mode_enabled',
                 'zioto_pricing_enable_dynamic_pricing',
+                'zioto_pricing_force_nightly_pricing',
                 'zioto_pricing_persian_api_enabled',
                 'zioto_pricing_tala_api_enabled',
                 'zioto_pricing_tokeniko_board_enabled',

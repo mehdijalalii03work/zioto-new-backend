@@ -109,4 +109,18 @@ class LaborCalculatorHolidayTest extends TestCase
         $this->assertSame('daily', $dayPeriod);
         $this->assertSame('nightly', $nightPeriod);
     }
+
+    public function test_crisis_mode_forces_nightly_period_during_daytime(): void
+    {
+        Setting::create([
+            'key' => 'zioto_pricing_force_nightly_pricing',
+            'value' => 'true',
+            'type' => 'boolean',
+            'category' => 'pricing',
+            'label' => 'حالت بحران',
+        ]);
+        $this->travelTo(Carbon::parse('2026-10-25 13:00:00', 'Asia/Tehran'));
+
+        $this->assertSame('nightly', app(LaborCalculator::class)->getCurrentTimePeriod());
+    }
 }

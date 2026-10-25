@@ -102,6 +102,33 @@ class DynamicPriceServiceTest extends TestCase
         $this->assertSame(100.0, (float) $details['base_price']);
     }
 
+    public function test_crisis_mode_uses_nightly_coefficient_even_when_daily_is_requested(): void
+    {
+        Http::preventStrayRequests();
+        $this->seedBoard('Gold750_Sell', 1000);
+        Setting::create([
+            'key' => 'zioto_pricing_force_nightly_pricing',
+            'value' => 'true',
+            'type' => 'boolean',
+            'category' => 'pricing',
+            'label' => 'حالت بحران: محاسبهٔ همیشگی با ضریب شبانه',
+        ]);
+        $product = $this->product([
+            'labor_coefficients' => [
+                'daily' => ['basic' => 0.1],
+                'nightly' => ['basic' => 0.5],
+            ],
+        ]);
+
+        $service = app(DynamicPriceService::class);
+
+        $this->assertSame(3000.0, $service->priceFor($product, timePeriod: 'daily', roleSlug: 'basic'));
+        $details = $service->detailsFor($product, 'basic', 'daily');
+        $this->assertSame('nightly', $details['time_period']);
+        $this->assertSame(300.0, (float) $details['calculated_price']);
+        Http::assertNothingSent();
+    }
+
     public function test_returns_null_when_dynamic_pricing_is_disabled(): void
     {
         Setting::create([

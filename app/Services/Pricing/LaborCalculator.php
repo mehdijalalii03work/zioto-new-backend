@@ -23,6 +23,10 @@ class LaborCalculator
 
     public function getCurrentTimePeriod(): string
     {
+        if (PricingSettings::forceNightlyPricing()) {
+            return 'nightly';
+        }
+
         $currentTime = now();
 
         if (
