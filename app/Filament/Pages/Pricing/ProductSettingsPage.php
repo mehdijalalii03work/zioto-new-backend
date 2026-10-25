@@ -78,14 +78,20 @@ class ProductSettingsPage extends Page
                     ])
                     ->columnSpanFull(),
 
+                Section::make('منبع قیمت محصولات')
+                    ->icon('heroicon-o-arrow-path')
+                    ->schema([
+                        Toggle::make('tokeniko_product_prices_enabled')
+                            ->label('دریافت مستقیم قیمت محصولات از توکنیکو')
+                            ->inline(false)
+                            ->helperText('با فعال‌کردن این گزینه، قیمت فروش محصولات دارای SKU توکنیکو مستقیماً از توکنیکو دریافت می‌شود و محاسبه ضریب و اجرت برای آن محصولات اعمال نمی‌شود.'),
+                    ])
+                    ->columnSpanFull(),
+
                 Section::make('قیمت‌گذاری محصول')
                     ->icon('heroicon-o-adjustments-horizontal')
                     ->schema([
                         Grid::make(2)->schema([
-                            Toggle::make('tokeniko_product_prices_enabled')
-                                ->label('دریافت مستقیم قیمت محصولات از توکنیکو')
-                                ->inline(false)
-                                ->helperText('برای محصولاتی که SKU توکنیکو دارند، قیمت فروش توکنیکو جایگزین محاسبه ضریب و اجرت می‌شود.'),
                             Toggle::make('enable_dynamic_pricing')->label('قیمت‌گذاری پویا')->inline(false),
                             Toggle::make('round_prices')->label('گردکردن قیمت محصول')->inline(false),
                             Select::make('rounding_mode')

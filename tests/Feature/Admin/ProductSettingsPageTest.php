@@ -96,6 +96,7 @@ class ProductSettingsPageTest extends TestCase
 
         Livewire::actingAs($user, 'web')->test(ProductSettingsPage::class)
             ->assertSet('data.tokeniko_product_prices_enabled', false)
+            ->assertSee('منبع قیمت محصولات')
             ->assertSee('دریافت مستقیم قیمت محصولات از توکنیکو')
             ->set('data.tokeniko_product_prices_enabled', true)
             ->call('save')
