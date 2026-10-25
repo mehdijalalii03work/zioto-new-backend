@@ -5,6 +5,7 @@ namespace App\Filament\Pages\Products;
 use App\Enums\Permission;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Modules\Product\Models\Product;
@@ -33,6 +34,8 @@ class ProductComparisonPage extends Page
     protected string $view = 'filament.pages.product-comparison';
 
     private const TOKENIKO_URL = 'https://apigateway.tokeniko.com/shop/api/Category/getPrices';
+
+    private const TOKENIKO_REQUEST_ATTEMPTS = 2;
 
     /**
      * @var list<array{id: int, name: string, sku: string, ourPrice: float|null, tokPrice: float|null, diffPct: float|null}>
@@ -134,7 +137,8 @@ class ProductComparisonPage extends Page
 
         foreach ($products as $product) {
             $ourPrice = is_numeric($product->price) ? (float) $product->price : null;
-            $tokPrice = $tokeniko['prices'][mb_strtolower(trim((string) $product->tokeniko_sku))] ?? null;
+            $tokenikoUnitPrice = $tokeniko['prices'][mb_strtolower(trim((string) $product->tokeniko_sku))] ?? null;
+            $tokPrice = $tokenikoUnitPrice === null ? null : $tokenikoUnitPrice * $product->pack_size;
 
             $rows[] = [
                 'id' => $product->getKey(),
@@ -193,39 +197,59 @@ class ProductComparisonPage extends Page
     {
         $result = ['prices' => [], 'error' => null];
 
-        try {
-            $response = Http::withoutVerifying()->timeout(15)->get(self::TOKENIKO_URL);
-        } catch (Throwable $e) {
-            Log::warning('[ProductComparison] Tokeniko request failed: '.$e->getMessage());
-            $result['error'] = 'خطا در دریافت قیمت توکنیکو';
+        for ($attempt = 1; $attempt <= self::TOKENIKO_REQUEST_ATTEMPTS; $attempt++) {
+            try {
+                $response = Http::withoutVerifying()->timeout(15)->get(self::TOKENIKO_URL);
+            } catch (Throwable $e) {
+                Log::warning('[ProductComparison] Tokeniko request failed: '.$e->getMessage());
+                $result['error'] = 'خطا در دریافت قیمت توکنیکو';
 
-            return $result;
-        }
-
-        if ($response->failed()) {
-            Log::warning('[ProductComparison] Tokeniko HTTP error', ['status' => $response->status()]);
-            $result['error'] = 'خطا در دریافت قیمت توکنیکو (کد '.$response->status().')';
-
-            return $result;
-        }
-
-        $data = $response->json();
-
-        if (! is_array($data) || empty($data['Model']) || ! is_array($data['Model'])) {
-            $result['error'] = 'پاسخ نامعتبر از توکنیکو';
-
-            return $result;
-        }
-
-        foreach ($data['Model'] as $item) {
-            if (empty($item['Name']) || ! isset($item['SellPrice']) || ! is_numeric($item['SellPrice'])) {
                 continue;
             }
 
-            $result['prices'][mb_strtolower(trim($item['Name']))] = (float) $item['SellPrice'];
+            if ($response->failed()) {
+                Log::warning('[ProductComparison] Tokeniko HTTP error', ['status' => $response->status()]);
+                $result['error'] = 'خطا در دریافت قیمت توکنیکو (کد '.$response->status().')';
+
+                continue;
+            }
+
+            $result['prices'] = $this->pricesFromResponse($response);
+
+            if ($result['prices'] !== []) {
+                $result['error'] = null;
+
+                return $result;
+            }
+
+            $result['error'] = 'پاسخ نامعتبر یا بدون قیمت معتبر از توکنیکو';
         }
 
         return $result;
+    }
+
+    /**
+     * @return array<string, float>
+     */
+    private function pricesFromResponse(Response $response): array
+    {
+        $data = $response->json();
+
+        if (! is_array($data) || empty($data['Model']) || ! is_array($data['Model'])) {
+            return [];
+        }
+
+        $prices = [];
+
+        foreach ($data['Model'] as $item) {
+            if (empty($item['Name']) || ! isset($item['SellPrice']) || ! is_numeric($item['SellPrice']) || (float) $item['SellPrice'] <= 0) {
+                continue;
+            }
+
+            $prices[mb_strtolower(trim($item['Name']))] = (float) $item['SellPrice'];
+        }
+
+        return $prices;
     }
 
     private static function diffPct(?float $ours, ?float $theirs): ?float

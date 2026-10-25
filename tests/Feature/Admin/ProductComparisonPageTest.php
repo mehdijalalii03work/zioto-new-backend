@@ -87,6 +87,48 @@ class ProductComparisonPageTest extends TestCase
         $this->assertNull($rows[1]['diffPct']);
     }
 
+    public function test_tokeniko_prices_are_multiplied_by_product_pack_size(): void
+    {
+        $this->admin();
+        $product = $this->product('zioto-gold-bar-1gram-995', 600000000);
+        $product->update(['pack_size' => 2]);
+
+        Http::fake([
+            '*apigateway.tokeniko.com/shop/api/Category/getPrices*' => Http::response(['Model' => [
+                ['Name' => 'zioto-gold-bar-1gram-995', 'SellPrice' => 300000000],
+            ]], 200),
+        ]);
+
+        $row = Livewire::test(ProductComparisonPage::class)->get('rows')[0];
+
+        $this->assertSame(600000000.0, $row['tokPrice']);
+        $this->assertSame(0.0, $row['diffPct']);
+    }
+
+    public function test_zero_tokeniko_prices_are_retried_before_comparison(): void
+    {
+        $this->admin();
+        $this->product('zioto-gold-bar-1gram-995', 300000000);
+        $attempt = 0;
+
+        Http::fake([
+            '*apigateway.tokeniko.com/shop/api/Category/getPrices*' => function () use (&$attempt) {
+                $attempt++;
+
+                return Http::response(['Model' => [
+                    ['Name' => 'zioto-gold-bar-1gram-995', 'SellPrice' => $attempt === 1 ? 0 : 300000000],
+                ]], 200);
+            },
+        ]);
+
+        $component = Livewire::test(ProductComparisonPage::class)->assertSuccessful();
+
+        $this->assertSame(2, $attempt);
+        $this->assertNull($component->get('tokenikoError'));
+        $this->assertSame(300000000.0, $component->get('rows')[0]['tokPrice']);
+        $this->assertSame(0.0, $component->get('rows')[0]['diffPct']);
+    }
+
     public function test_refresh_refetches_tokeniko_without_storing(): void
     {
         $this->admin();
