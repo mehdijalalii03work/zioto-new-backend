@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
+use Modules\Product\Models\Product;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use Shetabit\Multipay\Payment as ShetabitPayment;
 use Shetabit\Multipay\Receipt;
@@ -152,6 +153,54 @@ class PaymentControllerCallbackTest extends TestCase
         $order->refresh();
 
         $this->assertSame('paid', $payment->status, 'پرداخت واقعاً موفق بوده و نباید failed شود فقط چون observer خطا داده.');
+        $this->assertSame('paid', $order->payment_status);
+        $this->assertSame('confirmed', $order->status);
+    }
+
+    #[RunInSeparateProcess]
+    public function test_successful_verify_with_zero_stock_still_marks_paid(): void
+    {
+        config(['hesabfa.enable_reserved_stock' => true]);
+
+        [$order, $payment] = $this->makeOrderWithPendingPayment('parsian');
+
+        $product = Product::create([
+            'name' => 'شمش بدون موجودی',
+            'slug' => 'zero-stock-'.uniqid(),
+            'price' => 100000,
+            'stock_quantity' => 0,
+        ]);
+
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_price' => $product->price,
+            'quantity' => 1,
+            'subtotal' => $product->price,
+        ]);
+
+        $receipt = Mockery::mock(Receipt::class);
+        $receipt->shouldReceive('getReferenceId')->andReturn('RRN-ZERO-STOCK');
+        $receipt->shouldReceive('getDetails')->andReturn([]);
+
+        $mock = Mockery::mock('overload:'.ShetabitPayment::class);
+        $mock->shouldReceive('via')->andReturnSelf();
+        $mock->shouldReceive('amount')->andReturnSelf();
+        $mock->shouldReceive('transactionId')->andReturnSelf();
+        $mock->shouldReceive('verify')->andReturn($receipt);
+
+        $response = $this->post("/api/payment/callback/{$order->id}/parsian", [
+            'Token' => $payment->transaction_id,
+            'status' => '0',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertStringContainsString('/confirm?order_id='.$order->id, $response->headers->get('Location'));
+
+        $payment->refresh();
+        $order->refresh();
+
+        $this->assertSame('paid', $payment->status, 'پرداخت موفق با موجودی صفر نباید failed شود.');
         $this->assertSame('paid', $order->payment_status);
         $this->assertSame('confirmed', $order->status);
     }

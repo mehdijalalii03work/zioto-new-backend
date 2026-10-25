@@ -73,13 +73,13 @@ class StockSyncService
                     continue;
                 }
 
-                if ($product->hesabfa_stock_locked || $product->hesabfa_exclude_from_sync) {
+                if ($product->hesabfa_stock_locked || $product->hesabfa_exclude_from_sync || $product->base_product_id) {
                     continue;
                 }
 
                 try {
                     $updateData = [
-                        'hesabfa_physical_stock' => $quantity,
+                        'hesabfa_physical_stock' => max(0, $quantity),
                         'hesabfa_stock_synced_at' => $updatedAt,
                     ];
 
@@ -128,7 +128,7 @@ class StockSyncService
             return ['message' => "SKU {$itemCode} is excluded from sync"];
         }
 
-        if ($product->hesabfa_stock_locked || $product->hesabfa_exclude_from_sync) {
+        if ($product->hesabfa_stock_locked || $product->hesabfa_exclude_from_sync || $product->base_product_id) {
             return ['message' => "SKU {$itemCode} stock is locked or excluded"];
         }
 

@@ -80,7 +80,7 @@ class PaymentControllerInitTest extends TestCase
         ]);
     }
 
-    public function test_init_rejects_duplicate_pending_payment(): void
+    public function test_init_retries_immediately_when_previous_payment_is_still_pending(): void
     {
         $order = Order::factory()->create([
             'status' => 'pending',
@@ -104,9 +104,41 @@ class PaymentControllerInitTest extends TestCase
             'gateway' => 'parsian',
         ]);
 
-        $response->assertStatus(422);
-        $response->assertJson([
-            'error_code' => 'PAYMENT_ALREADY_INITIATED',
+        $this->assertNotSame(422, $response->getStatusCode());
+        $this->assertDatabaseHas('payments', [
+            'id' => Payment::where('transaction_id', 'existing-txn')->value('id'),
+            'status' => 'failed',
+        ]);
+    }
+
+    public function test_init_retries_immediately_for_abandoned_pending_payment(): void
+    {
+        $this->travelTo(now()->startOfSecond());
+        $order = Order::factory()->create([
+            'status' => 'pending',
+            'payment_status' => 'pending',
+            'total_amount' => 100000,
+        ]);
+
+        $payment = Payment::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'transaction_id' => 'abandoned-txn',
+            'amount' => 100000,
+            'payment_method' => 'online',
+            'gateway' => 'parsian',
+            'status' => 'pending',
+            'description' => 'در انتظار پرداخت',
+        ]);
+        $response = $this->postJson('/api/payment/init', [
+            'order_id' => $order->id,
+            'gateway' => 'parsian',
+        ]);
+
+        $this->assertNotSame(422, $response->getStatusCode());
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'status' => 'failed',
         ]);
     }
 
@@ -154,6 +186,44 @@ class PaymentControllerInitTest extends TestCase
         ]);
 
         $this->assertNotEquals(422, $response->getStatusCode(), 'Init should allow retry after failed payment');
+    }
+
+    public function test_init_rejects_insufficient_stock(): void
+    {
+        config(['hesabfa.enable_reserved_stock' => true]);
+
+        $order = Order::factory()->create([
+            'status' => 'pending',
+            'payment_status' => 'pending',
+            'total_amount' => 100000,
+        ]);
+
+        $product = Product::create([
+            'name' => 'شمش بدون موجودی',
+            'slug' => 'zero-stock-init-'.uniqid(),
+            'price' => 100000,
+            'stock_quantity' => 0,
+        ]);
+
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_price' => $product->price,
+            'quantity' => 1,
+            'subtotal' => $product->price,
+        ]);
+
+        $response = $this->postJson('/api/payment/init', [
+            'order_id' => $order->id,
+            'gateway' => 'parsian',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJson([
+            'error_code' => 'INSUFFICIENT_STOCK',
+        ]);
+        $response->assertJsonPath('products.0.available', 0);
+        $response->assertJsonPath('products.0.requested', 1);
     }
 
     #[RunInSeparateProcess]

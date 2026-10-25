@@ -5,6 +5,7 @@ namespace App\Filament\Pages\Reports;
 use App\Enums\Permission;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -54,7 +55,9 @@ class TotalInvoiceReport extends Page
 
     public ?string $dateTo = null;
 
-    /** @var Collection<int, array{date: string, invoice_count: int, net_amount: float, gold_count: int, gold_amount: float, silver_count: int, silver_amount: float, total_count: int}> */
+    public ?string $gateway = null;
+
+    /** @var Collection<int, array{date: string, invoice_count: int, net_amount: float, gold_count: int, gold_amount: float, silver_count: int, silver_amount: float, plaque_count: int, plaque_amount: float}> */
     public $report;
 
     public bool $submitted = false;
@@ -68,36 +71,55 @@ class TotalInvoiceReport extends Page
     {
         return $schema
             ->components([
-                Section::make('بازه زمانی')
-                    ->icon('heroicon-o-calendar-days')
+                Grid::make(2)
                     ->schema([
-                        Radio::make('dateRange')
-                            ->label('بازه زمانی')
-                            ->options([
-                                'all' => 'همه',
-                                'today' => 'امروز',
-                                'week' => 'هفته جاری',
-                                'month' => 'ماه جاری',
-                                'year' => 'سال جاری',
-                                'custom' => 'سفارشی',
-                            ])
-                            ->live()
-                            ->default('all')
-                            ->inline(),
+                        Section::make('بازه زمانی')
+                            ->icon('heroicon-o-calendar-days')
+                            ->schema([
+                                Radio::make('dateRange')
+                                    ->label('بازه زمانی')
+                                    ->options([
+                                        'all' => 'همه',
+                                        'today' => 'امروز',
+                                        'week' => 'هفته جاری',
+                                        'month' => 'ماه جاری',
+                                        'year' => 'سال جاری',
+                                        'custom' => 'سفارشی',
+                                    ])
+                                    ->live()
+                                    ->default('all')
+                                    ->inline(),
 
-                        Grid::make(2)
-                            ->schema(fn (Get $get): array => $get('dateRange') === 'custom' ? [
-                                DatePicker::make('dateFrom')
-                                    ->label('از تاریخ')
-                                    ->native(false)
-                                    ->jalali()
-                                    ->displayFormat('Y/m/d'),
-                                DatePicker::make('dateTo')
-                                    ->label('تا تاریخ')
-                                    ->native(false)
-                                    ->jalali()
-                                    ->displayFormat('Y/m/d'),
-                            ] : []),
+                                Grid::make(2)
+                                    ->schema(fn (Get $get): array => $get('dateRange') === 'custom' ? [
+                                        DatePicker::make('dateFrom')
+                                            ->label('از تاریخ')
+                                            ->native(false)
+                                            ->jalali()
+                                            ->displayFormat('Y/m/d'),
+                                        DatePicker::make('dateTo')
+                                            ->label('تا تاریخ')
+                                            ->native(false)
+                                            ->jalali()
+                                            ->displayFormat('Y/m/d'),
+                                    ] : []),
+                            ]),
+
+                        Section::make('درگاه پرداخت')
+                            ->icon('heroicon-o-credit-card')
+                            ->schema([
+                                Select::make('gateway')
+                                    ->label('درگاه پرداخت')
+                                    ->placeholder('همه')
+                                    ->options([
+                                        'parsian' => 'پارسیان',
+                                        'digipay' => 'دیجی‌پی',
+                                        'kamanlend' => 'کمان‌لند',
+                                        'smartis' => 'اسمارتیس',
+                                        'nopay' => 'نوپی',
+                                    ])
+                                    ->native(false),
+                            ]),
                     ]),
             ]);
     }
@@ -121,6 +143,10 @@ class TotalInvoiceReport extends Page
             $query->whereDate('created_at', '<=', $gregorianTo);
         }
 
+        if (filled($this->gateway)) {
+            $query->whereHas('payments', fn ($q) => $q->where('gateway', $this->gateway));
+        }
+
         $orders = $query->get();
 
         $this->report = $orders
@@ -128,25 +154,43 @@ class TotalInvoiceReport extends Page
             ->map(static function ($orders, $date) {
                 $allItems = $orders->flatMap->items;
 
+                $goldItems = $allItems->filter(
+                    static fn ($item) => $item->product
+                        && $item->product->metal_type?->value === 'gold'
+                        && in_array($item->product->form?->value, ['shammesh', 'saachmeh'], true),
+                );
+
                 $goldCount = $orders->filter(
                     static fn ($order) => $order->items->contains(
-                        static fn ($item) => $item->product && $item->product->metal_type?->value === 'gold',
+                        static fn ($item) => $item->product
+                            && $item->product->metal_type?->value === 'gold'
+                            && in_array($item->product->form?->value, ['shammesh', 'saachmeh'], true),
                     ),
                 )->count();
 
                 $silverCount = $orders->filter(
                     static fn ($order) => $order->items->contains(
-                        static fn ($item) => $item->product && $item->product->metal_type?->value === 'silver',
+                        static fn ($item) => $item->product
+                            && $item->product->metal_type?->value === 'silver'
+                            && in_array($item->product->form?->value, ['shammesh', 'saachmeh'], true),
                     ),
                 )->count();
 
-                $goldItems = $allItems->filter(
-                    static fn ($item) => $item->product && $item->product->metal_type?->value === 'gold',
+                $silverItems = $allItems->filter(
+                    static fn ($item) => $item->product
+                        && $item->product->metal_type?->value === 'silver'
+                        && in_array($item->product->form?->value, ['shammesh', 'saachmeh'], true),
                 );
 
-                $silverItems = $allItems->filter(
-                    static fn ($item) => $item->product && $item->product->metal_type?->value === 'silver',
+                $plaqueItems = $allItems->filter(
+                    static fn ($item) => $item->product && $item->product->form?->value === 'pelak',
                 );
+
+                $plaqueCount = $orders->filter(
+                    static fn ($order) => $order->items->contains(
+                        static fn ($item) => $item->product && $item->product->form?->value === 'pelak',
+                    ),
+                )->count();
 
                 return [
                     'date' => $date,
@@ -156,9 +200,11 @@ class TotalInvoiceReport extends Page
                     'gold_amount' => (float) $goldItems->sum('subtotal'),
                     'silver_count' => $silverCount,
                     'silver_amount' => (float) $silverItems->sum('subtotal'),
+                    'plaque_count' => $plaqueCount,
+                    'plaque_amount' => (float) $plaqueItems->sum('subtotal'),
                 ];
             })
-            ->sortByDesc('date')
+            ->sortBy('date')
             ->values();
     }
 

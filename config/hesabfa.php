@@ -31,6 +31,7 @@ return [
 
     'shipping_item_code' => env('HESABFA_SHIPPING_ITEM_CODE', ''),
     'installment_fee_item_code' => env('HESABFA_INSTALLMENT_FEE_ITEM_CODE', ''),
+    'discount_item_code' => env('HESABFA_DISCOUNT_ITEM_CODE', ''),
 
     /*
     |--------------------------------------------------------------------------

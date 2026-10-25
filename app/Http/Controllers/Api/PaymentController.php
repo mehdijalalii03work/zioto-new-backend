@@ -9,9 +9,11 @@ use App\Http\Resources\PaymentResource;
 use App\Models\Cart;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
+use App\Services\DiscountCodeService;
 use App\Services\InstallmentService;
 use App\Services\Pricing\DynamicPriceService;
 use App\Services\Pricing\SalesRestrictionService;
+use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,6 +30,7 @@ use Shetabit\Multipay\Payment as ShetabitPayment;
 class PaymentController extends Controller
 {
     public function __construct(
+        private readonly DiscountCodeService $discountCodeService,
         private readonly DynamicPriceService $dynamicPrice,
         private readonly SalesRestrictionService $salesRestrictions,
     ) {}
@@ -43,7 +46,7 @@ class PaymentController extends Controller
             $product = Product::findOrFail($item['product_id']);
             $unitPrice = $this->dynamicPrice->priceFor($product, $user->id) ?? (float) $product->price;
             $baseTotal += $unitPrice * $item['quantity'];
-            $totalWeight += ($product->weight ?? 0) * $item['quantity'];
+            $totalWeight += ($product->weight ?? 0) * $product->pack_size * $item['quantity'];
         }
 
         $address = empty($validated['user_address_id']) ? null : $user->addresses()->find($validated['user_address_id']);
@@ -57,6 +60,25 @@ class PaymentController extends Controller
 
         $baseTotal += $shippingCost;
 
+        $discountAmount = 0;
+        if (filled($validated['discount_code'] ?? null)) {
+            $discountResult = $this->discountCodeService->validate(
+                $validated['discount_code'],
+                $user,
+                Platform::fromRequest($request),
+            );
+
+            if ($discountResult['error']) {
+                return response()->json([
+                    'message' => $discountResult['error'],
+                    'error_code' => 'DISCOUNT_CODE_INVALID',
+                ], 422);
+            }
+
+            $discountAmount = min((int) $discountResult['code']->discount_amount, $baseTotal);
+            $baseTotal -= $discountAmount;
+        }
+
         $isFeeGateway = InstallmentService::isFeeGateway($validated['gateway']);
         $feeAmount = 0;
 
@@ -67,6 +89,7 @@ class PaymentController extends Controller
         return response()->json([
             'base_total' => (int) $baseTotal,
             'shipping_cost' => $shippingCost,
+            'discount_amount' => $discountAmount,
             'fee_amount' => $feeAmount,
             'total_with_fee' => (int) $baseTotal + $feeAmount,
         ]);
@@ -86,7 +109,7 @@ class PaymentController extends Controller
             return response()->json(['message' => 'سفارش لغو شده یا منقضی شده است', 'error_code' => 'ORDER_NOT_ACTIVE'], 422);
         }
 
-        $order->load('items.product:id,name,price,is_nopay,weight,price_board_item,price_type,labor_coefficients,category_id,metal_type');
+        $order->load('items.product:id,name,price,is_nopay,weight,price_board_item,price_type,labor_coefficients,category_id,metal_type,pack_size,tokeniko_sku');
 
         foreach ($order->items as $orderItem) {
             $product = $orderItem->product;
@@ -108,20 +131,42 @@ class PaymentController extends Controller
         }
 
         $existingPending = Payment::where('order_id', $order->id)
-            ->whereIn('status', ['pending', 'processing'])
+            ->where('status', 'processing')
             ->first();
 
         if ($existingPending) {
             return response()->json(['message' => 'درخواست پرداخت قبلاً ثبت شده است', 'error_code' => 'PAYMENT_ALREADY_INITIATED'], 422);
         }
 
+        Payment::where('order_id', $order->id)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'failed',
+                'gateway_response' => [
+                    'error' => 'درخواست پرداخت قبلی با تلاش مجدد مشتری جایگزین شد.',
+                ],
+                'description' => 'درخواست قبلی با تلاش مجدد جایگزین شد',
+                'updated_at' => now(),
+            ]);
+
         if ($validated['gateway'] === 'nopay') {
+            $order->load('items.product:id,is_nopay');
+
             if ($order->items->contains(fn ($item) => ! $item->product?->is_nopay)) {
                 return response()->json([
                     'message' => 'برخی محصولات سفارش برای پرداخت اقساطی نوپی در دسترس نیستند',
                     'error_code' => 'PRODUCT_NOT_ELIGIBLE_FOR_NOPAY',
                 ], 422);
             }
+        }
+
+        $stockCheck = $this->validateOrderStock($order);
+        if (! $stockCheck['valid']) {
+            return response()->json([
+                'message' => 'موجودی برخی محصولات کافی نیست: '.$stockCheck['product'],
+                'error_code' => 'INSUFFICIENT_STOCK',
+                'products' => $stockCheck['items'] ?? [],
+            ], 422);
         }
 
         $nationalCode = $order->user?->national_code ?? '';
@@ -468,14 +513,12 @@ class PaymentController extends Controller
 
         $stockCheck = $this->validateOrderStock($order);
         if (! $stockCheck['valid']) {
-            Log::channel('payment')->error('Payment callback: insufficient stock for order', [
+            Log::channel('payment')->warning('Payment verified successfully but stock insufficient - order confirmed anyway', [
                 'order_id' => $order->id,
                 'product' => $stockCheck['product'],
             ]);
 
-            $order->addNote("رد پرداخت: {$stockCheck['message']}", 'payment');
-
-            return redirect($frontendUrl.'/payment-failed');
+            $order->addNote("پرداخت موفق بود ولی موجودی کافی نیست و نیاز به بررسی دارد: {$stockCheck['message']}", 'payment');
         }
 
         try {
@@ -534,6 +577,8 @@ class PaymentController extends Controller
                     'payment_status' => 'paid',
                     'status' => 'confirmed',
                 ])->saveQuietly();
+
+                $this->discountCodeService->redeemUsage($order->id);
 
                 Cart::where('user_id', $order->user_id)->delete();
 
@@ -643,8 +688,9 @@ class PaymentController extends Controller
             return ['valid' => true];
         }
 
-        $order->load('items.product');
+        $order->load('items.product.baseProduct');
         $insufficient = [];
+        $items = [];
 
         foreach ($order->items as $item) {
             $product = $item->product;
@@ -656,6 +702,12 @@ class PaymentController extends Controller
 
             if ($item->quantity > $sellable) {
                 $insufficient[] = "{$product->name}: موجودی {$sellable}، درخواست {$item->quantity}";
+                $items[] = [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'requested' => (int) $item->quantity,
+                    'available' => $sellable,
+                ];
             }
         }
 
@@ -664,6 +716,7 @@ class PaymentController extends Controller
                 'valid' => false,
                 'message' => 'موجودی برخی محصولات کافی نیست: '.implode(' | ', $insufficient),
                 'product' => implode(', ', $insufficient),
+                'items' => $items,
             ];
         }
 

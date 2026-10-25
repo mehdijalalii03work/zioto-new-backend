@@ -236,6 +236,17 @@ class HesabfaObserver
 
     private function preValidateInvoiceItems(Order $order): array
     {
+        if ((int) $order->discount_amount > 0) {
+            $discountItemCode = config('hesabfa.discount_item_code');
+            if (empty($discountItemCode)) {
+                return ['success' => false, 'message' => 'کد کالای تخفیف در تنظیمات حسابفا وارد نشده است'];
+            }
+            $discountItem = $this->hesabfa->getItemByCode($discountItemCode);
+            if (! $discountItem || isset($discountItem['error'])) {
+                return ['success' => false, 'message' => "کد کالای تخفیف '{$discountItemCode}' در حسابفا یافت نشد"];
+            }
+        }
+
         if ($order->shipping && $order->shipping->shipping_cost > 0) {
             $shippingCode = config('hesabfa.shipping_item_code');
             if (empty($shippingCode)) {
@@ -295,12 +306,37 @@ class HesabfaObserver
             $rowNumber++;
         }
 
+        $discountItem = $this->buildDiscountItem($order, $rowNumber);
+        if ($discountItem) {
+            $items[] = $discountItem;
+            $rowNumber++;
+        }
+
         $installmentItem = $this->buildInstallmentFeeItem($order, $rowNumber);
         if ($installmentItem) {
             $items[] = $installmentItem;
         }
 
         return $items;
+    }
+
+    private function buildDiscountItem(Order $order, int $rowNumber): ?array
+    {
+        $discountAmount = (int) $order->discount_amount;
+        if ($discountAmount <= 0) {
+            return null;
+        }
+
+        return [
+            'rowNumber' => $rowNumber,
+            'description' => $order->discount_code_snapshot ? "تخفیف کد {$order->discount_code_snapshot}" : 'تخفیف سفارش',
+            'itemCode' => config('hesabfa.discount_item_code'),
+            'unit' => config('hesabfa.default_unit', 'عدد'),
+            'quantity' => 1,
+            'unitPrice' => -$discountAmount,
+            'discount' => 0,
+            'tax' => 0,
+        ];
     }
 
     private function buildProductItems(Order $order, int $startRowNumber): array|false
@@ -315,10 +351,11 @@ class HesabfaObserver
             $sku = $product?->sku ?? '';
 
             if (! isset($skuCache[$sku])) {
-                $skuCache[$sku] = $this->findHesabfaItemCode($sku);
+                $skuCache[$sku] = $this->findHesabfaItem($sku);
             }
 
-            $itemCode = $skuCache[$sku];
+            $hesabfaItem = $skuCache[$sku];
+            $itemCode = $hesabfaItem['Code'] ?? $hesabfaItem['ItemCode'] ?? null;
 
             if (! $itemCode) {
                 $missingSkus[] = $sku;
@@ -326,7 +363,9 @@ class HesabfaObserver
                 continue;
             }
 
-            $price = (int) $orderItem->product_price;
+            $packSize = $product?->pack_size ?? 1;
+            $quantity = (int) $orderItem->quantity * $packSize;
+            $price = (int) round((int) $orderItem->product_price / $packSize);
             $tax = 0;
             $unitPrice = $price;
 
@@ -339,7 +378,7 @@ class HesabfaObserver
                 $taxRate = (float) Setting::getValue('tax_silver', 10);
                 if ($taxRate > 0) {
                     $unitPrice = (int) round($price / (1 + $taxRate / 100));
-                    $tax = ($price - $unitPrice) * $orderItem->quantity;
+                    $tax = ($price - $unitPrice) * $quantity;
                 }
             }
 
@@ -347,10 +386,10 @@ class HesabfaObserver
                 'rowNumber' => $rowNumber++,
                 'description' => $orderItem->product_name,
                 'itemCode' => $itemCode,
-                'unit' => config('hesabfa.default_unit', 'عدد'),
-                'quantity' => $orderItem->quantity,
+                'unit' => $hesabfaItem['Unit'] ?? config('hesabfa.default_unit', 'عدد'),
+                'quantity' => $quantity,
                 'unitPrice' => (int) $unitPrice,
-                'discount' => $this->calculateItemDiscount($orderItem),
+                'discount' => (int) round($this->calculateItemDiscount($orderItem) / $packSize),
                 'tax' => (int) $tax,
             ];
         }
@@ -422,7 +461,7 @@ class HesabfaObserver
             return null;
         }
 
-        $baseAmount = $order->items->sum('subtotal') + ($order->shipping?->shipping_cost ?? 0);
+        $baseAmount = max(0, $order->items->sum('subtotal') + ($order->shipping?->shipping_cost ?? 0) - (int) $order->discount_amount);
         $totalIncludingTax = InstallmentService::calculateFee((int) $baseAmount);
 
         if ($totalIncludingTax <= 0) {
@@ -523,7 +562,7 @@ class HesabfaObserver
         ];
     }
 
-    private function findHesabfaItemCode(string $sku): ?string
+    private function findHesabfaItem(string $sku): ?array
     {
         if (empty($sku)) {
             return null;
@@ -537,7 +576,7 @@ class HesabfaObserver
             'item_code' => $item['Code'] ?? $item['ItemCode'] ?? null,
         ]);
 
-        return $item['Code'] ?? $item['ItemCode'] ?? null;
+        return $item;
     }
 
     private function extractNationalCode(Order $order): ?string

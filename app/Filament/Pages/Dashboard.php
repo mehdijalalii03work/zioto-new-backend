@@ -3,12 +3,11 @@
 namespace App\Filament\Pages;
 
 use App\Enums\Permission;
-use App\Filament\Pages\Concerns\HasAnalyticsFiltersForm;
 use Filament\Pages\Dashboard as BaseDashboard;
 
 class Dashboard extends BaseDashboard
 {
-    use HasAnalyticsFiltersForm;
+    // use HasAnalyticsFiltersForm;
 
     public static function canAccess(): bool
     {

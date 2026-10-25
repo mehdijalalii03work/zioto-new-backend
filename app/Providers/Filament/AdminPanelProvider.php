@@ -4,14 +4,13 @@ namespace App\Providers\Filament;
 
 use App\Filament\Auth\Pages\Login as CustomLogin;
 use App\Filament\Pages\Dashboard;
-use App\Filament\Widgets\Traffic\TrafficOverviewChart;
-use App\Filament\Widgets\Traffic\TrafficSummaryStats;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Enums\Width;
 use Filament\Support\Facades\FilamentIcon;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsIconAlias;
@@ -46,22 +45,11 @@ class AdminPanelProvider extends PanelProvider
             ->login(CustomLogin::class)
             ->darkMode(false)
             ->spa()
+            ->maxContentWidth(Width::Full)
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('19rem')
             ->favicon(asset('favicon.ico'))
             ->globalSearch(false)
-            ->navigationGroups([
-                'مدیریت محتوا',
-                'مدیریت کالا',
-                'حسابفا',
-                'سایر',
-                'تابلو قیمت زیوتو',
-                'قیمت‌گذاری زیوتو',
-                'گزارشات مدیریتی',
-                'فروش',
-                'تنظیمات',
-                'مدیریت',
-            ])
             ->colors([
                 'primary' => [
                     50 => '#FBF7EE',
@@ -84,10 +72,10 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
             ])
-            ->widgets([
-                TrafficSummaryStats::class,
-                TrafficOverviewChart::class,
-            ])
+            // ->widgets([
+            //     TrafficSummaryStats::class,
+            //     TrafficOverviewChart::class,
+            // ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

@@ -62,6 +62,10 @@
                 background-color: silver !important;
                 color: black !important;
             }
+            table.tir-table .plaque-col {
+                background-color: #fffd01 !important;
+                color: black !important;
+            }
             table.tir-table > tfoot.tir-tfoot-secondary > tr > td {
                 background-color: #e2e3e5;
                 border-color: #d3d6d8;
@@ -80,6 +84,8 @@
                         <th scope="col" class="gold-col">ریال شمش</th>
                         <th scope="col" class="silver-col">تعداد نقره</th>
                         <th scope="col" class="silver-col">ریال نقره</th>
+                        <th scope="col" class="plaque-col">تعداد پلاک</th>
+                        <th scope="col" class="plaque-col">ریال پلاک</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -92,6 +98,8 @@
                             <td class="text-end gold-col">{{ number_format($row['gold_amount']) }}</td>
                             <td class="text-end silver-col">{{ number_format($row['silver_count']) }}</td>
                             <td class="text-end silver-col">{{ number_format($row['silver_amount']) }}</td>
+                            <td class="plaque-col">{{ number_format($row['plaque_count']) }}</td>
+                            <td class="text-end plaque-col">{{ number_format($row['plaque_amount']) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -104,6 +112,8 @@
                         <td class="text-end gold-col">{{ number_format($report->sum('gold_amount')) }}</td>
                         <td class="silver-col">{{ number_format($report->sum('silver_count')) }}</td>
                         <td class="text-end silver-col">{{ number_format($report->sum('silver_amount')) }}</td>
+                        <td class="plaque-col">{{ number_format($report->sum('plaque_count')) }}</td>
+                        <td class="text-end plaque-col">{{ number_format($report->sum('plaque_amount')) }}</td>
                     </tr>
                 </tfoot>
             </table>

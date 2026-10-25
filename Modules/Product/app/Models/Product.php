@@ -45,6 +45,8 @@ class Product extends Model implements HasMedia
         'fee_business_hours',
         'labor_coefficients',
         'price',
+        'pack_size',
+        'base_product_id',
         'stock_quantity',
         'sort_order',
         'hesabfa_physical_stock',
@@ -67,6 +69,7 @@ class Product extends Model implements HasMedia
             'fee_business_hours' => 'decimal:2',
             'price' => 'decimal:2',
             'stock_quantity' => 'integer',
+            'pack_size' => 'integer',
             'sort_order' => 'integer',
             'hesabfa_physical_stock' => 'decimal:2',
             'hesabfa_reserved_stock' => 'decimal:2',
@@ -100,11 +103,32 @@ class Product extends Model implements HasMedia
         return $this->hasOne(ProductImage::class)->where('is_primary', true);
     }
 
+    public function baseProduct(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'base_product_id');
+    }
+
+    public function packProducts(): HasMany
+    {
+        return $this->hasMany(self::class, 'base_product_id');
+    }
+
+    public function getPackSizeAttribute(): int
+    {
+        return max(1, (int) ($this->attributes['pack_size'] ?? 1));
+    }
+
+    public function sellableSingles(): int
+    {
+        $source = $this->baseProduct ?? $this;
+        $physical = (int) ($source->hesabfa_physical_stock ?? $source->stock_quantity ?? 0);
+
+        return $source->sellableStockFor($physical);
+    }
+
     public function getSellableStockAttribute(): int
     {
-        $physical = (int) ($this->hesabfa_physical_stock ?? $this->stock_quantity ?? 0);
-
-        return $this->sellableStockFor($physical);
+        return intdiv($this->sellableSingles(), $this->pack_size);
     }
 
     /**

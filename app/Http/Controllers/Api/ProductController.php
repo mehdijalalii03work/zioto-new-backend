@@ -24,7 +24,7 @@ class ProductController extends Controller
 
         $products = Cache::remember($cacheKey, 60, function () use ($slugs, $skus) {
             $query = Product::publiclyListed()
-                ->with(['category:id,name,slug', 'brand:id,name,slug', 'images']);
+                ->with(['category:id,name,slug', 'brand:id,name,slug', 'images', 'baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved']);
 
             if ($slugs) {
                 $slugList = array_map('trim', explode(',', $slugs));
@@ -118,7 +118,7 @@ class ProductController extends Controller
     public function show(string $slugOrId): JsonResponse
     {
         $product = Product::published()
-            ->with(['category:id,name,slug', 'brand:id,name,slug', 'images'])
+            ->with(['category:id,name,slug', 'brand:id,name,slug', 'images', 'baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved'])
             ->where(function ($q) use ($slugOrId) {
                 $q->where('slug', $slugOrId)
                     ->orWhere('id', $slugOrId);

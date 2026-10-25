@@ -12,10 +12,12 @@ class ProductResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $packSize = $this->pack_size;
         $primaryImage = $this->images->firstWhere('is_primary', true) ?? $this->images->first();
 
         $livePrice = app(DynamicPriceService::class)->priceFor($this->resource, $request->user()?->id);
         $price = (int) ($livePrice ?? $this->price);
+        $unitPrice = $packSize > 1 ? (int) round($price / $packSize) : $price;
 
         $taxKey = str_starts_with($this->price_board_item ?? '', 'Gold') || ($this->metal_type?->value ?? null) === 'gold'
             ? 'tax_gold'
@@ -26,6 +28,10 @@ class ProductResource extends JsonResource
 
         $salesRestriction = app(SalesRestrictionService::class);
         $blockedReason = $salesRestriction->blockedReason($this->resource);
+        $weight = $this->weight ? $this->weight.' گرم' : '';
+        if ($packSize > 1 && $weight !== '') {
+            $weight .= ' × '.$packSize.' عدد';
+        }
 
         return [
             'id' => $this->id,
@@ -43,14 +49,16 @@ class ProductResource extends JsonResource
             'form_label' => $this->form?->label() ?? null,
             'ayar' => $this->ayar?->value ?? null,
             'ayar_label' => $this->ayar?->label() ?? null,
-            'weight' => $this->weight ? $this->weight.' گرم' : '',
+            'weight' => $weight,
+            'pack_size' => $packSize,
+            'unit_price' => $unitPrice,
             'price' => $price,
             'price_before_tax' => $priceBeforeTax,
             'tax_amount' => $taxAmount,
             'tax_rate' => $taxRate,
             'old' => null,
-            'badge' => null,
-            'stock' => $this->stock_quantity > 0,
+            'badge' => $packSize > 1 ? 'پک '.$packSize.' عددی' : null,
+            'stock' => $this->sellable_stock > 0,
             'contact_only' => (bool) $this->contact_only,
             'is_nopay' => (bool) $this->is_nopay,
             'purchasable' => $blockedReason === null,

@@ -19,14 +19,18 @@ class CartResource extends JsonResource
         }
 
         $price = (int) ($livePrice ?? $product?->price ?? 0);
+        $packSize = $product ? $product->pack_size : 1;
+        $unitPrice = $packSize > 1 ? (int) round($price / $packSize) : $price;
 
         return [
             'id' => $this->product_id,
             'qty' => $this->quantity,
             'name' => $product->name ?? '',
             'price' => $price,
+            'unit_price' => $unitPrice,
+            'pack_size' => $packSize,
             'weight' => $product->weight ?? '',
-            'stock' => ($product->stock_quantity ?? 0) > 0,
+            'stock' => $product ? $product->sellable_stock > 0 : false,
         ];
     }
 }

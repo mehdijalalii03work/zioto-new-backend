@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\ContactMessageController;
+use App\Http\Controllers\Api\DiscountCodeController;
 use App\Http\Controllers\Api\HesabfaWebhookController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\OrderSubmitController;
@@ -65,6 +66,7 @@ Route::get('/orders', [OrderSubmitController::class, 'index'])->middleware('auth
 Route::get('/orders/{orderId}', [OrderSubmitController::class, 'show'])->middleware('auth.token');
 Route::get('/orders/{orderId}/notes', [OrderSubmitController::class, 'notes'])->middleware('auth.token');
 Route::middleware('auth.token', 'throttle:10,1')->post('/orders', [OrderSubmitController::class, 'store']);
+Route::middleware('auth.token', 'throttle:20,1')->post('/discount-codes/validate', [DiscountCodeController::class, 'validate']);
 
 Route::middleware('auth.token')->prefix('wishlist')->group(function () {
     Route::get('/', [WishlistController::class, 'index']);

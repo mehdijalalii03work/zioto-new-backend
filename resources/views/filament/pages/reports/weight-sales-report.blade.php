@@ -12,15 +12,22 @@
 
     @if($report->count())
         <style>
-            .wsr-responsive { overflow-x: auto; margin-top: 1.5rem !important; }
+            .wsr-responsive {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                margin-top: 1.5rem !important;
+            }
             table.wsr-table {
                 width: 100%;
+                table-layout: fixed;
                 margin-bottom: 1rem;
                 color: #212529;
                 vertical-align: middle;
                 border-color: #dee2e6;
                 border-collapse: collapse;
-                font-size: 1rem;
+                font-size: .8rem;
                 font-weight: 400;
                 line-height: 1.5;
                 background-color: #fff;
@@ -32,22 +39,24 @@
                 background-color: #212529;
                 border-color: #373b3e;
                 color: #fff;
-                padding: .65rem .6rem;
+                padding: .35rem .25rem;
                 border: 1px solid #373b3e;
-                font-size: 1.05rem;
+                font-size: .85rem;
                 font-weight: 800;
                 text-align: center;
                 vertical-align: middle;
-                white-space: nowrap;
+                white-space: normal;
+                overflow-wrap: anywhere;
             }
             table.wsr-table > tbody > tr > td,
             table.wsr-table > tfoot.wsr-tfoot-secondary > tr > td {
-                padding: .6rem .6rem;
+                padding: .35rem .25rem;
                 border: 1px solid #dee2e6;
-                font-size: 1rem;
+                font-size: .8rem;
                 font-weight: 600;
                 vertical-align: middle;
                 text-align: center;
+                white-space: nowrap;
             }
             table.wsr-table > tbody > tr:hover > td { background-color: rgba(0, 0, 0, .075); }
             table.wsr-table > tbody > tr > td.fw-medium,
@@ -85,9 +94,34 @@
                 font-weight: 700;
             }
             table.wsr-table > tfoot.wsr-tfoot-secondary > tr > td.text-start { text-align: left; }
+            @media (max-width: 1280px) {
+                table.wsr-table {
+                    min-width: 1450px;
+                }
+            }
         </style>
         <div class="table-responsive mt-4 wsr-responsive">
             <table class="table table-hover table-bordered align-middle text-center shadow-sm rounded-3 overflow-hidden wsr-table">
+                <colgroup>
+                    <col style="width: 5%">
+                    <col style="width: 8%">
+                    <col style="width: 4%">
+                    <col style="width: 4%">
+                    <col style="width: 4%">
+                    <col style="width: 4%">
+                    <col style="width: 8%">
+                    <col style="width: 7%">
+                    <col style="width: 5%">
+                    <col style="width: 5%">
+                    <col style="width: 5%">
+                    <col style="width: 8%">
+                    <col style="width: 7%">
+                    <col style="width: 4%">
+                    <col style="width: 4%">
+                    <col style="width: 4%">
+                    <col style="width: 8%">
+                    <col style="width: 6%">
+                </colgroup>
                 <thead class="table-dark wsr-thead-dark">
                     <tr>
                         <th scope="col">تاریخ شمسی</th>

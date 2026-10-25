@@ -70,10 +70,11 @@ class DynamicPriceServiceTest extends TestCase
         $product = $this->product([
             'price_type' => 'fixed',
             'tokeniko_sku' => 'Zioto-Gold-Bar-2Gram',
+            'pack_size' => 3,
             'price' => 1000,
         ]);
 
-        $this->assertSame(325000000.0, app(DynamicPriceService::class)->priceFor($product));
+        $this->assertSame(975000000.0, app(DynamicPriceService::class)->priceFor($product));
     }
 
     public function test_tokeniko_pricing_does_not_override_prices_when_switch_is_disabled(): void

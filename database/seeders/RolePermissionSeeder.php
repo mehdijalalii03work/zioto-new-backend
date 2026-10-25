@@ -72,6 +72,12 @@ class RolePermissionSeeder extends Seeder
                 Permission::OrderEdit,
                 Permission::CustomerView,
             ],
+            Role::Analyst->value => [
+                Permission::DashboardView,
+                Permission::ManagementReportView,
+                Permission::AnalyticsReportView,
+                Permission::HesabfaView,
+            ],
         ];
     }
 

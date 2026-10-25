@@ -14,6 +14,8 @@ enum Role: string
 
     case Content = 'content';
 
+    case Analyst = 'analyst';
+
     /** @return list<string> */
     public static function staffValues(): array
     {

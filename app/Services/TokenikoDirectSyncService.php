@@ -84,7 +84,9 @@ class TokenikoDirectSyncService
                 continue;
             }
 
-            $newPrice = $updatePrices ? (float) $prices[$sku] : (float) $product->price;
+            $newPrice = $updatePrices
+                ? (float) $prices[$sku] * max(1, $product->pack_size)
+                : (float) $product->price;
 
             if ($updatePrices && (float) $product->price !== $newPrice) {
                 $updates[$product->id] = ['price' => $newPrice];

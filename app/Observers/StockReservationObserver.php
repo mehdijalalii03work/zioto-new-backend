@@ -60,12 +60,9 @@ class StockReservationObserver
 
     public function reserveStock(Order $order): void
     {
-        $order->load('items');
+        $order->load('items.product');
 
-        $reservations = $order->items
-            ->filter(fn ($item) => $item->product_id)
-            ->mapWithKeys(fn ($item) => [$item->product_id => $item->quantity])
-            ->all();
+        $reservations = $this->buildReservations($order);
 
         if (empty($reservations)) {
             return;
@@ -79,7 +76,13 @@ class StockReservationObserver
                     ->increment('hesabfa_reserved_stock', $quantity);
 
                 if (! $updated) {
-                    throw new \RuntimeException("موجودی کافی برای محصول {$productId} وجود ندارد. درخواست: {$quantity}");
+                    Log::warning('Insufficient stock for reservation - order confirmed anyway', [
+                        'order_id' => $order->id,
+                        'product_id' => $productId,
+                        'quantity' => $quantity,
+                    ]);
+
+                    continue;
                 }
             }
 
@@ -92,12 +95,9 @@ class StockReservationObserver
 
     public function releaseStock(Order $order): void
     {
-        $order->load('items');
+        $order->load('items.product');
 
-        $reservations = $order->items
-            ->filter(fn ($item) => $item->product_id)
-            ->mapWithKeys(fn ($item) => [$item->product_id => $item->quantity])
-            ->all();
+        $reservations = $this->buildReservations($order);
 
         if (empty($reservations)) {
             return;
@@ -116,5 +116,29 @@ class StockReservationObserver
                 'reservations' => $reservations,
             ]);
         });
+    }
+
+    /**
+     * Maps order items to reserved singles per stock-owning product.
+     * Pack items reserve quantity × pack_size on their base product.
+     *
+     * @return array<int, int>
+     */
+    private function buildReservations(Order $order): array
+    {
+        $reservations = [];
+
+        foreach ($order->items as $item) {
+            if (! $item->product_id || ! $item->product) {
+                continue;
+            }
+
+            $stockOwnerId = $item->product->base_product_id ?? $item->product_id;
+            $singles = $item->quantity * $item->product->pack_size;
+
+            $reservations[$stockOwnerId] = ($reservations[$stockOwnerId] ?? 0) + $singles;
+        }
+
+        return $reservations;
     }
 }

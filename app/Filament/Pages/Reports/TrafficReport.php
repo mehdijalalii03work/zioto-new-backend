@@ -31,6 +31,8 @@ class TrafficReport extends Page
 
     protected static ?string $title = 'گزارش ترافیک';
 
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can(Permission::AnalyticsReportView->value) ?? false;
@@ -53,7 +55,7 @@ class TrafficReport extends Page
 
     public static function getNavigationSort(): ?int
     {
-        return 1;
+        return 4;
     }
 
     public function content(Schema $schema): Schema

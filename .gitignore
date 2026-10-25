@@ -31,3 +31,6 @@ tui.heapsnapshot
 .agents/
 .claude/
 .junie/
+
+# Superpowers SDD scratch (per-plan ledger, briefs, review packages)
+.superpowers/

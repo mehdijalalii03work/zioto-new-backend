@@ -5,6 +5,7 @@ namespace App\Filament\Pages\Reports;
 use App\Enums\Permission;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -54,6 +55,8 @@ class WeightSalesReport extends Page
 
     public ?string $dateTo = null;
 
+    public ?string $gateway = null;
+
     /** @var Collection<int, array{date: string, total_rial: float, total_items: int, bar_count: int, bar_weight: float, bar_avg_weight: float, bar_rial: float, bar_price: float, gold750_count: int, gold750_weight: float, gold750_avg_weight: float, gold750_rial: float, gold750_price: float, silver_count: int, silver_weight: float, silver_avg_weight: float, silver_rial: float, silver_price: float}> */
     public $report;
 
@@ -68,36 +71,55 @@ class WeightSalesReport extends Page
     {
         return $schema
             ->components([
-                Section::make('بازه زمانی')
-                    ->icon('heroicon-o-calendar-days')
+                Grid::make(2)
                     ->schema([
-                        Radio::make('dateRange')
-                            ->label('بازه زمانی')
-                            ->options([
-                                'all' => 'همه',
-                                'today' => 'امروز',
-                                'week' => 'هفته جاری',
-                                'month' => 'ماه جاری',
-                                'year' => 'سال جاری',
-                                'custom' => 'سفارشی',
-                            ])
-                            ->live()
-                            ->default('all')
-                            ->inline(),
+                        Section::make('بازه زمانی')
+                            ->icon('heroicon-o-calendar-days')
+                            ->schema([
+                                Radio::make('dateRange')
+                                    ->label('بازه زمانی')
+                                    ->options([
+                                        'all' => 'همه',
+                                        'today' => 'امروز',
+                                        'week' => 'هفته جاری',
+                                        'month' => 'ماه جاری',
+                                        'year' => 'سال جاری',
+                                        'custom' => 'سفارشی',
+                                    ])
+                                    ->live()
+                                    ->default('all')
+                                    ->inline(),
 
-                        Grid::make(2)
-                            ->schema(fn (Get $get): array => $get('dateRange') === 'custom' ? [
-                                DatePicker::make('dateFrom')
-                                    ->label('از تاریخ')
-                                    ->native(false)
-                                    ->jalali()
-                                    ->displayFormat('Y/m/d'),
-                                DatePicker::make('dateTo')
-                                    ->label('تا تاریخ')
-                                    ->native(false)
-                                    ->jalali()
-                                    ->displayFormat('Y/m/d'),
-                            ] : []),
+                                Grid::make(2)
+                                    ->schema(fn (Get $get): array => $get('dateRange') === 'custom' ? [
+                                        DatePicker::make('dateFrom')
+                                            ->label('از تاریخ')
+                                            ->native(false)
+                                            ->jalali()
+                                            ->displayFormat('Y/m/d'),
+                                        DatePicker::make('dateTo')
+                                            ->label('تا تاریخ')
+                                            ->native(false)
+                                            ->jalali()
+                                            ->displayFormat('Y/m/d'),
+                                    ] : []),
+                            ]),
+
+                        Section::make('درگاه پرداخت')
+                            ->icon('heroicon-o-credit-card')
+                            ->schema([
+                                Select::make('gateway')
+                                    ->label('درگاه پرداخت')
+                                    ->placeholder('همه')
+                                    ->options([
+                                        'parsian' => 'پارسیان',
+                                        'digipay' => 'دیجی‌پی',
+                                        'kamanlend' => 'کمان‌لند',
+                                        'smartis' => 'اسمارتیس',
+                                        'nopay' => 'نوپی',
+                                    ])
+                                    ->native(false),
+                            ]),
                     ]),
             ]);
     }
@@ -121,9 +143,20 @@ class WeightSalesReport extends Page
             $query->whereDate('created_at', '<=', $gregorianTo);
         }
 
-        $orders = $query->get();
+        if (filled($this->gateway)) {
+            $query->whereHas('payments', fn ($q) => $q->where('gateway', $this->gateway));
+        }
 
-        $this->report = $orders
+        $this->report = $this->buildReportRows($query->get());
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     * @return Collection<int, array{date: string, total_rial: float, total_items: int, bar_count: int, bar_weight: float, bar_avg_weight: float, bar_rial: float, bar_price: float, gold750_count: int, gold750_weight: float, gold750_avg_weight: float, gold750_rial: float, gold750_price: float, silver_count: int, silver_weight: float, silver_avg_weight: float, silver_rial: float, silver_price: float}>
+     */
+    protected function buildReportRows(Collection $orders): Collection
+    {
+        return $orders
             ->groupBy(static fn (Order $order) => $order->created_at->format('Y-m-d'))
             ->map(static function ($orders, $date) {
                 $allItems = $orders->flatMap->items;
@@ -177,11 +210,11 @@ class WeightSalesReport extends Page
                     'silver_price' => $silverWeight > 0 ? $silverRial / $silverWeight : 0,
                 ];
             })
-            ->sortByDesc('date')
+            ->sortBy('date')
             ->values();
     }
 
-    private function resolveDateRange(): array
+    protected function resolveDateRange(): array
     {
         $now = Jalalian::now();
 
@@ -210,7 +243,7 @@ class WeightSalesReport extends Page
         };
     }
 
-    private function parseDate(string $date): ?string
+    protected function parseDate(string $date): ?string
     {
         try {
             if (str_contains($date, '/')) {

@@ -80,7 +80,7 @@ class DynamicPriceService
 
         $calculated = $this->calculatePrice($product, $weight, $boardPrice, $coefficient)['price'];
 
-        return (float) ($calculated * self::RIAL_PER_TOMAN);
+        return (float) ($calculated * self::RIAL_PER_TOMAN * $this->packSize($product));
     }
 
     /**
@@ -104,7 +104,7 @@ class DynamicPriceService
             return null;
         }
 
-        return (float) $tokenikoPrice;
+        return (float) $tokenikoPrice * $this->packSize($product);
     }
 
     public function isEligibleProduct(object $product): bool
@@ -181,7 +181,8 @@ class DynamicPriceService
         $coefficient = $this->labor->coefficientFor($product, $period, $role);
 
         $withTaxes = $this->calculatePrice($product, $weight, $basePrice, $coefficient);
-        $calculated = $withTaxes['price'];
+        $packSize = $this->packSize($product);
+        $calculated = $withTaxes['price'] * $packSize;
 
         $prices = $this->priceBoard->getBoardPrices();
 
@@ -193,7 +194,7 @@ class DynamicPriceService
             'user_role' => $role,
             'base_price' => $basePrice,
             'calculated_price' => (float) $calculated,
-            'taxes' => $withTaxes['taxes'],
+            'taxes' => $this->scaleTaxes($withTaxes['taxes'], $packSize),
             'trend' => $prices[$metalType]['trend'] ?? null,
             'updated_at' => $prices[$metalType]['updated_at'] ?? null,
         ];
@@ -223,7 +224,8 @@ class DynamicPriceService
             return [];
         }
 
-        $rawCost = $weight * $basePrice;
+        $packSize = $this->packSize($product);
+        $rawCost = $weight * $basePrice * $packSize;
         $matrix = [];
 
         foreach ($periods as $period) {
@@ -236,18 +238,36 @@ class DynamicPriceService
                 $labor = $rawCost * $coefficient;
 
                 $withTaxes = $this->calculatePrice($product, $weight, $basePrice, $coefficient);
-                $finalPrice = $withTaxes['price'];
+                $finalPrice = $withTaxes['price'] * $packSize;
 
                 $matrix[$periodSlug][$roleSlug] = [
                     'coefficient' => $coefficient,
                     'labor_cost' => round($labor),
                     'final_price' => $finalPrice,
-                    'taxes' => $withTaxes['taxes'],
+                    'taxes' => $this->scaleTaxes($withTaxes['taxes'], $packSize),
                 ];
             }
         }
 
         return $matrix;
+    }
+
+    private function packSize(object $product): int
+    {
+        return max(1, (int) ($product->pack_size ?? 1));
+    }
+
+    /** @param list<array{scope: string, rate: float, amount: float}> $taxes
+     * @return list<array{scope: string, rate: float, amount: float}>
+     */
+    private function scaleTaxes(array $taxes, int $packSize): array
+    {
+        foreach ($taxes as &$tax) {
+            $tax['amount'] *= $packSize;
+        }
+        unset($tax);
+
+        return $taxes;
     }
 
     /**

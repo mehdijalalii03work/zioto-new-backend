@@ -104,6 +104,13 @@ class ProductsTable
                     ->state(fn ($record): bool => app(DynamicPriceService::class)->isEligibleProduct($record))
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('pack_size')
+                    ->label('تعداد بسته')
+                    ->numeric()
+                    ->sortable()
+                    ->badge()
+                    ->color(fn ($state): string => $state > 1 ? 'info' : 'gray')
+                    ->formatStateUsing(fn ($state): string => $state > 1 ? "{$state} عددی" : 'تکی'),
 
                 TextColumn::make('stock_quantity')
                     ->label('موجودی')
@@ -154,6 +161,13 @@ class ProductsTable
 
                 SelectFilter::make('contact_only')
                     ->label('فقط تماس')
+                    ->options([
+                        1 => 'بله',
+                        0 => 'خیر',
+                    ]),
+
+                SelectFilter::make('hesabfa_exclude_from_sync')
+                    ->label('غیرفعال کردن سینک')
                     ->options([
                         1 => 'بله',
                         0 => 'خیر',
