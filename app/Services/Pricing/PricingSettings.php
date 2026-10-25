@@ -72,6 +72,11 @@ class PricingSettings
         return (bool) self::get('enable_dynamic_pricing', true);
     }
 
+    public static function tokenikoProductPricesEnabled(): bool
+    {
+        return (bool) self::get('tokeniko_product_prices_enabled', false);
+    }
+
     public static function salesEnabled(): bool
     {
         return (bool) self::get('sales_enabled', true);

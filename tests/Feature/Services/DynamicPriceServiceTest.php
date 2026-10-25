@@ -56,6 +56,38 @@ class DynamicPriceServiceTest extends TestCase
         $this->assertSame(4000.0, app(DynamicPriceService::class)->priceFor($product));
     }
 
+    public function test_enabled_tokeniko_pricing_uses_cached_sku_price_even_for_fixed_products(): void
+    {
+        Setting::create([
+            'key' => 'zioto_pricing_tokeniko_product_prices_enabled',
+            'value' => 'true',
+            'type' => 'boolean',
+            'category' => 'pricing',
+            'label' => 'قیمت مستقیم توکنیکو',
+        ]);
+        Cache::put('tokeniko:shop_prices', ['zioto-gold-bar-2gram' => '325000000'], 60);
+
+        $product = $this->product([
+            'price_type' => 'fixed',
+            'tokeniko_sku' => 'Zioto-Gold-Bar-2Gram',
+            'price' => 1000,
+        ]);
+
+        $this->assertSame(325000000.0, app(DynamicPriceService::class)->priceFor($product));
+    }
+
+    public function test_tokeniko_pricing_does_not_override_prices_when_switch_is_disabled(): void
+    {
+        Cache::put('tokeniko:shop_prices', ['zioto-gold-bar-2gram' => '325000000'], 60);
+        $product = $this->product([
+            'price_type' => 'fixed',
+            'tokeniko_sku' => 'zioto-gold-bar-2gram',
+            'price' => 1000,
+        ]);
+
+        $this->assertNull(app(DynamicPriceService::class)->priceFor($product));
+    }
+
     public function test_details_for_preview_stays_in_toman(): void
     {
         $this->seedBoard('Gold750_Sell', 1000);

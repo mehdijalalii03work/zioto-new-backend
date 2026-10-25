@@ -7,7 +7,9 @@ use App\Events\ProductsUpdated;
 use App\Models\Setting;
 use App\Services\PriceBoardService;
 use App\Services\PriceHistoryService;
+use App\Services\Pricing\PricingSettings;
 use App\Services\TokenikoDirectSyncService;
+use App\Services\TokenikoShopService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -24,11 +26,16 @@ class SyncPriceBoard extends Command
         PriceBoardService $priceBoard,
         TokenikoDirectSyncService $sync,
         PriceHistoryService $priceHistory,
+        TokenikoShopService $tokenikoShop,
     ): int {
         $mode = config('pricing.mode', 'dynamic');
 
         if ($mode === 'direct') {
             return $this->syncDirect($priceBoard, $sync, $priceHistory);
+        }
+
+        if (PricingSettings::tokenikoProductPricesEnabled()) {
+            $tokenikoShop->fetchAndStore();
         }
 
         $this->info('Syncing price board...');

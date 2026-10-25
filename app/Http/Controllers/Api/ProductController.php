@@ -19,7 +19,8 @@ class ProductController extends Controller
         $slugs = request()->input('slugs');
         $skus = request()->input('skus');
 
-        $cacheKey = 'api:products:'.($slugs ? md5($slugs) : ($skus ? md5($skus) : 'all'));
+        $priceMode = PricingSettings::tokenikoProductPricesEnabled() ? 'tokeniko' : 'calculated';
+        $cacheKey = 'api:products:'.$priceMode.':'.($slugs ? md5($slugs) : ($skus ? md5($skus) : 'all'));
 
         $products = Cache::remember($cacheKey, 60, function () use ($slugs, $skus) {
             $query = Product::publiclyListed()

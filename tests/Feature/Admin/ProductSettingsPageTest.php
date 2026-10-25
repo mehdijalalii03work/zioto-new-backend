@@ -90,6 +90,35 @@ class ProductSettingsPageTest extends TestCase
         $this->assertTrue(PricingSettings::salesEnabled());
     }
 
+    public function test_admin_can_enable_and_disable_direct_tokeniko_product_prices(): void
+    {
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        Livewire::actingAs($user, 'web')->test(ProductSettingsPage::class)
+            ->assertSet('data.tokeniko_product_prices_enabled', false)
+            ->assertSee('دریافت مستقیم قیمت محصولات از توکنیکو')
+            ->set('data.tokeniko_product_prices_enabled', true)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('settings', [
+            'key' => 'zioto_pricing_tokeniko_product_prices_enabled',
+            'value' => 'true',
+            'type' => 'boolean',
+        ]);
+
+        Livewire::actingAs($user, 'web')->test(ProductSettingsPage::class)
+            ->assertSet('data.tokeniko_product_prices_enabled', true)
+            ->set('data.tokeniko_product_prices_enabled', false)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('settings', [
+            'key' => 'zioto_pricing_tokeniko_product_prices_enabled',
+            'value' => 'false',
+        ]);
+    }
+
     public function test_admin_can_save_and_reload_weekly_and_special_holidays(): void
     {
         $user = User::factory()->create()->assignRole(Role::Admin->value);

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Commands;
 
+use App\Models\Setting;
 use App\Services\PriceBoardService;
 use App\Services\PriceHistoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -110,6 +111,35 @@ class PriceBoardSyncTest extends TestCase
         $this->assertSame(5, $payload[0]['stock']);
 
         $history->shouldHaveReceived('logBoardPrices');
+    }
+
+    public function test_dynamic_mode_refreshes_tokeniko_cache_when_direct_product_pricing_is_enabled(): void
+    {
+        config(['pricing.mode' => 'dynamic']);
+        Setting::create([
+            'key' => 'zioto_pricing_tokeniko_product_prices_enabled',
+            'value' => 'true',
+            'type' => 'boolean',
+            'category' => 'pricing',
+            'label' => 'قیمت مستقیم توکنیکو',
+        ]);
+
+        $this->fakeBoard();
+        app()->instance(PriceHistoryService::class, Mockery::spy(PriceHistoryService::class));
+        $product = $this->product();
+
+        Http::fake([
+            '*apigateway.tokeniko.com/*' => Http::response([
+                'Model' => [['Name' => 'zioto-gold-bar-2gram', 'SellPrice' => 300_000_000]],
+            ], 200),
+            '*vendorgw.tapsi.shop/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $this->artisan('priceboard:sync')->assertExitCode(0);
+
+        $this->assertSame('300000000', cache('tokeniko:shop_prices')['zioto-gold-bar-2gram'] ?? null);
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'price' => 4000]);
+        Http::assertSent(fn (Request $request): bool => str_contains($request->url(), 'apigateway.tokeniko.com/shop/api/Category/getPrices'));
     }
 
     public function test_direct_mode_still_writes_prices_from_the_tokeniko_shop_api(): void

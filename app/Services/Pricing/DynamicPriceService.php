@@ -4,6 +4,7 @@ namespace App\Services\Pricing;
 
 use App\Models\Setting;
 use App\Services\PriceBoardService;
+use App\Services\TokenikoShopService;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -39,14 +40,20 @@ class DynamicPriceService
     public function __construct(
         private readonly LaborCalculator $labor,
         private readonly PriceBoardService $priceBoard,
+        private readonly TokenikoShopService $tokenikoShop,
     ) {}
 
     /**
      * Calculate price for a product for the given user (or guest).
      * Returns null when dynamic pricing does not apply (use stored price).
      */
-    public function priceFor(object $product, ?int $userId = null, ?string $timePeriod = null, ?string $roleSlug = null): ?float
+    public function priceFor(object $product, ?int $userId = null, ?string $timePeriod = null, ?string $roleSlug = null, bool $allowTokenikoPrice = true): ?float
     {
+        $tokenikoPrice = $allowTokenikoPrice ? $this->tokenikoPriceFor($product) : null;
+        if ($tokenikoPrice !== null) {
+            return $tokenikoPrice;
+        }
+
         if (! PricingSettings::enableDynamicPricing()) {
             return null;
         }
@@ -81,7 +88,23 @@ class DynamicPriceService
      */
     public function basePriceFor(object $product): ?float
     {
-        return $this->priceFor($product, userId: null, roleSlug: 'basic');
+        return $this->priceFor($product, userId: null, roleSlug: 'basic', allowTokenikoPrice: false);
+    }
+
+    public function tokenikoPriceFor(object $product): ?float
+    {
+        if (! PricingSettings::tokenikoProductPricesEnabled()) {
+            return null;
+        }
+
+        $tokenikoSku = trim((string) ($product->tokeniko_sku ?? ''));
+        $tokenikoPrice = $tokenikoSku !== '' ? $this->tokenikoShop->getPriceByName($tokenikoSku) : null;
+
+        if ($tokenikoPrice === null || ! is_numeric($tokenikoPrice) || (float) $tokenikoPrice <= 0) {
+            return null;
+        }
+
+        return (float) $tokenikoPrice;
     }
 
     public function isEligibleProduct(object $product): bool

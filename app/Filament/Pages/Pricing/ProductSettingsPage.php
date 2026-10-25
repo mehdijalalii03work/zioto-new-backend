@@ -45,6 +45,7 @@ class ProductSettingsPage extends Page
     {
         $this->form->fill([
             'sales_closed' => ! PricingSettings::salesEnabled(),
+            'tokeniko_product_prices_enabled' => PricingSettings::tokenikoProductPricesEnabled(),
             'enable_dynamic_pricing' => PricingSettings::enableDynamicPricing(),
             'round_prices' => PricingSettings::roundPrices(),
             'round_to' => PricingSettings::roundTo(),
@@ -81,6 +82,10 @@ class ProductSettingsPage extends Page
                     ->icon('heroicon-o-adjustments-horizontal')
                     ->schema([
                         Grid::make(2)->schema([
+                            Toggle::make('tokeniko_product_prices_enabled')
+                                ->label('دریافت مستقیم قیمت محصولات از توکنیکو')
+                                ->inline(false)
+                                ->helperText('برای محصولاتی که SKU توکنیکو دارند، قیمت فروش توکنیکو جایگزین محاسبه ضریب و اجرت می‌شود.'),
                             Toggle::make('enable_dynamic_pricing')->label('قیمت‌گذاری پویا')->inline(false),
                             Toggle::make('round_prices')->label('گردکردن قیمت محصول')->inline(false),
                             Select::make('rounding_mode')
@@ -169,7 +174,7 @@ class ProductSettingsPage extends Page
 
         $data = $this->form->getState();
 
-        $booleans = ['enable_dynamic_pricing', 'round_prices', 'show_discount', 'enable_sales_hours'];
+        $booleans = ['tokeniko_product_prices_enabled', 'enable_dynamic_pricing', 'round_prices', 'show_discount', 'enable_sales_hours'];
 
         $weeklyHolidayDays = collect($data['weekly_holiday_days'] ?? [])
             ->filter(static fn (mixed $day): bool => (is_int($day) && $day >= 0 && $day <= 6)
