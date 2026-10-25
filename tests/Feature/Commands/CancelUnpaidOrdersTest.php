@@ -13,6 +13,31 @@ class CancelUnpaidOrdersTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_legacy_digipay_payment_without_provider_id_is_not_cancelled(): void
+    {
+        $order = Order::factory()->create([
+            'status' => 'pending',
+            'payment_status' => 'pending',
+            'created_at' => now()->subMinutes(30),
+        ]);
+
+        $payment = Payment::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'transaction_id' => 'legacy-digipay-pending',
+            'amount' => $order->total_amount,
+            'payment_method' => 'online',
+            'gateway' => 'digipay',
+            'status' => 'pending',
+            'description' => 'در انتظار پرداخت',
+        ]);
+
+        $this->artisan('orders:cancel-unpaid')->assertExitCode(0);
+
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertSame('needs_review', $payment->fresh()->status);
+    }
+
     public function test_orders_with_digipay_verification_in_progress_are_not_cancelled(): void
     {
         $order = Order::factory()->create([

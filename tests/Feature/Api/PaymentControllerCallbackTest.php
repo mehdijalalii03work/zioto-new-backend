@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Api;
 
+use App\Http\Controllers\Api\PaymentController;
 use App\Jobs\VerifyDigipayPayment;
 use App\Services\DiscountCodeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Mockery;
@@ -146,9 +148,141 @@ class PaymentControllerCallbackTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        $this->assertSame('pending', $firstPayment->fresh()->status);
-        $this->assertSame('pending', $secondPayment->fresh()->status);
+        $this->assertSame('needs_review', $firstPayment->fresh()->status);
+        $this->assertSame('needs_review', $secondPayment->fresh()->status);
         $this->assertSame('pending', $order->fresh()->payment_status);
+    }
+
+    #[RunInSeparateProcess]
+    public function test_digipay_callback_matches_a_single_legacy_attempt_without_provider_id(): void
+    {
+        [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+        Queue::fake();
+
+        $receipt = Mockery::mock(Receipt::class);
+        $receipt->shouldReceive('getReferenceId')->andReturn('LEGACY-REF');
+        $receipt->shouldReceive('getDetails')->andReturn([]);
+
+        $mock = Mockery::mock('overload:'.ShetabitPayment::class);
+        $mock->shouldReceive('via')->andReturnSelf();
+        $mock->shouldReceive('amount')->andReturnSelf();
+        $mock->shouldReceive('transactionId')->andReturnSelf();
+        $mock->shouldReceive('verify')->andReturn($receipt);
+
+        $response = $this->post("/api/payment/callback/{$order->id}/digipay", [
+            'providerId' => 'legacy-provider-id',
+            'type' => '11',
+            'trackingCode' => 'legacy-tracking-code',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame('paid', $payment->fresh()->status);
+        $this->assertSame('legacy-provider-id', $payment->fresh()->provider_id);
+        $this->assertSame('paid', $order->fresh()->payment_status);
+    }
+
+    public function test_digipay_callback_does_not_guess_between_multiple_legacy_attempts(): void
+    {
+        [$order, $firstPayment] = $this->makeOrderWithPendingPayment('digipay');
+        $secondPayment = Payment::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'transaction_id' => 'second-legacy-attempt',
+            'amount' => $order->total_amount,
+            'payment_method' => 'online',
+            'gateway' => 'digipay',
+            'status' => 'pending',
+            'description' => 'در انتظار پرداخت',
+        ]);
+
+        $response = $this->post("/api/payment/callback/{$order->id}/digipay", [
+            'providerId' => 'ambiguous-provider-id',
+            'type' => '11',
+            'trackingCode' => 'ambiguous-tracking-code',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame('needs_review', $firstPayment->fresh()->status);
+        $this->assertSame('needs_review', $secondPayment->fresh()->status);
+        $this->assertNull($firstPayment->fresh()->provider_id);
+        $this->assertNull($secondPayment->fresh()->provider_id);
+        $this->assertSame('pending', $order->fresh()->payment_status);
+    }
+
+    public function test_digipay_callback_does_not_attach_provider_id_already_used_by_another_order(): void
+    {
+        [$order, $legacyPayment] = $this->makeOrderWithPendingPayment('digipay');
+        [$otherOrder] = $this->makeOrderWithPendingPayment('digipay');
+        $existingPayment = Payment::where('order_id', $otherOrder->id)->firstOrFail();
+        $existingPayment->update(['provider_id' => 'already-used-provider-id']);
+
+        $response = $this->post("/api/payment/callback/{$order->id}/digipay", [
+            'providerId' => 'already-used-provider-id',
+            'type' => '11',
+            'trackingCode' => 'unmatched-tracking-code',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame('needs_review', $legacyPayment->fresh()->status);
+        $this->assertNull($legacyPayment->fresh()->provider_id);
+        $this->assertSame('already-used-provider-id', $existingPayment->fresh()->provider_id);
+    }
+
+    public function test_digipay_callback_with_incomplete_verification_context_is_sent_to_manual_review(): void
+    {
+        [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+        $payment->update(['provider_id' => 'incomplete-context-provider']);
+        Queue::fake();
+
+        $response = $this->post("/api/payment/callback/{$order->id}/digipay", [
+            'providerId' => 'incomplete-context-provider',
+            'type' => '11',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame('needs_review', $payment->fresh()->status);
+        $this->assertSame('pending', $order->fresh()->payment_status);
+        Queue::assertNothingPushed();
+    }
+
+    #[RunInSeparateProcess]
+    public function test_digipay_callback_verifies_second_attempt_after_order_is_paid(): void
+    {
+        [$order, $firstPayment] = $this->makeOrderWithPendingPayment('digipay');
+        $order->update(['payment_status' => 'paid', 'status' => 'confirmed']);
+        $firstPayment->update(['provider_id' => 'already-paid-provider', 'status' => 'paid']);
+        $secondPayment = Payment::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'transaction_id' => 'second-digipay-attempt',
+            'provider_id' => 'second-provider-id',
+            'amount' => $order->total_amount,
+            'payment_method' => 'online',
+            'gateway' => 'digipay',
+            'status' => 'pending',
+            'description' => 'در انتظار پرداخت',
+        ]);
+
+        $receipt = Mockery::mock(Receipt::class);
+        $receipt->shouldReceive('getReferenceId')->andReturn('SECOND-REF');
+        $receipt->shouldReceive('getDetails')->andReturn([]);
+
+        $mock = Mockery::mock('overload:'.ShetabitPayment::class);
+        $mock->shouldReceive('via')->andReturnSelf();
+        $mock->shouldReceive('amount')->andReturnSelf();
+        $mock->shouldReceive('transactionId')->andReturnSelf();
+        $mock->shouldReceive('verify')->andReturn($receipt);
+
+        $response = $this->post("/api/payment/callback/{$order->id}/digipay", [
+            'providerId' => 'second-provider-id',
+            'type' => '11',
+            'trackingCode' => 'second-tracking-code',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame('paid', $secondPayment->fresh()->status);
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        $this->assertSame('confirmed', $order->fresh()->status);
     }
 
     #[RunInSeparateProcess]
@@ -195,6 +329,59 @@ class PaymentControllerCallbackTest extends TestCase
     }
 
     #[RunInSeparateProcess]
+    public function test_definitive_failure_keeps_discount_reserved_while_another_attempt_is_pending(): void
+    {
+        [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+        $payment->update(['provider_id' => 'failed-provider-id']);
+        $otherPayment = Payment::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'transaction_id' => 'still-pending-attempt',
+            'provider_id' => 'still-pending-provider',
+            'amount' => $order->total_amount,
+            'payment_method' => 'online',
+            'gateway' => 'digipay',
+            'status' => 'pending',
+            'description' => 'در انتظار پرداخت',
+        ]);
+        $discountCodeId = DB::table('discount_codes')->insertGetId([
+            'code' => 'KEEPRESERVED',
+            'discount_amount' => 1000,
+            'platforms' => json_encode(['main']),
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $order->update([
+            'discount_code_id' => $discountCodeId,
+            'discount_code_snapshot' => 'KEEPRESERVED',
+            'discount_amount' => 1000,
+        ]);
+        app(DiscountCodeService::class)->reserveUsage($order);
+
+        $mock = Mockery::mock('overload:'.ShetabitPayment::class);
+        $mock->shouldReceive('via')->andReturnSelf();
+        $mock->shouldReceive('amount')->andReturnSelf();
+        $mock->shouldReceive('transactionId')->andReturnSelf();
+        $mock->shouldReceive('verify')->andThrow(new InvalidPaymentException('declined', 9007));
+
+        $response = $this->post("/api/payment/callback/{$order->id}/digipay", [
+            'providerId' => 'failed-provider-id',
+            'type' => '11',
+            'trackingCode' => 'failed-tracking-code',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame('failed', $payment->fresh()->status);
+        $this->assertSame('pending', $otherPayment->fresh()->status);
+        $this->assertSame('pending', $order->fresh()->payment_status);
+        $this->assertDatabaseHas('discount_code_usages', [
+            'order_id' => $order->id,
+            'status' => 'reserved',
+        ]);
+    }
+
+    #[RunInSeparateProcess]
     public function test_successful_verify_marks_order_paid(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
@@ -227,6 +414,38 @@ class PaymentControllerCallbackTest extends TestCase
         $this->assertSame('paid', $order->payment_status);
         $this->assertSame('confirmed', $order->status);
         $this->assertNotNull($payment->paid_at);
+    }
+
+    public function test_payment_status_reports_order_success_and_pending_sibling_before_latest_attempt(): void
+    {
+        [$order, $failedPayment] = $this->makeOrderWithPendingPayment('digipay');
+        $failedPayment->update(['status' => 'failed']);
+        $pendingPayment = Payment::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'transaction_id' => 'newest-pending-attempt',
+            'amount' => $order->total_amount,
+            'payment_method' => 'online',
+            'gateway' => 'digipay',
+            'status' => 'pending',
+            'description' => 'در انتظار پرداخت',
+        ]);
+
+        $request = Request::create('/api/payment/status/'.$order->id, 'GET');
+        $request->setUserResolver(fn () => $order->user);
+        $controller = app(PaymentController::class);
+
+        $response = $controller->status($request, $order->id);
+        $this->assertSame('pending', $response->getData(true)['confirmation_status']);
+
+        $order->update(['payment_status' => 'paid', 'status' => 'confirmed']);
+        $response = $controller->status($request, $order->id);
+        $this->assertSame('paid', $response->getData(true)['confirmation_status']);
+
+        $order->update(['payment_status' => 'failed']);
+        $pendingPayment->update(['status' => 'failed']);
+        $response = $controller->status($request, $order->id);
+        $this->assertSame('failed', $response->getData(true)['confirmation_status']);
     }
 
     #[RunInSeparateProcess]

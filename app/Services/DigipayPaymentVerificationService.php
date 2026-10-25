@@ -191,10 +191,12 @@ class DigipayPaymentVerificationService
 
             $hasUnresolvedPayment = Payment::withoutTenantScope()
                 ->where('order_id', $order->id)
-                ->whereIn('status', ['processing', 'verification_pending', 'needs_review'])
+                ->whereIn('status', ['pending', 'processing', 'verification_pending', 'needs_review'])
                 ->exists();
 
-            if (! $hasUnresolvedPayment) {
+            if ($hasUnresolvedPayment) {
+                $order->update(['payment_status' => 'pending']);
+            } else {
                 $order->update(['payment_status' => 'failed']);
                 app(DiscountCodeService::class)->releaseUsage($order->id);
             }
@@ -224,10 +226,16 @@ class DigipayPaymentVerificationService
                     'next_verification_at' => null,
                 ])->save();
 
-                if ($order->payment_status !== 'paid') {
+                $wasOrderAlreadyPaid = $order->payment_status === 'paid';
+                if (! $wasOrderAlreadyPaid) {
                     $order->update(['payment_status' => 'paid', 'status' => 'confirmed']);
                 }
-                $order->addNote('پرداخت دیجی‌پی با موفقیت تایید شد. کد رهگیری: '.$receipt->getReferenceId(), 'payment', true);
+                app(DiscountCodeService::class)->redeemUsage($order->id);
+
+                $note = $wasOrderAlreadyPaid
+                    ? 'یک پرداخت دیجی‌پی دیگر نیز برای این سفارش موفق شد و نیازمند بررسی مالی است. کد رهگیری: '.$receipt->getReferenceId()
+                    : 'پرداخت دیجی‌پی با موفقیت تایید شد. کد رهگیری: '.$receipt->getReferenceId();
+                $order->addNote($note, 'payment', true);
                 Cart::where('user_id', $order->user_id)->delete();
             });
         } catch (Throwable $exception) {

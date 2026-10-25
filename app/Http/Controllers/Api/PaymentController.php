@@ -155,6 +155,45 @@ class PaymentController extends Controller
             'redirectionUrl' => $redirectToFrontend,
         ]);
 
+        $reservedDigipayPayment = null;
+        if ($validated['gateway'] === 'digipay') {
+            $reservedDigipayPayment = DB::transaction(function () use ($order, $invoice): ?Payment {
+                $lockedOrder = Order::withoutTenantScope()->lockForUpdate()->findOrFail($order->id);
+                $activePaymentExists = Payment::withoutTenantScope()
+                    ->where('order_id', $lockedOrder->id)
+                    ->whereIn('status', ['pending', 'processing', 'verification_pending', 'needs_review'])
+                    ->exists();
+
+                if ($activePaymentExists || $lockedOrder->payment_status === 'paid') {
+                    return null;
+                }
+
+                $providerId = $invoice->getUuid();
+                $payment = Payment::create([
+                    'user_id' => $lockedOrder->user_id,
+                    'order_id' => $lockedOrder->id,
+                    'platform' => $lockedOrder->platform,
+                    'transaction_id' => 'digipay-init-'.$providerId,
+                    'provider_id' => $providerId,
+                    'amount' => $lockedOrder->total_amount,
+                    'payment_method' => $lockedOrder->payment_method,
+                    'gateway' => 'digipay',
+                    'status' => 'pending',
+                    'description' => 'در انتظار پرداخت',
+                ]);
+
+                if ($lockedOrder->payment_status !== 'pending') {
+                    $lockedOrder->update(['payment_status' => 'pending']);
+                }
+
+                return $payment;
+            });
+
+            if (! $reservedDigipayPayment) {
+                return response()->json(['message' => 'درخواست پرداخت قبلاً ثبت شده است', 'error_code' => 'PAYMENT_ALREADY_INITIATED'], 422);
+            }
+        }
+
         Log::channel('payment')->info('Payment init started', [
             'order_id' => $order->id,
             'gateway' => $validated['gateway'],
@@ -173,15 +212,21 @@ class PaymentController extends Controller
             $capturedTransactionId = null;
 
             $form = $payment->callbackUrl($callbackUrl)
-                ->purchase($invoice, function ($driver, $transactionId) use (&$capturedTransactionId, $order, $validated, $invoice) {
+                ->purchase($invoice, function ($driver, $transactionId) use (&$capturedTransactionId, $order, $validated, $reservedDigipayPayment) {
                     $capturedTransactionId = $transactionId;
+
+                    if ($reservedDigipayPayment) {
+                        $reservedDigipayPayment->update(['transaction_id' => $transactionId]);
+
+                        return;
+                    }
 
                     Payment::create([
                         'user_id' => $order->user_id,
                         'order_id' => $order->id,
                         'platform' => $order->platform,
                         'transaction_id' => $transactionId,
-                        'provider_id' => $validated['gateway'] === 'digipay' ? $invoice->getUuid() : null,
+                        'provider_id' => null,
                         'amount' => $order->total_amount,
                         'payment_method' => $order->payment_method,
                         'gateway' => $validated['gateway'],
@@ -203,6 +248,10 @@ class PaymentController extends Controller
             ]);
 
         } catch (PurchaseFailedException $e) {
+            if ($reservedDigipayPayment) {
+                $this->finishDigipayInitAttempt($reservedDigipayPayment, 'failed', $e->getMessage());
+            }
+
             Log::channel('payment')->error('Payment init PurchaseFailedException', [
                 'order_id' => $order->id,
                 'gateway' => $validated['gateway'],
@@ -213,6 +262,10 @@ class PaymentController extends Controller
 
             return response()->json(['message' => 'خطا در ایجاد درخواست پرداخت: '.$e->getMessage(), 'error_code' => 'PAYMENT_FAILED'], 500);
         } catch (\Exception $e) {
+            if ($reservedDigipayPayment) {
+                $this->finishDigipayInitAttempt($reservedDigipayPayment, 'needs_review', $e->getMessage());
+            }
+
             Log::channel('payment')->error('Payment init Exception', [
                 'order_id' => $order->id,
                 'gateway' => $validated['gateway'],
@@ -268,8 +321,40 @@ class PaymentController extends Controller
 
         if ($gateway === 'digipay') {
             $providerId = $request->input('providerId');
+            $providerId = is_string($providerId) && trim($providerId) !== '' && strlen(trim($providerId)) <= 100
+                ? trim($providerId)
+                : null;
+            $ticketType = $request->input('type');
+            $trackingCode = $request->input('trackingCode');
+            $hasValidVerificationContext = (is_string($ticketType) && trim($ticketType) !== '' || is_int($ticketType))
+                && is_string($trackingCode)
+                && trim($trackingCode) !== '';
             $shouldVerify = false;
-            $payment = $providerId ? DB::transaction(function () use ($providerId, $order, $request, &$shouldVerify) {
+            if (! $providerId) {
+                DB::transaction(function () use ($order): void {
+                    $legacyPayments = Payment::withoutTenantScope()
+                        ->where('order_id', $order->id)
+                        ->where('platform', $order->platform)
+                        ->where('gateway', 'digipay')
+                        ->whereNull('provider_id')
+                        ->whereIn('status', ['pending', 'processing'])
+                        ->lockForUpdate()
+                        ->get();
+
+                    foreach ($legacyPayments as $legacyPayment) {
+                        $legacyPayment->forceFill([
+                            'status' => 'needs_review',
+                            'gateway_response' => [
+                                'verification' => [
+                                    'last_error' => 'شناسه‌ی پرداخت در پاسخ دیجی‌پی موجود نیست و تطبیق خودکار امن نیست.',
+                                ],
+                            ],
+                        ])->save();
+                    }
+                });
+            }
+
+            $payment = $providerId ? DB::transaction(function () use ($providerId, $ticketType, $trackingCode, $hasValidVerificationContext, $order, &$shouldVerify) {
                 $payment = Payment::withoutTenantScope()
                     ->where('order_id', $order->id)
                     ->where('platform', $order->platform)
@@ -278,15 +363,77 @@ class PaymentController extends Controller
                     ->lockForUpdate()
                     ->first();
 
-                if (! $payment || in_array($payment->status, ['paid', 'failed', 'processing', 'verification_pending'], true)) {
+                if (! $payment) {
+                    $legacyPayments = Payment::withoutTenantScope()
+                        ->where('order_id', $order->id)
+                        ->where('platform', $order->platform)
+                        ->where('gateway', 'digipay')
+                        ->whereNull('provider_id')
+                        ->whereIn('status', ['pending', 'processing', 'needs_review'])
+                        ->lockForUpdate()
+                        ->get();
+
+                    if ($legacyPayments->count() !== 1) {
+                        if ($legacyPayments->count() > 1) {
+                            foreach ($legacyPayments as $legacyPayment) {
+                                $legacyPayment->forceFill([
+                                    'status' => 'needs_review',
+                                    'gateway_response' => [
+                                        'verification' => [
+                                            'last_error' => 'چند پرداخت قدیمی بدون شناسه برای این سفارش وجود دارد و تطبیق خودکار امن نیست.',
+                                        ],
+                                    ],
+                                ])->save();
+                            }
+                        }
+
+                        return null;
+                    }
+
+                    $providerIdAlreadyUsed = Payment::withoutTenantScope()
+                        ->where('provider_id', $providerId)
+                        ->exists();
+
+                    if ($providerIdAlreadyUsed) {
+                        $legacyPayments->first()->forceFill([
+                            'status' => 'needs_review',
+                            'gateway_response' => [
+                                'verification' => [
+                                    'last_error' => 'شناسه‌ی دریافتی برای پرداخت دیگری ثبت شده است و تطبیق خودکار انجام نشد.',
+                                ],
+                            ],
+                        ])->save();
+
+                        return null;
+                    }
+
+                    $payment = $legacyPayments->first();
+                    $payment->provider_id = $providerId;
+                }
+
+                if (! $payment || in_array($payment->status, ['paid', 'failed', 'verification_pending'], true)) {
+                    return $payment;
+                }
+
+                if (! $hasValidVerificationContext) {
+                    $payment->forceFill([
+                        'provider_id' => $providerId,
+                        'status' => 'needs_review',
+                        'gateway_response' => [
+                            'verification' => [
+                                'last_error' => 'اطلاعات لازم برای استعلام پرداخت در پاسخ دیجی‌پی کامل نیست.',
+                            ],
+                        ],
+                    ])->save();
+
                     return $payment;
                 }
 
                 $payment->forceFill([
                     'status' => 'verification_pending',
                     'verification_context' => [
-                        'type' => $request->input('type'),
-                        'trackingCode' => $request->input('trackingCode'),
+                        'type' => $ticketType,
+                        'trackingCode' => $trackingCode,
                         'providerId' => $providerId,
                     ],
                     'verification_started_at' => now(),
@@ -309,7 +456,7 @@ class PaymentController extends Controller
                 return redirect($frontendUrl.'/confirm?order_id='.$order->id);
             }
 
-            if (! $shouldVerify || $order->payment_status === 'paid') {
+            if (! $shouldVerify) {
                 return redirect($frontendUrl.'/confirm?order_id='.$order->id);
             }
 
@@ -619,11 +766,58 @@ class PaymentController extends Controller
             ->latest()
             ->first();
 
+        $unresolvedPayments = Payment::where('order_id', $order->id)
+            ->whereIn('status', ['pending', 'processing', 'verification_pending', 'needs_review'])
+            ->get(['status']);
+
+        $confirmationStatus = match (true) {
+            $order->payment_status === 'paid' => 'paid',
+            $unresolvedPayments->contains(fn (Payment $unresolvedPayment) => $unresolvedPayment->status === 'needs_review') => 'needs_review',
+            $unresolvedPayments->isNotEmpty() => 'pending',
+            $order->payment_status === 'failed' => 'failed',
+            default => $order->payment_status,
+        };
+
         return response()->json([
             'order_status' => $order->status,
             'payment_status' => $order->payment_status,
+            'confirmation_status' => $confirmationStatus,
             'payment' => $payment ? new PaymentResource($payment) : null,
         ]);
+    }
+
+    private function finishDigipayInitAttempt(Payment $payment, string $status, string $message): void
+    {
+        DB::transaction(function () use ($payment, $status, $message): void {
+            $lockedPayment = Payment::withoutTenantScope()->lockForUpdate()->find($payment->id);
+            if (! $lockedPayment || $lockedPayment->status !== 'pending') {
+                return;
+            }
+
+            $lockedPayment->forceFill([
+                'status' => $status,
+                'gateway_response' => ['init_error' => mb_substr($message, 0, 500)],
+            ])->save();
+
+            $order = Order::withoutTenantScope()->lockForUpdate()->find($lockedPayment->order_id);
+            if (! $order || $order->payment_status === 'paid') {
+                return;
+            }
+
+            $hasUnresolvedPayment = Payment::withoutTenantScope()
+                ->where('order_id', $order->id)
+                ->whereIn('status', ['pending', 'processing', 'verification_pending', 'needs_review'])
+                ->exists();
+
+            if ($status !== 'failed' || $hasUnresolvedPayment) {
+                $order->update(['payment_status' => 'pending']);
+
+                return;
+            }
+
+            $order->update(['payment_status' => 'failed']);
+            $this->discountCodeService->releaseUsage($order->id);
+        });
     }
 
     private function calculateShippingCost(int $shippingMethodId, float $totalWeight, int $cartTotal, ?int $provinceId, ?int $cityId): int
