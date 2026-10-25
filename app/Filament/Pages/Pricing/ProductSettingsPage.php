@@ -5,6 +5,9 @@ namespace App\Filament\Pages\Pricing;
 use App\Enums\Permission;
 use App\Models\Setting;
 use App\Services\Pricing\PricingSettings;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -13,6 +16,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Carbon;
 
 class ProductSettingsPage extends Page
 {
@@ -51,6 +55,11 @@ class ProductSettingsPage extends Page
             'enable_sales_hours' => PricingSettings::enableSalesHours(),
             'sales_start_time' => PricingSettings::salesStartTime(),
             'sales_end_time' => PricingSettings::salesEndTime(),
+            'weekly_holiday_days' => PricingSettings::weeklyHolidayDays(),
+            'special_holiday_dates' => array_map(
+                static fn (string $date): array => ['date' => $date],
+                PricingSettings::specialHolidayDates(),
+            ),
         ]);
     }
 
@@ -111,6 +120,41 @@ class ProductSettingsPage extends Page
                             TextInput::make('sales_end_time')->label('پایان')->placeholder('23:00'),
                         ]),
                     ])->columnSpanFull(),
+
+                Section::make('تقویم روزهای کاری و تعطیل')
+                    ->icon('heroicon-o-calendar-days')
+                    ->schema([
+                        CheckboxList::make('weekly_holiday_days')
+                            ->label('روزهای تعطیل هفتگی')
+                            ->options([
+                                6 => 'شنبه',
+                                0 => 'یکشنبه',
+                                1 => 'دوشنبه',
+                                2 => 'سه‌شنبه',
+                                3 => 'چهارشنبه',
+                                4 => 'پنجشنبه',
+                                5 => 'جمعه',
+                            ])
+                            ->columns(4)
+                            ->default(PricingSettings::DEFAULT_WEEKLY_HOLIDAY_DAYS)
+                            ->helperText('روزهای انتخاب‌شده در تمام ساعات با ضریب بازه شبانه محاسبه می‌شوند؛ روزهای دیگر روز کاری هستند.'),
+                        Repeater::make('special_holiday_dates')
+                            ->label('تعطیلی‌های مناسبتی')
+                            ->schema([
+                                DatePicker::make('date')
+                                    ->label('تاریخ')
+                                    ->jalali()
+                                    ->native(false)
+                                    ->required()
+                                    ->rules(['date']),
+                            ])
+                            ->columns(1)
+                            ->defaultItems(0)
+                            ->reorderable(false)
+                            ->addActionLabel('افزودن تاریخ تعطیل')
+                            ->helperText('این تاریخ‌ها فقط در همان سال تعطیل هستند و در تمام ساعات ضریب شبانه دارند.'),
+                    ])
+                    ->columnSpanFull(),
             ])
             ->statePath('data');
     }
@@ -126,6 +170,38 @@ class ProductSettingsPage extends Page
         $data = $this->form->getState();
 
         $booleans = ['enable_dynamic_pricing', 'round_prices', 'show_discount', 'enable_sales_hours'];
+
+        $weeklyHolidayDays = collect($data['weekly_holiday_days'] ?? [])
+            ->filter(static fn (mixed $day): bool => (is_int($day) && $day >= 0 && $day <= 6)
+                || (is_string($day) && preg_match('/^[0-6]$/D', $day) === 1))
+            ->map(static fn (mixed $day): int => (int) $day)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $specialHolidayDates = collect($data['special_holiday_dates'] ?? [])
+            ->pluck('date')
+            ->filter(static fn (mixed $date): bool => is_string($date) && trim($date) !== '')
+            ->map(static fn (string $date): string => Carbon::parse($date, config('app.timezone'))->toDateString())
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        Setting::updateOrCreate(['key' => 'zioto_pricing_weekly_holiday_days'], [
+            'value' => json_encode($weeklyHolidayDays),
+            'type' => 'json',
+            'category' => 'pricing',
+            'label' => 'روزهای تعطیل هفتگی',
+        ]);
+
+        Setting::updateOrCreate(['key' => 'zioto_pricing_special_holiday_dates'], [
+            'value' => json_encode($specialHolidayDates),
+            'type' => 'json',
+            'category' => 'pricing',
+            'label' => 'تعطیلی‌های مناسبتی',
+        ]);
 
         Setting::updateOrCreate(['key' => 'zioto_pricing_sales_enabled'], [
             'value' => ($data['sales_closed'] ?? false) ? 'false' : 'true',

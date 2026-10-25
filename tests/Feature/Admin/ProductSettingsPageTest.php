@@ -90,6 +90,42 @@ class ProductSettingsPageTest extends TestCase
         $this->assertTrue(PricingSettings::salesEnabled());
     }
 
+    public function test_admin_can_save_and_reload_weekly_and_special_holidays(): void
+    {
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+
+        Livewire::actingAs($user, 'web')
+            ->test(ProductSettingsPage::class)
+            ->assertSee('روزهای تعطیل هفتگی')
+            ->assertSee('تعطیلی‌های مناسبتی')
+            ->fillForm([
+                'weekly_holiday_days' => ['5'],
+                'special_holiday_dates' => [
+                    ['date' => '2026-10-21'],
+                ],
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('settings', [
+            'key' => 'zioto_pricing_weekly_holiday_days',
+            'value' => '[5]',
+            'type' => 'json',
+        ]);
+        $this->assertDatabaseHas('settings', [
+            'key' => 'zioto_pricing_special_holiday_dates',
+            'value' => '["2026-10-21"]',
+            'type' => 'json',
+        ]);
+        $this->assertSame([5], PricingSettings::weeklyHolidayDays());
+        $this->assertSame(['2026-10-21'], PricingSettings::specialHolidayDates());
+
+        $reloadedForm = Livewire::actingAs($user, 'web')->test(ProductSettingsPage::class);
+        $this->assertSame(['5'], array_map('strval', $reloadedForm->get('data.weekly_holiday_days')));
+        $holidayRows = array_values($reloadedForm->get('data.special_holiday_dates'));
+        $this->assertSame('2026-10-21', substr($holidayRows[0]['date'], 0, 10));
+    }
+
     public function test_operator_cannot_change_the_labor_tax(): void
     {
         $user = User::factory()->create()->assignRole(Role::Operator->value);
@@ -150,6 +186,7 @@ class ProductSettingsPageTest extends TestCase
 
         $this->assertDatabaseMissing('settings', ['key' => 'zioto_pricing_rounding_mode']);
         $this->assertDatabaseMissing('settings', ['key' => 'zioto_pricing_sales_enabled']);
+        $this->assertDatabaseMissing('settings', ['key' => 'zioto_pricing_weekly_holiday_days']);
         Http::assertNothingSent();
     }
 }

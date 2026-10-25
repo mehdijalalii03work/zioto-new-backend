@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Cache;
  */
 class PricingSettings
 {
+    public const DEFAULT_WEEKLY_HOLIDAY_DAYS = [4, 5];
+
     public const DEFAULT_LABOR_ROLES = [
         ['slug' => 'basic', 'name' => 'مشتری سطح پایه', 'is_default' => true],
         ['slug' => 'pro', 'name' => 'مشتری سطح پرو'],
@@ -162,6 +164,57 @@ class PricingSettings
     public static function salesEndTime(): string
     {
         return (string) self::get('sales_end_time', '23:00');
+    }
+
+    /** @return list<int> Carbon weekday numbers: Sunday 0 through Saturday 6. */
+    public static function weeklyHolidayDays(): array
+    {
+        $configuredDays = self::get('weekly_holiday_days', self::DEFAULT_WEEKLY_HOLIDAY_DAYS);
+
+        if (! is_array($configuredDays)) {
+            return self::DEFAULT_WEEKLY_HOLIDAY_DAYS;
+        }
+
+        $days = [];
+
+        foreach ($configuredDays as $configuredDay) {
+            if (
+                (! is_int($configuredDay) && (! is_string($configuredDay) || preg_match('/^[0-6]$/D', $configuredDay) !== 1))
+                || (int) $configuredDay < 0
+                || (int) $configuredDay > 6
+            ) {
+                continue;
+            }
+
+            $day = (int) $configuredDay;
+            if (! in_array($day, $days, true)) {
+                $days[] = $day;
+            }
+        }
+
+        sort($days);
+
+        return $days;
+    }
+
+    /** @return list<string> Gregorian dates in Y-m-d format. */
+    public static function specialHolidayDates(): array
+    {
+        $configuredDates = self::get('special_holiday_dates', []);
+
+        if (! is_array($configuredDates)) {
+            return [];
+        }
+
+        $dates = [];
+
+        foreach ($configuredDates as $configuredDate) {
+            if (is_string($configuredDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/D', $configuredDate) === 1) {
+                $dates[] = $configuredDate;
+            }
+        }
+
+        return array_values(array_unique($dates));
     }
 
     public static function showDiscountBadge(): bool

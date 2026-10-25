@@ -125,6 +125,16 @@ class LaborSettingsPage extends Page
             'end' => (string) $period['end'],
         ], $data['time_periods'] ?? []));
 
+        if (! collect($periods)->contains(static fn (array $period): bool => $period['slug'] === 'nightly')) {
+            Notification::make()
+                ->title('شناسه بازه nightly الزامی است')
+                ->body('برای محاسبه قیمت روزهای تعطیل، شناسه بازه شبانه باید nightly باقی بماند.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
         Setting::updateOrCreate(['key' => 'zioto_pricing_labor_roles'], [
             'value' => json_encode($roles),
             'type' => 'json',

@@ -23,7 +23,16 @@ class LaborCalculator
 
     public function getCurrentTimePeriod(): string
     {
-        $currentHour = (int) now()->format('G');
+        $currentTime = now();
+
+        if (
+            in_array($currentTime->dayOfWeek, PricingSettings::weeklyHolidayDays(), true)
+            || in_array($currentTime->toDateString(), PricingSettings::specialHolidayDates(), true)
+        ) {
+            return 'nightly';
+        }
+
+        $currentHour = (int) $currentTime->format('G');
 
         foreach ($this->getTimePeriods() as $period) {
             if ($this->isTimeInPeriod($currentHour, $period['start'] ?? '00:00', $period['end'] ?? '23:59')) {
