@@ -11,8 +11,10 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Modules\Order\Models\Order;
+use Modules\Order\Models\OrderItem;
 use Morilog\Jalali\Jalalian;
 
 class ProductSalesReport extends Page
@@ -33,6 +35,34 @@ class ProductSalesReport extends Page
 
     /** @var Collection<int, array{product_id: int|null, name: string, quantity: int, metal_type: string|null, metal_label: string, form_label: string, brand_label: string}> */
     public Collection $report;
+
+    /**
+     * @var array{
+     *     total_quantity: int,
+     *     product_count: int,
+     *     best_seller_name: string|null,
+     *     best_seller_quantity: int,
+     *     best_seller_share: float,
+     *     previous_quantity: int|null,
+     *     comparison_label: string|null,
+     *     change_quantity: int|null,
+     *     change_percent: float|null,
+     *     gold_quantity: int,
+     *     silver_quantity: int,
+     *     other_metal_quantity: int,
+     *     plaque_quantity: int,
+     *     bar_quantity: int,
+     *     sachmeh_quantity: int,
+     *     other_form_quantity: int,
+     *     gold_share: float,
+     *     silver_share: float,
+     *     plaque_share: float,
+     *     bar_share: float,
+     *     sachmeh_share: float,
+     *     other_form_share: float
+     * }
+     */
+    public array $summary = [];
 
     public bool $submitted = false;
 
@@ -115,18 +145,8 @@ class ProductSalesReport extends Page
 
         [$gregorianFrom, $gregorianTo] = $this->resolveDateRange();
 
-        $query = Order::query()
-            ->whereIn('status', ['completed', 'confirmed'])
-            ->whereDoesntHave('items.product', static fn ($query) => $query->where('slug', 'test'))
+        $query = $this->applyOrderFilters(Order::query(), $gregorianFrom, $gregorianTo)
             ->with(['items.product.brand']);
-
-        if ($gregorianFrom !== null) {
-            $query->whereDate('created_at', '>=', $gregorianFrom);
-        }
-
-        if ($gregorianTo !== null) {
-            $query->whereDate('created_at', '<=', $gregorianTo);
-        }
 
         $items = $query->get()->flatMap->items;
 
@@ -154,6 +174,8 @@ class ProductSalesReport extends Page
             ->filter(static fn (array $product): bool => $product['quantity'] > 0)
             ->sort(static fn (array $a, array $b): int => ($b['quantity'] <=> $a['quantity']) ?: strnatcasecmp($a['name'], $b['name']))
             ->values();
+
+        $this->summary = $this->buildSummary();
     }
 
     private static function brandLabel(?string $name, ?string $slug): string
@@ -278,6 +300,152 @@ class ProductSalesReport extends Page
             ],
             default => [null, null],
         };
+    }
+
+    private function buildSummary(): array
+    {
+        $totalQuantity = (int) $this->report->sum('quantity');
+        $bestSeller = $this->report->first();
+        $previousRange = $this->resolvePreviousDateRange();
+        $previousQuantity = $previousRange === null
+            ? null
+            : $this->totalQuantityForRange($previousRange[0], $previousRange[1]);
+        $changeQuantity = $previousQuantity === null ? null : $totalQuantity - $previousQuantity;
+        $changePercent = match (true) {
+            $previousQuantity === null => null,
+            $previousQuantity > 0 => round(($changeQuantity / $previousQuantity) * 100, 1),
+            $totalQuantity === 0 => 0.0,
+            default => null,
+        };
+
+        $goldQuantity = (int) $this->report->sum(static fn (array $product): int => $product['metal_type'] === 'gold' ? $product['quantity'] : 0);
+        $silverQuantity = (int) $this->report->sum(static fn (array $product): int => $product['metal_type'] === 'silver' ? $product['quantity'] : 0);
+        $plaqueQuantity = (int) $this->report->sum(static fn (array $product): int => $product['form_label'] === 'پلاک' ? $product['quantity'] : 0);
+        $barQuantity = (int) $this->report->sum(static fn (array $product): int => $product['form_label'] === 'شمش' ? $product['quantity'] : 0);
+        $sachmehQuantity = (int) $this->report->sum(static fn (array $product): int => $product['form_label'] === 'ساچمه' ? $product['quantity'] : 0);
+
+        return [
+            'total_quantity' => $totalQuantity,
+            'product_count' => $this->report->count(),
+            'best_seller_name' => $bestSeller['name'] ?? null,
+            'best_seller_quantity' => (int) ($bestSeller['quantity'] ?? 0),
+            'best_seller_share' => $totalQuantity > 0 ? round(((int) ($bestSeller['quantity'] ?? 0) / $totalQuantity) * 100, 1) : 0.0,
+            'previous_quantity' => $previousQuantity,
+            'comparison_label' => $previousRange === null ? null : $this->comparisonPeriodLabel(),
+            'change_quantity' => $changeQuantity,
+            'change_percent' => $changePercent,
+            'gold_quantity' => $goldQuantity,
+            'silver_quantity' => $silverQuantity,
+            'other_metal_quantity' => max(0, $totalQuantity - $goldQuantity - $silverQuantity),
+            'plaque_quantity' => $plaqueQuantity,
+            'bar_quantity' => $barQuantity,
+            'sachmeh_quantity' => $sachmehQuantity,
+            'other_form_quantity' => max(0, $totalQuantity - $plaqueQuantity - $barQuantity - $sachmehQuantity),
+            'gold_share' => $totalQuantity > 0 ? round(($goldQuantity / $totalQuantity) * 100, 1) : 0.0,
+            'silver_share' => $totalQuantity > 0 ? round(($silverQuantity / $totalQuantity) * 100, 1) : 0.0,
+            'plaque_share' => $totalQuantity > 0 ? round(($plaqueQuantity / $totalQuantity) * 100, 1) : 0.0,
+            'bar_share' => $totalQuantity > 0 ? round(($barQuantity / $totalQuantity) * 100, 1) : 0.0,
+            'sachmeh_share' => $totalQuantity > 0 ? round(($sachmehQuantity / $totalQuantity) * 100, 1) : 0.0,
+            'other_form_share' => $totalQuantity > 0 ? round((max(0, $totalQuantity - $plaqueQuantity - $barQuantity - $sachmehQuantity) / $totalQuantity) * 100, 1) : 0.0,
+        ];
+    }
+
+    /**
+     * @return array{0: string, 1: string}|null
+     */
+    private function resolvePreviousDateRange(): ?array
+    {
+        if (in_array($this->dateRange, ['week', 'month', 'year'], true)) {
+            [$start, $end] = $this->selectedPeriodDates();
+
+            $previousDates = match ($this->dateRange) {
+                'week' => [$start->subDays(7), $end->subDays(7)],
+                'month' => $this->previousMonthDates($start),
+                'year' => $this->previousYearDates($start),
+            };
+
+            return array_map(static fn (Jalalian $date): string => $date->toCarbon()->format('Y-m-d'), $previousDates);
+        }
+
+        if ($this->dateRange === 'today') {
+            $previousDay = Jalalian::now()->toCarbon()->startOfDay()->subDay()->format('Y-m-d');
+
+            return [$previousDay, $previousDay];
+        }
+
+        if ($this->dateRange !== 'custom' || blank($this->dateFrom)) {
+            return null;
+        }
+
+        $from = $this->parseDate($this->dateFrom);
+        $to = filled($this->dateTo) ? $this->parseDate($this->dateTo) : $from;
+
+        if ($from === null || $to === null || $from > $to) {
+            return null;
+        }
+
+        $currentStart = Carbon::parse($from)->startOfDay();
+        $currentEnd = Carbon::parse($to)->startOfDay();
+        $durationInDays = (int) $currentStart->diffInDays($currentEnd) + 1;
+        $previousEnd = $currentStart->copy()->subDay();
+        $previousStart = $previousEnd->copy()->subDays($durationInDays - 1);
+
+        return [$previousStart->format('Y-m-d'), $previousEnd->format('Y-m-d')];
+    }
+
+    /**
+     * @return array{0: Jalalian, 1: Jalalian}
+     */
+    private function previousMonthDates(Jalalian $start): array
+    {
+        $previousStart = $start->subMonths(1);
+
+        return [$previousStart, $previousStart->getEndDayOfMonth()];
+    }
+
+    /**
+     * @return array{0: Jalalian, 1: Jalalian}
+     */
+    private function previousYearDates(Jalalian $start): array
+    {
+        $previousStart = $start->subYears(1);
+
+        return [$previousStart, $previousStart->getEndDayOfYear()];
+    }
+
+    private function comparisonPeriodLabel(): ?string
+    {
+        return match ($this->dateRange) {
+            'today' => 'روز قبل',
+            'week' => 'هفته قبل',
+            'month' => 'ماه قبل',
+            'year' => 'سال قبل',
+            'custom' => 'بازهٔ قبل',
+            default => null,
+        };
+    }
+
+    private function totalQuantityForRange(string $from, string $to): int
+    {
+        return (int) OrderItem::query()
+            ->whereHas('order', fn (Builder $query): Builder => $this->applyOrderFilters($query, $from, $to))
+            ->sum('quantity');
+    }
+
+    private function applyOrderFilters(Builder $query, ?string $from, ?string $to): Builder
+    {
+        $query->whereIn('status', ['completed', 'confirmed'])
+            ->whereDoesntHave('items.product', static fn (Builder $query): Builder => $query->where('slug', 'test'));
+
+        if ($from !== null) {
+            $query->whereDate('created_at', '>=', $from);
+        }
+
+        if ($to !== null) {
+            $query->whereDate('created_at', '<=', $to);
+        }
+
+        return $query;
     }
 
     private function parseDate(string $date): ?string

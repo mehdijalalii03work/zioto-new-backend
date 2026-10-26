@@ -28,6 +28,124 @@
         </div>
     @endif
 
+    @if($submitted)
+        <section class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5" aria-label="خلاصه فروش محصولات">
+            <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">تعداد کل فروش</p>
+                        <p class="mt-3 text-3xl font-bold tabular-nums text-gray-950 dark:text-white">{{ number_format($summary['total_quantity']) }}</p>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">عدد محصول فروخته‌شده</p>
+                    </div>
+                    <span class="rounded-xl bg-primary-50 p-2.5 text-primary-700 dark:bg-primary-400/10 dark:text-primary-300">
+                        <x-filament::icon icon="heroicon-o-shopping-bag" class="h-5 w-5" />
+                    </span>
+                </div>
+            </article>
+
+            <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">پرفروش‌ترین محصول</p>
+                        @if($summary['best_seller_name'] !== null)
+                            <p class="mt-3 line-clamp-2 text-lg font-bold text-gray-950 dark:text-white" title="{{ $summary['best_seller_name'] }}">{{ $summary['best_seller_name'] }}</p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                {{ number_format($summary['best_seller_quantity']) }} عدد · {{ number_format($summary['best_seller_share'], 1) }}٪ از فروش
+                            </p>
+                        @else
+                            <p class="mt-3 text-lg font-bold text-gray-400 dark:text-gray-500">—</p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">در این بازه فروشی ثبت نشده</p>
+                        @endif
+                    </div>
+                    <span class="rounded-xl bg-amber-50 p-2.5 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">
+                        <x-filament::icon icon="heroicon-o-trophy" class="h-5 w-5" />
+                    </span>
+                </div>
+            </article>
+
+            <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">تنوع محصولات فروخته‌شده</p>
+                        <p class="mt-3 text-3xl font-bold tabular-nums text-gray-950 dark:text-white">{{ number_format($summary['product_count']) }}</p>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">محصول متفاوت</p>
+                    </div>
+                    <span class="rounded-xl bg-blue-50 p-2.5 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
+                        <x-filament::icon icon="heroicon-o-squares-2x2" class="h-5 w-5" />
+                    </span>
+                </div>
+            </article>
+
+            <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">تغییر نسبت به {{ $summary['comparison_label'] ?? 'بازه قبل' }}</p>
+                        @if($summary['previous_quantity'] === null)
+                            <p class="mt-3 text-lg font-bold text-gray-500 dark:text-gray-400">قابل مقایسه نیست</p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                {{ $dateRange === 'all' ? 'برای فیلتر «همه» دورهٔ مرجعی وجود ندارد' : 'بازهٔ زمانی انتخاب‌شده برای مقایسه معتبر نیست' }}
+                            </p>
+                        @else
+                            @if($summary['change_percent'] === null)
+                                <p class="mt-3 text-2xl font-bold text-primary-700 dark:text-primary-300">شروع فروش</p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ number_format($summary['previous_quantity']) }} عدد در {{ $summary['comparison_label'] }}</p>
+                            @else
+                                <p @class([
+                                    'mt-3 text-2xl font-bold tabular-nums',
+                                    'text-emerald-700 dark:text-emerald-300' => $summary['change_percent'] > 0,
+                                    'text-rose-700 dark:text-rose-300' => $summary['change_percent'] < 0,
+                                    'text-gray-700 dark:text-gray-300' => $summary['change_percent'] === 0.0,
+                                ])>
+                                    {{ $summary['change_percent'] > 0 ? '+' : '' }}{{ number_format($summary['change_percent'], 1) }}٪
+                                </p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    {{ $summary['change_quantity'] > 0 ? '+' : '' }}{{ number_format($summary['change_quantity']) }} عدد · {{ number_format($summary['previous_quantity']) }} عدد در {{ $summary['comparison_label'] }}
+                                </p>
+                            @endif
+                        @endif
+                    </div>
+                    <span class="rounded-xl bg-emerald-50 p-2.5 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">
+                        <x-filament::icon icon="heroicon-o-arrow-trending-up" class="h-5 w-5" />
+                    </span>
+                </div>
+            </article>
+
+            <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">ترکیب فروش</p>
+                    <span class="rounded-xl bg-violet-50 p-2.5 text-violet-700 dark:bg-violet-400/10 dark:text-violet-300">
+                        <x-filament::icon icon="heroicon-o-chart-pie" class="h-5 w-5" />
+                    </span>
+                </div>
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <p class="mb-1.5 font-semibold text-gray-700 dark:text-gray-200">بر اساس فلز</p>
+                        <div class="flex flex-wrap gap-x-3 gap-y-1 text-gray-500 dark:text-gray-400">
+                            <span>طلا {{ number_format($summary['gold_quantity']) }} عدد · {{ number_format($summary['gold_share'], 1) }}٪</span>
+                            <span>نقره {{ number_format($summary['silver_quantity']) }} عدد · {{ number_format($summary['silver_share'], 1) }}٪</span>
+                            @if($summary['other_metal_quantity'] > 0)
+                                <span>نامشخص {{ number_format($summary['other_metal_quantity']) }} عدد · {{ number_format(max(0, 100 - $summary['gold_share'] - $summary['silver_share']), 1) }}٪</span>
+                            @endif
+                        </div>
+                    </div>
+                    <div>
+                        <p class="mb-1.5 font-semibold text-gray-700 dark:text-gray-200">بر اساس فرم</p>
+                        <div class="flex flex-wrap gap-x-3 gap-y-1 text-gray-500 dark:text-gray-400">
+                            <span>پلاک {{ number_format($summary['plaque_quantity']) }} عدد · {{ number_format($summary['plaque_share'], 1) }}٪</span>
+                            <span>شمش {{ number_format($summary['bar_quantity']) }} عدد · {{ number_format($summary['bar_share'], 1) }}٪</span>
+                            @if($summary['sachmeh_quantity'] > 0)
+                                <span>ساچمه {{ number_format($summary['sachmeh_quantity']) }} عدد · {{ number_format($summary['sachmeh_share'], 1) }}٪</span>
+                            @endif
+                            @if($summary['other_form_quantity'] > 0)
+                                <span>سایر {{ number_format($summary['other_form_quantity']) }} عدد · {{ number_format($summary['other_form_share'], 1) }}٪</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </section>
+    @endif
+
     @if($submitted && $report->isNotEmpty())
         @php
             $maxQuantity = (int) $report->max('quantity');
