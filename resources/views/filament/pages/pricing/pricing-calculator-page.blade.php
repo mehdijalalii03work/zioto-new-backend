@@ -140,27 +140,55 @@
                     </div>
                     <div class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                         <dt class="shrink-0 text-gray-600 dark:text-gray-300">قیمت پایه (قیمت هر گرم × وزن)</dt>
-                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white" dir="ltr">{{ $result['formattedSpotPrice'] }} × {{ $result['formattedWeight'] }} = {{ $result['formattedProductAmount'] }} تومان</dd>
+                        <dd class="flex flex-wrap items-center gap-2 font-medium tabular-nums text-gray-700 dark:text-gray-200" dir="ltr">
+                            <span>{{ $result['formattedSpotPrice'] }} × {{ $result['formattedWeight'] }}</span>
+                            <span class="text-gray-400">=</span>
+                            <span class="rounded-lg bg-primary-50 px-2.5 py-1 font-bold text-primary-800 ring-1 ring-primary-200 dark:bg-primary-400/10 dark:text-primary-300 dark:ring-primary-400/20">{{ $result['formattedProductAmount'] }} تومان</span>
+                        </dd>
                     </div>
                     <div class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                         <dt class="shrink-0 text-gray-600 dark:text-gray-300">اجرت ({{ number_format($result['laborPercent'], 2) }}٪ قیمت پایه)</dt>
-                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white" dir="ltr">{{ $result['formattedProductAmount'] }} × {{ number_format($result['laborPercent'], 2) }}٪ = {{ $result['formattedLaborAmount'] }} تومان</dd>
+                        <dd class="flex flex-wrap items-center gap-2 font-medium tabular-nums text-gray-700 dark:text-gray-200" dir="ltr">
+                            <span>{{ $result['formattedProductAmount'] }} × {{ number_format($result['laborPercent'], 2) }}٪</span>
+                            <span class="text-gray-400">=</span>
+                            <span class="rounded-lg bg-primary-50 px-2.5 py-1 font-bold text-primary-800 ring-1 ring-primary-200 dark:bg-primary-400/10 dark:text-primary-300 dark:ring-primary-400/20">{{ $result['formattedLaborAmount'] }} تومان</span>
+                        </dd>
                     </div>
                     <div class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                         <dt class="shrink-0 text-gray-600 dark:text-gray-300">جمع قیمت پایه و اجرت</dt>
-                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white" dir="ltr">{{ $result['formattedProductAmount'] }} + {{ $result['formattedLaborAmount'] }} = {{ $result['formattedSubtotal'] }} تومان</dd>
+                        <dd class="flex flex-wrap items-center gap-2 font-medium tabular-nums text-gray-700 dark:text-gray-200" dir="ltr">
+                            <span>{{ $result['formattedProductAmount'] }} + {{ $result['formattedLaborAmount'] }}</span>
+                            <span class="text-gray-400">=</span>
+                            <span class="rounded-lg bg-primary-50 px-2.5 py-1 font-bold text-primary-800 ring-1 ring-primary-200 dark:bg-primary-400/10 dark:text-primary-300 dark:ring-primary-400/20">{{ $result['formattedSubtotal'] }} تومان</span>
+                        </dd>
                     </div>
                     <div class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                         <dt class="shrink-0 text-gray-600 dark:text-gray-300">مبنای مالیات: {{ $result['taxScopeLabel'] }}</dt>
-                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white" dir="ltr">{{ $result['formattedTaxableAmount'] }} تومان</dd>
+                        <dd class="flex flex-wrap items-center gap-2 font-medium tabular-nums text-gray-700 dark:text-gray-200" dir="ltr">
+                            @if($result['taxScopeLabel'] === 'محصول و اجرت')
+                                <span>{{ $result['formattedProductAmount'] }} + {{ $result['formattedLaborAmount'] }}</span>
+                            @else
+                                <span>{{ $result['formattedLaborAmount'] }} <span class="font-normal text-gray-500">(فقط اجرت)</span></span>
+                            @endif
+                            <span class="text-gray-400">=</span>
+                            <span class="rounded-lg bg-primary-50 px-2.5 py-1 font-bold text-primary-800 ring-1 ring-primary-200 dark:bg-primary-400/10 dark:text-primary-300 dark:ring-primary-400/20">{{ $result['formattedTaxableAmount'] }} تومان</span>
+                        </dd>
                     </div>
                     <div class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                         <dt class="shrink-0 text-gray-600 dark:text-gray-300">مبلغ مالیات ({{ number_format($result['taxPercent'], 2) }}٪)</dt>
-                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white" dir="ltr">{{ $result['formattedTaxableAmount'] }} × {{ number_format($result['taxPercent'], 2) }}٪ = {{ $result['formattedTaxAmount'] }} تومان</dd>
+                        <dd class="flex flex-wrap items-center gap-2 font-medium tabular-nums text-gray-700 dark:text-gray-200" dir="ltr">
+                            <span>{{ $result['formattedTaxableAmount'] }} × {{ number_format($result['taxPercent'], 2) }}٪</span>
+                            <span class="text-gray-400">=</span>
+                            <span class="rounded-lg bg-primary-50 px-2.5 py-1 font-bold text-primary-800 ring-1 ring-primary-200 dark:bg-primary-400/10 dark:text-primary-300 dark:ring-primary-400/20">{{ $result['formattedTaxAmount'] }} تومان</span>
+                        </dd>
                     </div>
                     <div class="flex flex-col gap-1 py-3 text-sm font-bold sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                         <dt class="shrink-0 text-gray-900 dark:text-white">قیمت نهایی</dt>
-                        <dd class="tabular-nums text-primary-700 dark:text-primary-400" dir="ltr">{{ $result['formattedSubtotal'] }} + {{ $result['formattedTaxAmount'] }} = {{ $result['formattedTotalPrice'] }} تومان</dd>
+                        <dd class="flex flex-wrap items-center gap-2 tabular-nums text-gray-700 dark:text-gray-200" dir="ltr">
+                            <span>{{ $result['formattedSubtotal'] }} + {{ $result['formattedTaxAmount'] }}</span>
+                            <span class="text-gray-400">=</span>
+                            <span class="rounded-lg bg-amber-100 px-2.5 py-1 font-bold text-amber-900 ring-1 ring-amber-300 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20">{{ $result['formattedTotalPrice'] }} تومان</span>
+                        </dd>
                     </div>
                 </dl>
             @elseif($result)
