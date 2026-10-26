@@ -29,6 +29,8 @@ class ProductSalesReport extends Page
 
     public ?string $dateTo = null;
 
+    public int $periodOffset = 0;
+
     /** @var Collection<int, array{product_id: int|null, name: string, quantity: int, metal_type: string|null, metal_label: string, form_label: string, brand_label: string}> */
     public Collection $report;
 
@@ -62,6 +64,11 @@ class ProductSalesReport extends Page
     public function mount(): void
     {
         $this->report = collect();
+    }
+
+    public function updatedDateRange(): void
+    {
+        $this->periodOffset = 0;
     }
 
     public function form(Schema $schema): Schema
@@ -198,7 +205,57 @@ class ProductSalesReport extends Page
 
     public function nextDay(): void
     {
+        if (! $this->canNavigateToNextDay()) {
+            return;
+        }
+
         $this->navigateDay(1);
+    }
+
+    public function canNavigateToNextDay(): bool
+    {
+        $selectedDay = $this->selectedDay();
+
+        return $selectedDay !== null && $selectedDay->lt(Jalalian::now()->toCarbon()->startOfDay());
+    }
+
+    public function canNavigateByPeriod(): bool
+    {
+        return in_array($this->dateRange, ['week', 'month', 'year'], true);
+    }
+
+    public function canNavigateToNextPeriod(): bool
+    {
+        return $this->canNavigateByPeriod() && $this->periodOffset < 0;
+    }
+
+    public function selectedPeriodLabel(): ?string
+    {
+        if (! $this->canNavigateByPeriod()) {
+            return null;
+        }
+
+        [$start, $end] = $this->selectedPeriodDates();
+
+        return match ($this->dateRange) {
+            'week' => 'گزارش هفته '.Jalalian::fromCarbon($start->toCarbon())->format('Y/m/d').' تا '.Jalalian::fromCarbon($end->toCarbon())->format('Y/m/d'),
+            'month' => 'گزارش ماه '.Jalalian::fromCarbon($start->toCarbon())->format('Y/m'),
+            'year' => 'گزارش سال '.Jalalian::fromCarbon($start->toCarbon())->format('Y'),
+        };
+    }
+
+    public function previousPeriod(): void
+    {
+        $this->navigatePeriod(-1);
+    }
+
+    public function nextPeriod(): void
+    {
+        if (! $this->canNavigateToNextPeriod()) {
+            return;
+        }
+
+        $this->navigatePeriod(1);
     }
 
     /**
@@ -206,24 +263,14 @@ class ProductSalesReport extends Page
      */
     private function resolveDateRange(): array
     {
-        $now = Jalalian::now();
-
         return match ($this->dateRange) {
+            'week', 'month', 'year' => array_map(
+                static fn (Jalalian $date): string => $date->toCarbon()->format('Y-m-d'),
+                $this->selectedPeriodDates(),
+            ),
             'today' => [
-                $now->toCarbon()->startOfDay()->format('Y-m-d'),
-                $now->toCarbon()->endOfDay()->format('Y-m-d'),
-            ],
-            'week' => [
-                $now->getFirstDayOfWeek()->toCarbon()->format('Y-m-d'),
-                $now->getEndDayOfWeek()->toCarbon()->format('Y-m-d'),
-            ],
-            'month' => [
-                $now->getFirstDayOfMonth()->toCarbon()->format('Y-m-d'),
-                $now->getEndDayOfMonth()->toCarbon()->format('Y-m-d'),
-            ],
-            'year' => [
-                $now->getFirstDayOfYear()->toCarbon()->format('Y-m-d'),
-                $now->getEndDayOfYear()->toCarbon()->format('Y-m-d'),
+                Jalalian::now()->toCarbon()->startOfDay()->format('Y-m-d'),
+                Jalalian::now()->toCarbon()->endOfDay()->format('Y-m-d'),
             ],
             'custom' => [
                 filled($this->dateFrom) ? $this->parseDate($this->dateFrom) : null,
@@ -280,5 +327,52 @@ class ProductSalesReport extends Page
         $this->dateTo = $targetDate;
 
         $this->loadReport();
+    }
+
+    private function navigatePeriod(int $offset): void
+    {
+        if (! $this->canNavigateByPeriod()) {
+            return;
+        }
+
+        $targetOffset = $this->periodOffset + $offset;
+
+        if ($targetOffset > 0) {
+            return;
+        }
+
+        $this->periodOffset = $targetOffset;
+        $this->loadReport();
+    }
+
+    /**
+     * @return array{0: Jalalian, 1: Jalalian}
+     */
+    private function selectedPeriodDates(): array
+    {
+        $now = Jalalian::now();
+
+        if ($this->dateRange === 'week') {
+            $start = $now->getFirstDayOfWeek();
+            $start = $this->periodOffset < 0 ? $start->subDays(abs($this->periodOffset) * 7) : $start;
+
+            return [$start, $start->addDays(6)];
+        }
+
+        if ($this->dateRange === 'month') {
+            $start = $now->getFirstDayOfMonth();
+            $start = $this->periodOffset < 0 ? $start->subMonths(abs($this->periodOffset)) : $start;
+
+            return [$start, $start->getEndDayOfMonth()];
+        }
+
+        if ($this->dateRange === 'year') {
+            $start = $now->getFirstDayOfYear();
+            $start = $this->periodOffset < 0 ? $start->subYears(abs($this->periodOffset)) : $start;
+
+            return [$start, $start->getEndDayOfYear()];
+        }
+
+        return [$now, $now];
     }
 }

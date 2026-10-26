@@ -10,19 +10,21 @@
         </div>
     </form>
 
-    @if($this->canNavigateByDay())
+    @if($this->canNavigateByDay() || $this->canNavigateByPeriod())
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
-            <x-filament::button type="button" color="gray" size="sm" icon="heroicon-o-chevron-right" wire:click="previousDay" wire:loading.attr="disabled">
-                روز قبل
+            <x-filament::button type="button" color="gray" size="sm" icon="heroicon-o-chevron-right" wire:click="{{ $this->canNavigateByPeriod() ? 'previousPeriod' : 'previousDay' }}" wire:loading.attr="disabled">
+                {{ $this->canNavigateByPeriod() ? match ($dateRange) { 'week' => 'هفته قبل', 'month' => 'ماه قبل', 'year' => 'سال قبل' } : 'روز قبل' }}
             </x-filament::button>
 
             <p class="text-sm font-medium text-gray-700 dark:text-gray-200">
-                گزارش روز {{ $this->selectedDayLabel() }}
+                {{ $this->canNavigateByPeriod() ? $this->selectedPeriodLabel() : 'گزارش روز '.$this->selectedDayLabel() }}
             </p>
 
-            <x-filament::button type="button" color="gray" size="sm" icon="heroicon-o-chevron-left" wire:click="nextDay" wire:loading.attr="disabled">
-                روز بعد
-            </x-filament::button>
+            @if($this->canNavigateByPeriod() ? $this->canNavigateToNextPeriod() : $this->canNavigateToNextDay())
+                <x-filament::button type="button" color="gray" size="sm" icon="heroicon-o-chevron-left" wire:click="{{ $this->canNavigateByPeriod() ? 'nextPeriod' : 'nextDay' }}" wire:loading.attr="disabled">
+                    {{ $this->canNavigateByPeriod() ? match ($dateRange) { 'week' => 'هفته بعد', 'month' => 'ماه بعد', 'year' => 'سال بعد' } : 'روز بعد' }}
+                </x-filament::button>
+            @endif
         </div>
     @endif
 
