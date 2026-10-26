@@ -58,7 +58,7 @@ class ProductSalesReport extends Page
 
     public static function getNavigationSort(): ?int
     {
-        return 2;
+        return 3;
     }
 
     public function mount(): void

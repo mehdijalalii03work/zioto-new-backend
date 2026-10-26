@@ -22,7 +22,7 @@ class UserMapDashboard extends Page
 
     protected static string|\UnitEnum|null $navigationGroup = 'گزارشات مدیریتی';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     protected string $view = 'filament.pages.user-map-dashboard';
 
