@@ -43,10 +43,9 @@
                 $wire.set(property, raw);
             },
         }"
-        class="space-y-6"
+        class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]"
     >
-        <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
-            <form wire:submit="calculate" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+        <form wire:submit="calculate" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
             <div class="mb-6 space-y-1">
                 <h2 class="text-base font-semibold text-gray-950 dark:text-white">ورودی‌های محاسبه</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">قیمت هر گرم، وزن و درصد اجرت را دستی وارد کنید. این ماشین‌حساب به قیمت تابلو و اطلاعات محصولات متصل نیست.</p>
@@ -116,33 +115,18 @@
                     محاسبه
                 </x-filament::button>
             </div>
-            </form>
+        </form>
 
-            <section aria-live="polite" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
-                @if($result)
-                    <div class="flex h-full min-h-64 flex-col items-center justify-center text-center">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">قیمت نهایی با مالیات</p>
-                        <p class="mt-2 text-3xl font-bold tabular-nums text-primary-700 dark:text-primary-400">{{ $result['formattedTotalPrice'] }} <span class="text-base font-medium">تومان</span></p>
-                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">ریز محاسبات در کادر پایین صفحه</p>
-                    </div>
-                @else
-                    <div class="flex h-full min-h-64 flex-col items-center justify-center text-center">
-                        <x-filament::icon icon="heroicon-o-calculator" class="mb-3 h-10 w-10 text-gray-400" />
-                        <h2 class="text-base font-semibold text-gray-900 dark:text-white">آمادهٔ محاسبه</h2>
-                        <p class="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">قیمت هر گرم، وزن و درصد اجرت را وارد کنید و دکمهٔ محاسبه را بزنید تا جزئیات قیمت اینجا نمایش داده شود.</p>
-                    </div>
-                @endif
-            </section>
-        </div>
-
-        @if($result)
-            <section aria-live="polite" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
-                <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <section aria-live="polite" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+            @if($result && $showDetails)
+                <div class="mb-4 flex items-center justify-between gap-3">
                     <div>
                         <h2 class="text-base font-semibold text-gray-950 dark:text-white">ریز محاسبات</h2>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">فرمول و مبلغ هر مرحله به‌صورت جداگانه</p>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">فرمول و مبلغ هر مرحله</p>
                     </div>
-                    <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">همه مبالغ به تومان</span>
+                    <x-filament::button type="button" color="gray" size="sm" wire:click="toggleDetails" icon="heroicon-o-arrow-uturn-right">
+                        بازگشت به نتیجه
+                    </x-filament::button>
                 </div>
 
                 <dl class="divide-y divide-gray-100 rounded-xl border border-gray-100 px-4 dark:divide-gray-800 dark:border-gray-800">
@@ -179,7 +163,21 @@
                         <dd class="tabular-nums text-primary-700 dark:text-primary-400" dir="ltr">{{ $result['formattedSubtotal'] }} + {{ $result['formattedTaxAmount'] }} = {{ $result['formattedTotalPrice'] }} تومان</dd>
                     </div>
                 </dl>
-            </section>
-        @endif
+            @elseif($result)
+                <div class="flex h-full min-h-64 flex-col items-center justify-center text-center">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">قیمت نهایی با مالیات</p>
+                    <p class="mt-2 text-3xl font-bold tabular-nums text-primary-700 dark:text-primary-400">{{ $result['formattedTotalPrice'] }} <span class="text-base font-medium">تومان</span></p>
+                    <x-filament::button type="button" color="gray" size="sm" wire:click="toggleDetails" icon="heroicon-o-document-magnifying-glass" class="mt-5">
+                        مشاهده جزئیات محاسبات
+                    </x-filament::button>
+                </div>
+            @else
+                <div class="flex h-full min-h-64 flex-col items-center justify-center text-center">
+                    <x-filament::icon icon="heroicon-o-calculator" class="mb-3 h-10 w-10 text-gray-400" />
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-white">آمادهٔ محاسبه</h2>
+                    <p class="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">قیمت هر گرم، وزن و درصد اجرت را وارد کنید و دکمهٔ محاسبه را بزنید تا قیمت نهایی اینجا نمایش داده شود.</p>
+                </div>
+            @endif
+        </section>
     </div>
 </x-filament-panels::page>

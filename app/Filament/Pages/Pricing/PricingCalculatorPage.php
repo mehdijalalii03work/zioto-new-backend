@@ -37,6 +37,8 @@ class PricingCalculatorPage extends Page
      */
     public ?array $result = null;
 
+    public bool $showDetails = false;
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can(Permission::PricingView->value) ?? false;
@@ -61,12 +63,14 @@ class PricingCalculatorPage extends Page
             }
 
             $this->result = null;
+            $this->showDetails = false;
         }
     }
 
     public function calculate(): void
     {
         $validated = $this->validate();
+        $this->showDetails = false;
 
         $spotPrice = (float) $validated['spotPrice'];
         $weight = (float) $validated['weight'];
@@ -101,6 +105,13 @@ class PricingCalculatorPage extends Page
             'formattedTotalPrice' => $this->formatAmount($totalPrice),
             'taxScopeLabel' => $taxScopeLabel,
         ];
+    }
+
+    public function toggleDetails(): void
+    {
+        if ($this->result !== null) {
+            $this->showDetails = ! $this->showDetails;
+        }
     }
 
     private function formatAmount(float $amount): string
