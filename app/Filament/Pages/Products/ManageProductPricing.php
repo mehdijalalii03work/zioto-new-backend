@@ -23,6 +23,8 @@ class ManageProductPricing extends Page
 
     protected static ?string $title = 'تنظیمات ضریب';
 
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-adjustments-horizontal';
+
     protected string $view = 'filament.pages.manage-product-pricing';
 
     /**
