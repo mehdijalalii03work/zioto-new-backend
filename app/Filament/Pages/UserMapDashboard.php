@@ -45,7 +45,7 @@ class UserMapDashboard extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->can(Permission::DashboardView->value) ?? false;
+        return auth()->user()?->can(Permission::ManagementReportView->value) ?? false;
     }
 
     public function mount(): void

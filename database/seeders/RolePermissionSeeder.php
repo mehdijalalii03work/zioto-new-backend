@@ -54,6 +54,7 @@ class RolePermissionSeeder extends Seeder
                 ...self::crud(Permission::CategoryView, Permission::CategoryCreate, Permission::CategoryEdit, Permission::CategoryDelete),
                 ...self::crud(Permission::BrandView, Permission::BrandCreate, Permission::BrandEdit, Permission::BrandDelete),
                 ...self::crud(Permission::OrderView, Permission::OrderCreate, Permission::OrderEdit, Permission::OrderDelete),
+                ...self::crud(Permission::DiscountCodeView, Permission::DiscountCodeCreate, Permission::DiscountCodeEdit, Permission::DiscountCodeDelete),
                 ...self::crud(Permission::PaymentView, Permission::PaymentCreate, Permission::PaymentEdit, Permission::PaymentDelete),
                 ...self::crud(Permission::CustomerView, Permission::CustomerCreate, Permission::CustomerEdit, Permission::CustomerDelete),
                 ...self::crud(Permission::ShippingView, Permission::ShippingCreate, Permission::ShippingEdit, Permission::ShippingDelete),

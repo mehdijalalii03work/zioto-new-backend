@@ -65,7 +65,7 @@ class ManageProductPricing extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->can(Permission::ProductEdit->value) ?? false;
+        return auth()->user()?->can(Permission::ProductPricing->value) ?? false;
     }
 
     public static function getNavigationLabel(): string
@@ -199,7 +199,7 @@ class ManageProductPricing extends Page
 
     public function save(): void
     {
-        if (! auth()->user()?->can(Permission::ProductEdit->value)) {
+        if (! auth()->user()?->can(Permission::ProductPricing->value)) {
             Notification::make()
                 ->title('دسترسی غیرمجاز')
                 ->danger()

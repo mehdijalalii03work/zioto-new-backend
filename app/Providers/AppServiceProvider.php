@@ -6,6 +6,7 @@ use App\Listeners\ConvertMediaToWebp;
 use App\Listeners\LogRolePermissionChanges;
 use App\Models\Brand;
 use App\Models\ContactMessage;
+use App\Models\DiscountCode;
 use App\Models\Setting;
 use App\Models\ShippingMethod;
 use App\Models\User;
@@ -21,6 +22,7 @@ use App\Policies\BlogPostPolicy;
 use App\Policies\BlogTagPolicy;
 use App\Policies\BrandPolicy;
 use App\Policies\ContactMessagePolicy;
+use App\Policies\DiscountCodePolicy;
 use App\Policies\OrderPolicy;
 use App\Policies\PaymentPolicy;
 use App\Policies\PermissionPolicy;
@@ -142,6 +144,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(BlogCategory::class, BlogCategoryPolicy::class);
         Gate::policy(BlogTag::class, BlogTagPolicy::class);
         Gate::policy(ContactMessage::class, ContactMessagePolicy::class);
+        Gate::policy(DiscountCode::class, DiscountCodePolicy::class);
         Gate::policy(RoleModel::class, RolePolicy::class);
         Gate::policy(PermissionModel::class, PermissionPolicy::class);
     }

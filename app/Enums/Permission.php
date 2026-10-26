@@ -40,6 +40,14 @@ enum Permission: string
 
     case OrderDelete = 'order.delete';
 
+    case DiscountCodeView = 'discount-code.view';
+
+    case DiscountCodeCreate = 'discount-code.create';
+
+    case DiscountCodeEdit = 'discount-code.edit';
+
+    case DiscountCodeDelete = 'discount-code.delete';
+
     case PaymentView = 'payment.view';
 
     case PaymentCreate = 'payment.create';
@@ -129,6 +137,10 @@ enum Permission: string
             self::OrderCreate => 'ایجاد سفارش',
             self::OrderEdit => 'ویرایش سفارش',
             self::OrderDelete => 'حذف سفارش',
+            self::DiscountCodeView => 'مشاهده کدهای تخفیف',
+            self::DiscountCodeCreate => 'ایجاد کد تخفیف',
+            self::DiscountCodeEdit => 'ویرایش کد تخفیف',
+            self::DiscountCodeDelete => 'حذف کد تخفیف',
             self::PaymentView => 'مشاهده پرداخت‌ها',
             self::PaymentCreate => 'ایجاد پرداخت',
             self::PaymentEdit => 'ویرایش پرداخت',
@@ -174,6 +186,7 @@ enum Permission: string
             self::CategoryView, self::CategoryCreate, self::CategoryEdit, self::CategoryDelete => 'دسته‌بندی محصولات',
             self::BrandView, self::BrandCreate, self::BrandEdit, self::BrandDelete => 'برندها',
             self::OrderView, self::OrderCreate, self::OrderEdit, self::OrderDelete => 'سفارش‌ها',
+            self::DiscountCodeView, self::DiscountCodeCreate, self::DiscountCodeEdit, self::DiscountCodeDelete => 'کدهای تخفیف',
             self::PaymentView, self::PaymentCreate, self::PaymentEdit, self::PaymentDelete => 'پرداخت‌ها',
             self::CustomerView, self::CustomerCreate, self::CustomerEdit, self::CustomerDelete => 'مشتریان',
             self::ShippingView, self::ShippingCreate, self::ShippingEdit, self::ShippingDelete => 'روش‌های ارسال',
