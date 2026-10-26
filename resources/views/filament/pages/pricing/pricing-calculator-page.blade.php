@@ -1,5 +1,50 @@
 <x-filament-panels::page>
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
+    <div
+        x-data="{
+            formatCalculatorInput(event, property) {
+                const input = event.target;
+                const previousValue = input.value;
+                const previousCaret = input.selectionStart ?? previousValue.length;
+                const digitsBeforeCaret = previousValue.slice(0, previousCaret).replace(/[^0-9۰-۹٠-٩٫.]/g, '').length;
+                const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+                const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+                let raw = previousValue
+                    .replace(/[۰-۹]/g, (digit) => String(persianDigits.indexOf(digit)))
+                    .replace(/[٠-٩]/g, (digit) => String(arabicDigits.indexOf(digit)))
+                    .replace(/٫/g, '.')
+                    .replace(/[٬,،\s]/g, '');
+
+                const decimalPosition = raw.indexOf('.');
+
+                if (decimalPosition !== -1) {
+                    raw = raw.slice(0, decimalPosition + 1) + raw.slice(decimalPosition + 1).replace(/\./g, '');
+                }
+
+                const [integerPart, decimalPart] = raw.split('.', 2);
+                const groupedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                const formatted = decimalPosition === -1
+                    ? groupedInteger
+                    : `${groupedInteger}.${decimalPart ?? ''}`;
+
+                input.value = formatted;
+
+                let caret = 0;
+                let countedCharacters = 0;
+
+                while (caret < formatted.length && countedCharacters < digitsBeforeCaret) {
+                    if (/[0-9.]/.test(formatted[caret])) {
+                        countedCharacters++;
+                    }
+
+                    caret++;
+                }
+
+                input.setSelectionRange(caret, caret);
+                $wire.set(property, raw);
+            },
+        }"
+        class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]"
+    >
         <form wire:submit="calculate" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
             <div class="mb-6 space-y-1">
                 <h2 class="text-base font-semibold text-gray-950 dark:text-white">ورودی‌های محاسبه</h2>
@@ -10,7 +55,7 @@
                 <div>
                     <label for="spotPrice" class="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">قیمت لحظه‌ای</label>
                     <div class="relative rounded-xl border border-gray-300 bg-gray-50 transition focus-within:border-primary-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-500/20 dark:border-gray-700 dark:bg-gray-950 dark:focus-within:bg-gray-900">
-                        <input id="spotPrice" type="text" wire:model.live.debounce.150ms="spotPrice" inputmode="decimal" placeholder="مثلاً ۳۴۸٬۳۳۳٬۴۶۰" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none placeholder:text-sm placeholder:font-normal placeholder:text-gray-400 focus:ring-0 dark:text-white" />
+                        <input id="spotPrice" type="text" wire:ignore inputmode="decimal" placeholder="مثلاً ۳۴۸٬۳۳۳٬۴۶۰" x-on:input="formatCalculatorInput($event, 'spotPrice')" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none placeholder:text-sm placeholder:font-normal placeholder:text-gray-400 focus:ring-0 dark:text-white" />
                         <span class="pointer-events-none absolute inset-y-0 end-4 flex items-center text-xs font-medium text-gray-500 dark:text-gray-400">تومان</span>
                     </div>
                     @error('spotPrice') <p class="mt-1 text-sm text-danger-600">قیمت لحظه‌ای باید عددی بیشتر از صفر باشد.</p> @enderror
@@ -19,7 +64,7 @@
                 <div>
                     <label for="laborPercent" class="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">درصد اجرت</label>
                     <div class="relative rounded-xl border border-gray-300 bg-gray-50 transition focus-within:border-primary-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-500/20 dark:border-gray-700 dark:bg-gray-950 dark:focus-within:bg-gray-900">
-                        <input id="laborPercent" type="text" wire:model.live.debounce.150ms="laborPercent" inputmode="decimal" placeholder="مثلاً ۷٫۵" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 pe-12 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none placeholder:text-sm placeholder:font-normal placeholder:text-gray-400 focus:ring-0 dark:text-white" />
+                        <input id="laborPercent" type="text" wire:ignore inputmode="decimal" placeholder="مثلاً ۷٫۵" x-on:input="formatCalculatorInput($event, 'laborPercent')" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 pe-12 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none placeholder:text-sm placeholder:font-normal placeholder:text-gray-400 focus:ring-0 dark:text-white" />
                         <span class="pointer-events-none absolute inset-y-0 end-4 flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">٪</span>
                     </div>
                     @error('laborPercent') <p class="mt-1 text-sm text-danger-600">درصد اجرت باید بین صفر تا ۱۰۰۰ باشد.</p> @enderror
@@ -50,7 +95,7 @@
             <div class="mt-5 max-w-sm">
                 <label for="taxPercent" class="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">درصد مالیات</label>
                 <div class="relative rounded-xl border border-gray-300 bg-gray-50 transition focus-within:border-primary-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-500/20 dark:border-gray-700 dark:bg-gray-950 dark:focus-within:bg-gray-900">
-                    <input id="taxPercent" type="text" wire:model.live.debounce.150ms="taxPercent" inputmode="decimal" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 pe-12 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none focus:ring-0 dark:text-white" />
+                    <input id="taxPercent" type="text" wire:ignore value="{{ $taxPercent }}" inputmode="decimal" x-on:input="formatCalculatorInput($event, 'taxPercent')" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 pe-12 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none focus:ring-0 dark:text-white" />
                     <span class="pointer-events-none absolute inset-y-0 end-4 flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">٪</span>
                 </div>
                 @error('taxPercent') <p class="mt-1 text-sm text-danger-600">درصد مالیات باید بین صفر تا ۱۰۰۰ باشد.</p> @enderror
