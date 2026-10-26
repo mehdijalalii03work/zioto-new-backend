@@ -5,7 +5,6 @@ namespace App\Filament\Pages\Reports;
 use App\Enums\Permission;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
-use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -55,8 +54,6 @@ class TotalInvoiceReport extends Page
 
     public ?string $dateTo = null;
 
-    public ?string $gateway = null;
-
     /** @var Collection<int, array{date: string, invoice_count: int, net_amount: float, gold_count: int, gold_amount: float, silver_count: int, silver_amount: float, plaque_count: int, plaque_amount: float}> */
     public $report;
 
@@ -71,55 +68,36 @@ class TotalInvoiceReport extends Page
     {
         return $schema
             ->components([
-                Grid::make(2)
+                Section::make('بازه زمانی')
+                    ->icon('heroicon-o-calendar-days')
                     ->schema([
-                        Section::make('بازه زمانی')
-                            ->icon('heroicon-o-calendar-days')
-                            ->schema([
-                                Radio::make('dateRange')
-                                    ->label('بازه زمانی')
-                                    ->options([
-                                        'all' => 'همه',
-                                        'today' => 'امروز',
-                                        'week' => 'هفته جاری',
-                                        'month' => 'ماه جاری',
-                                        'year' => 'سال جاری',
-                                        'custom' => 'سفارشی',
-                                    ])
-                                    ->live()
-                                    ->default('all')
-                                    ->inline(),
+                        Radio::make('dateRange')
+                            ->label('بازه زمانی')
+                            ->options([
+                                'all' => 'همه',
+                                'today' => 'امروز',
+                                'week' => 'هفته جاری',
+                                'month' => 'ماه جاری',
+                                'year' => 'سال جاری',
+                                'custom' => 'سفارشی',
+                            ])
+                            ->live()
+                            ->default('all')
+                            ->inline(),
 
-                                Grid::make(2)
-                                    ->schema(fn (Get $get): array => $get('dateRange') === 'custom' ? [
-                                        DatePicker::make('dateFrom')
-                                            ->label('از تاریخ')
-                                            ->native(false)
-                                            ->jalali()
-                                            ->displayFormat('Y/m/d'),
-                                        DatePicker::make('dateTo')
-                                            ->label('تا تاریخ')
-                                            ->native(false)
-                                            ->jalali()
-                                            ->displayFormat('Y/m/d'),
-                                    ] : []),
-                            ]),
-
-                        Section::make('درگاه پرداخت')
-                            ->icon('heroicon-o-credit-card')
-                            ->schema([
-                                Select::make('gateway')
-                                    ->label('درگاه پرداخت')
-                                    ->placeholder('همه')
-                                    ->options([
-                                        'parsian' => 'پارسیان',
-                                        'digipay' => 'دیجی‌پی',
-                                        'kamanlend' => 'کمان‌لند',
-                                        'smartis' => 'اسمارتیس',
-                                        'nopay' => 'نوپی',
-                                    ])
-                                    ->native(false),
-                            ]),
+                        Grid::make(2)
+                            ->schema(fn (Get $get): array => $get('dateRange') === 'custom' ? [
+                                DatePicker::make('dateFrom')
+                                    ->label('از تاریخ')
+                                    ->native(false)
+                                    ->jalali()
+                                    ->displayFormat('Y/m/d'),
+                                DatePicker::make('dateTo')
+                                    ->label('تا تاریخ')
+                                    ->native(false)
+                                    ->jalali()
+                                    ->displayFormat('Y/m/d'),
+                            ] : []),
                     ]),
             ]);
     }
@@ -141,10 +119,6 @@ class TotalInvoiceReport extends Page
 
         if ($gregorianTo) {
             $query->whereDate('created_at', '<=', $gregorianTo);
-        }
-
-        if (filled($this->gateway)) {
-            $query->whereHas('payments', fn ($q) => $q->where('gateway', $this->gateway));
         }
 
         $orders = $query->get();
