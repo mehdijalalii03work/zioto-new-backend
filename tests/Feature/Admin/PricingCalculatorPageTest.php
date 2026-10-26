@@ -76,4 +76,22 @@ class PricingCalculatorPageTest extends TestCase
             ->assertHasErrors(['spotPrice', 'laborPercent', 'taxPercent'])
             ->assertSet('result', null);
     }
+
+    public function test_normalizes_persian_digits_and_thousands_separators_before_calculation(): void
+    {
+        $user = User::factory()->create()->assignRole(Role::Admin->value);
+        Livewire::actingAs($user, 'web');
+
+        Livewire::test(PricingCalculatorPage::class)
+            ->set('spotPrice', '۳۴۸٬۳۳۳٬۴۶۰')
+            ->set('laborPercent', '۷٫۵')
+            ->set('taxPercent', '۱۰')
+            ->assertSet('spotPrice', '348333460')
+            ->assertSet('laborPercent', '7.5')
+            ->assertSet('taxPercent', '10')
+            ->call('calculate')
+            ->assertSet('result.spotPrice', 348333460.0)
+            ->assertSet('result.laborAmount', 26125009.5)
+            ->assertSet('result.taxAmount', 2612500.95);
+    }
 }

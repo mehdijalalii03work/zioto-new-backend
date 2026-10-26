@@ -10,7 +10,7 @@
                 <div>
                     <label for="spotPrice" class="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">قیمت لحظه‌ای</label>
                     <div class="relative rounded-xl border border-gray-300 bg-gray-50 transition focus-within:border-primary-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-500/20 dark:border-gray-700 dark:bg-gray-950 dark:focus-within:bg-gray-900">
-                        <input id="spotPrice" type="number" min="1" step="any" wire:model="spotPrice" inputmode="decimal" placeholder="مثلاً ۷٬۰۰۰٬۰۰۰" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none placeholder:text-sm placeholder:font-normal placeholder:text-gray-400 focus:ring-0 dark:text-white" />
+                        <input id="spotPrice" type="text" wire:model.live.debounce.150ms="spotPrice" inputmode="decimal" placeholder="مثلاً ۳۴۸٬۳۳۳٬۴۶۰" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none placeholder:text-sm placeholder:font-normal placeholder:text-gray-400 focus:ring-0 dark:text-white" />
                         <span class="pointer-events-none absolute inset-y-0 end-4 flex items-center text-xs font-medium text-gray-500 dark:text-gray-400">تومان</span>
                     </div>
                     @error('spotPrice') <p class="mt-1 text-sm text-danger-600">قیمت لحظه‌ای باید عددی بیشتر از صفر باشد.</p> @enderror
@@ -19,7 +19,7 @@
                 <div>
                     <label for="laborPercent" class="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">درصد اجرت</label>
                     <div class="relative rounded-xl border border-gray-300 bg-gray-50 transition focus-within:border-primary-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-500/20 dark:border-gray-700 dark:bg-gray-950 dark:focus-within:bg-gray-900">
-                        <input id="laborPercent" type="number" min="0" max="1000" step="any" wire:model="laborPercent" inputmode="decimal" placeholder="مثلاً ۷٫۵" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 pe-12 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none placeholder:text-sm placeholder:font-normal placeholder:text-gray-400 focus:ring-0 dark:text-white" />
+                        <input id="laborPercent" type="text" wire:model.live.debounce.150ms="laborPercent" inputmode="decimal" placeholder="مثلاً ۷٫۵" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 pe-12 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none placeholder:text-sm placeholder:font-normal placeholder:text-gray-400 focus:ring-0 dark:text-white" />
                         <span class="pointer-events-none absolute inset-y-0 end-4 flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">٪</span>
                     </div>
                     @error('laborPercent') <p class="mt-1 text-sm text-danger-600">درصد اجرت باید بین صفر تا ۱۰۰۰ باشد.</p> @enderror
@@ -50,7 +50,7 @@
             <div class="mt-5 max-w-sm">
                 <label for="taxPercent" class="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">درصد مالیات</label>
                 <div class="relative rounded-xl border border-gray-300 bg-gray-50 transition focus-within:border-primary-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-500/20 dark:border-gray-700 dark:bg-gray-950 dark:focus-within:bg-gray-900">
-                    <input id="taxPercent" type="number" min="0" max="1000" step="any" wire:model="taxPercent" inputmode="decimal" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 pe-12 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none focus:ring-0 dark:text-white" />
+                    <input id="taxPercent" type="text" wire:model.live.debounce.150ms="taxPercent" inputmode="decimal" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 pe-12 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none focus:ring-0 dark:text-white" />
                     <span class="pointer-events-none absolute inset-y-0 end-4 flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">٪</span>
                 </div>
                 @error('taxPercent') <p class="mt-1 text-sm text-danger-600">درصد مالیات باید بین صفر تا ۱۰۰۰ باشد.</p> @enderror
