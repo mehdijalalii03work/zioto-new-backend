@@ -21,7 +21,7 @@
             </p>
 
             @if($this->canNavigateByPeriod() ? $this->canNavigateToNextPeriod() : $this->canNavigateToNextDay())
-                <x-filament::button type="button" color="gray" size="sm" icon="heroicon-o-chevron-left" wire:click="{{ $this->canNavigateByPeriod() ? 'nextPeriod' : 'nextDay' }}" wire:loading.attr="disabled">
+                <x-filament::button type="button" color="gray" size="sm" icon="heroicon-o-chevron-left" icon-position="after" wire:click="{{ $this->canNavigateByPeriod() ? 'nextPeriod' : 'nextDay' }}" wire:loading.attr="disabled">
                     {{ $this->canNavigateByPeriod() ? match ($dateRange) { 'week' => 'هفته بعد', 'month' => 'ماه بعد', 'year' => 'سال بعد' } : 'روز بعد' }}
                 </x-filament::button>
             @endif
