@@ -90,7 +90,7 @@
                                 'bg-amber-500 dark:bg-amber-400' => $product['brand_label'] !== 'زیوتو پلاس' && $product['metal_type'] === 'gold',
                                 'bg-slate-400 dark:bg-slate-500' => $product['brand_label'] !== 'زیوتو پلاس' && $product['metal_type'] === 'silver',
                                 'bg-primary-500 dark:bg-primary-400' => $product['brand_label'] !== 'زیوتو پلاس' && $product['metal_type'] === null,
-                            ]) style="width: {{ $barWidth }}%"></div>
+                            ]) style="width: {{ $barWidth }}%; {{ $product['brand_label'] !== 'زیوتو پلاس' && $product['form_label'] === 'پلاک' ? 'background-color: #752D47;' : '' }}"></div>
                         </div>
 
                         <div class="text-sm font-bold tabular-nums text-gray-950 dark:text-white sm:text-end">
