@@ -23,8 +23,6 @@ class ManageProductPricing extends Page
 
     protected static ?string $title = 'تنظیمات ضریب';
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-adjustments-horizontal';
-
     protected string $view = 'filament.pages.manage-product-pricing';
 
     /**
@@ -87,7 +85,7 @@ class ManageProductPricing extends Page
 
     public static function getNavigationIcon(): string
     {
-        return 'heroicon-o-currency-dollar';
+        return 'heroicon-o-adjustments-horizontal';
     }
 
     public function mount(): void
