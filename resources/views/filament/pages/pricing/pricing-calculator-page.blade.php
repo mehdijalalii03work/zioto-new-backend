@@ -43,9 +43,10 @@
                 $wire.set(property, raw);
             },
         }"
-        class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]"
+        class="space-y-6"
     >
-        <form wire:submit="calculate" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+        <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
+            <form wire:submit="calculate" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
             <div class="mb-6 space-y-1">
                 <h2 class="text-base font-semibold text-gray-950 dark:text-white">ورودی‌های محاسبه</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">قیمت هر گرم، وزن و درصد اجرت را دستی وارد کنید. این ماشین‌حساب به قیمت تابلو و اطلاعات محصولات متصل نیست.</p>
@@ -115,64 +116,70 @@
                     محاسبه
                 </x-filament::button>
             </div>
-        </form>
+            </form>
 
-        <section aria-live="polite" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
-            @if($result)
-                <div class="mb-5">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">قیمت نهایی با مالیات</p>
-                    <p class="mt-1 text-3xl font-bold tabular-nums text-primary-700 dark:text-primary-400">{{ $result['formattedTotalPrice'] }} <span class="text-base font-medium">تومان</span></p>
+            <section aria-live="polite" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+                @if($result)
+                    <div class="flex h-full min-h-64 flex-col items-center justify-center text-center">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">قیمت نهایی با مالیات</p>
+                        <p class="mt-2 text-3xl font-bold tabular-nums text-primary-700 dark:text-primary-400">{{ $result['formattedTotalPrice'] }} <span class="text-base font-medium">تومان</span></p>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">ریز محاسبات در کادر پایین صفحه</p>
+                    </div>
+                @else
+                    <div class="flex h-full min-h-64 flex-col items-center justify-center text-center">
+                        <x-filament::icon icon="heroicon-o-calculator" class="mb-3 h-10 w-10 text-gray-400" />
+                        <h2 class="text-base font-semibold text-gray-900 dark:text-white">آمادهٔ محاسبه</h2>
+                        <p class="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">قیمت هر گرم، وزن و درصد اجرت را وارد کنید و دکمهٔ محاسبه را بزنید تا جزئیات قیمت اینجا نمایش داده شود.</p>
+                    </div>
+                @endif
+            </section>
+        </div>
+
+        @if($result)
+            <section aria-live="polite" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-base font-semibold text-gray-950 dark:text-white">ریز محاسبات</h2>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">فرمول و مبلغ هر مرحله به‌صورت جداگانه</p>
+                    </div>
+                    <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">همه مبالغ به تومان</span>
                 </div>
 
-                <h2 class="mb-3 text-base font-semibold text-gray-950 dark:text-white">ریز محاسبات</h2>
                 <dl class="divide-y divide-gray-100 rounded-xl border border-gray-100 px-4 dark:divide-gray-800 dark:border-gray-800">
-                    <div class="flex items-start justify-between gap-4 py-3 text-sm">
-                        <dt class="text-gray-600 dark:text-gray-300">قیمت هر گرم</dt>
-                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white">{{ $result['formattedSpotPrice'] }} تومان</dd>
+                    <div class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                        <dt class="shrink-0 text-gray-600 dark:text-gray-300">قیمت لحظه‌ای هر گرم</dt>
+                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white" dir="ltr">{{ $result['formattedSpotPrice'] }} تومان</dd>
                     </div>
-                    <div class="flex items-start justify-between gap-4 py-3 text-sm">
-                        <dt class="text-gray-600 dark:text-gray-300">وزن محصول</dt>
-                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white">{{ $result['formattedWeight'] }} گرم</dd>
+                    <div class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                        <dt class="shrink-0 text-gray-600 dark:text-gray-300">وزن محصول</dt>
+                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white" dir="ltr">{{ $result['formattedWeight'] }} گرم</dd>
                     </div>
-                    <div class="flex items-start justify-between gap-4 py-3 text-sm">
-                        <dt class="text-gray-600 dark:text-gray-300">قیمت پایه (قیمت هر گرم × وزن)</dt>
-                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white">{{ $result['formattedProductAmount'] }} تومان</dd>
+                    <div class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                        <dt class="shrink-0 text-gray-600 dark:text-gray-300">قیمت پایه (قیمت هر گرم × وزن)</dt>
+                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white" dir="ltr">{{ $result['formattedSpotPrice'] }} × {{ $result['formattedWeight'] }} = {{ $result['formattedProductAmount'] }} تومان</dd>
                     </div>
-                    <div class="flex items-start justify-between gap-4 py-3 text-sm">
-                        <dt class="text-gray-600 dark:text-gray-300">اجرت ({{ number_format($result['laborPercent'], 2) }}٪ قیمت پایه)</dt>
-                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white">{{ $result['formattedLaborAmount'] }} تومان</dd>
+                    <div class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                        <dt class="shrink-0 text-gray-600 dark:text-gray-300">اجرت ({{ number_format($result['laborPercent'], 2) }}٪ قیمت پایه)</dt>
+                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white" dir="ltr">{{ $result['formattedProductAmount'] }} × {{ number_format($result['laborPercent'], 2) }}٪ = {{ $result['formattedLaborAmount'] }} تومان</dd>
                     </div>
-                    <div class="flex items-start justify-between gap-4 py-3 text-sm">
-                        <dt class="text-gray-600 dark:text-gray-300">جمع قیمت پایه و اجرت</dt>
-                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white">{{ $result['formattedSubtotal'] }} تومان</dd>
+                    <div class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                        <dt class="shrink-0 text-gray-600 dark:text-gray-300">جمع قیمت پایه و اجرت</dt>
+                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white" dir="ltr">{{ $result['formattedProductAmount'] }} + {{ $result['formattedLaborAmount'] }} = {{ $result['formattedSubtotal'] }} تومان</dd>
                     </div>
-                    <div class="flex items-start justify-between gap-4 py-3 text-sm">
-                        <dt class="text-gray-600 dark:text-gray-300">مبنای محاسبه مالیات: {{ $result['taxScopeLabel'] }}</dt>
-                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white">{{ $result['formattedTaxableAmount'] }} تومان</dd>
+                    <div class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                        <dt class="shrink-0 text-gray-600 dark:text-gray-300">مبنای مالیات: {{ $result['taxScopeLabel'] }}</dt>
+                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white" dir="ltr">{{ $result['formattedTaxableAmount'] }} تومان</dd>
                     </div>
-                    <div class="flex items-start justify-between gap-4 py-3 text-sm">
-                        <dt class="text-gray-600 dark:text-gray-300">مالیات ({{ number_format($result['taxPercent'], 2) }}٪)</dt>
-                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white">{{ $result['formattedTaxAmount'] }} تومان</dd>
+                    <div class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                        <dt class="shrink-0 text-gray-600 dark:text-gray-300">مبلغ مالیات ({{ number_format($result['taxPercent'], 2) }}٪)</dt>
+                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white" dir="ltr">{{ $result['formattedTaxableAmount'] }} × {{ number_format($result['taxPercent'], 2) }}٪ = {{ $result['formattedTaxAmount'] }} تومان</dd>
                     </div>
-                    <div class="flex items-start justify-between gap-4 py-3 text-sm font-bold">
-                        <dt class="text-gray-900 dark:text-white">قیمت نهایی</dt>
-                        <dd class="tabular-nums text-primary-700 dark:text-primary-400">{{ $result['formattedTotalPrice'] }} تومان</dd>
+                    <div class="flex flex-col gap-1 py-3 text-sm font-bold sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                        <dt class="shrink-0 text-gray-900 dark:text-white">قیمت نهایی</dt>
+                        <dd class="tabular-nums text-primary-700 dark:text-primary-400" dir="ltr">{{ $result['formattedSubtotal'] }} + {{ $result['formattedTaxAmount'] }} = {{ $result['formattedTotalPrice'] }} تومان</dd>
                     </div>
                 </dl>
-
-                <div class="mt-4 rounded-xl bg-gray-50 p-4 text-xs leading-6 text-gray-600 dark:bg-gray-800 dark:text-gray-300" dir="rtl">
-                    قیمت پایه = قیمت لحظه‌ای هر گرم × وزن محصول<br />
-                    اجرت = قیمت پایه × درصد اجرت ÷ ۱۰۰<br />
-                    مالیات = مبلغ مشمول مالیات × درصد مالیات ÷ ۱۰۰<br />
-                    قیمت نهایی = قیمت پایه + اجرت + مالیات
-                </div>
-            @else
-                <div class="flex h-full min-h-64 flex-col items-center justify-center text-center">
-                    <x-filament::icon icon="heroicon-o-calculator" class="mb-3 h-10 w-10 text-gray-400" />
-                    <h2 class="text-base font-semibold text-gray-900 dark:text-white">آمادهٔ محاسبه</h2>
-                    <p class="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">قیمت هر گرم، وزن و درصد اجرت را وارد کنید و دکمهٔ محاسبه را بزنید تا جزئیات قیمت اینجا نمایش داده شود.</p>
-                </div>
-            @endif
-        </section>
+            </section>
+        @endif
     </div>
 </x-filament-panels::page>
