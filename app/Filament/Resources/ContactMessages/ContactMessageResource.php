@@ -22,7 +22,7 @@ class ContactMessageResource extends Resource
 
     protected static ?string $navigationLabel = 'پیام‌های تماس';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'مدیریت محتوا';
+    protected static string|\UnitEnum|null $navigationGroup = 'ارتباط با مشتریان';
 
     protected static ?int $navigationSort = 3;
 
