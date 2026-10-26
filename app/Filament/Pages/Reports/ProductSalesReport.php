@@ -29,7 +29,7 @@ class ProductSalesReport extends Page
 
     public ?string $dateTo = null;
 
-    /** @var Collection<int, array{product_id: int|null, name: string, quantity: int}> */
+    /** @var Collection<int, array{product_id: int|null, name: string, quantity: int, metal_type: string|null, metal_label: string, form_label: string, brand_label: string}> */
     public Collection $report;
 
     public bool $submitted = false;
@@ -111,7 +111,7 @@ class ProductSalesReport extends Page
         $query = Order::query()
             ->whereIn('status', ['completed', 'confirmed'])
             ->whereDoesntHave('items.product', static fn ($query) => $query->where('slug', 'test'))
-            ->with(['items.product']);
+            ->with(['items.product.brand']);
 
         if ($gregorianFrom !== null) {
             $query->whereDate('created_at', '>=', $gregorianFrom);
@@ -138,11 +138,67 @@ class ProductSalesReport extends Page
                     'product_id' => $item->product_id ? (int) $item->product_id : null,
                     'name' => (string) ($item->product?->name ?: $item->product_name ?: 'محصول حذف‌شده'),
                     'quantity' => (int) $items->sum(static fn ($orderItem): int => (int) $orderItem->quantity),
+                    'metal_type' => $item->product?->metal_type?->value,
+                    'metal_label' => $item->product?->metal_type?->label() ?? 'نامشخص',
+                    'form_label' => $item->product?->form?->label() ?? 'نامشخص',
+                    'brand_label' => self::brandLabel($item->product?->brand?->name, $item->product?->brand?->slug),
                 ];
             })
             ->filter(static fn (array $product): bool => $product['quantity'] > 0)
             ->sort(static fn (array $a, array $b): int => ($b['quantity'] <=> $a['quantity']) ?: strnatcasecmp($a['name'], $b['name']))
             ->values();
+    }
+
+    private static function brandLabel(?string $name, ?string $slug): string
+    {
+        $brand = mb_strtolower(trim(($slug ?? '').' '.($name ?? '')));
+
+        if ($brand === '') {
+            return 'نامشخص';
+        }
+
+        if (str_contains($brand, 'plus') || str_contains($brand, 'پلاس')) {
+            return 'زیوتو پلاس';
+        }
+
+        if (str_contains($brand, 'zioto') || str_contains($brand, 'زیوتو')) {
+            return 'زیوتو';
+        }
+
+        return (string) $name;
+    }
+
+    public function canNavigateByDay(): bool
+    {
+        if ($this->dateRange === 'today') {
+            return true;
+        }
+
+        if ($this->dateRange !== 'custom' || blank($this->dateFrom)) {
+            return false;
+        }
+
+        $from = $this->parseDate($this->dateFrom);
+        $to = filled($this->dateTo) ? $this->parseDate($this->dateTo) : $from;
+
+        return $from !== null && $from === $to;
+    }
+
+    public function selectedDayLabel(): ?string
+    {
+        $date = $this->selectedDay();
+
+        return $date ? Jalalian::fromCarbon($date)->format('Y/m/d') : null;
+    }
+
+    public function previousDay(): void
+    {
+        $this->navigateDay(-1);
+    }
+
+    public function nextDay(): void
+    {
+        $this->navigateDay(1);
     }
 
     /**
@@ -192,5 +248,37 @@ class ProductSalesReport extends Page
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function selectedDay(): ?Carbon
+    {
+        if (! $this->canNavigateByDay()) {
+            return null;
+        }
+
+        if ($this->dateRange === 'today') {
+            return Jalalian::now()->toCarbon()->startOfDay();
+        }
+
+        $date = $this->parseDate((string) $this->dateFrom);
+
+        return $date ? Carbon::parse($date)->startOfDay() : null;
+    }
+
+    private function navigateDay(int $days): void
+    {
+        $date = $this->selectedDay();
+
+        if ($date === null) {
+            return;
+        }
+
+        $targetDate = Jalalian::fromCarbon($date->addDays($days))->format('Y/m/d');
+
+        $this->dateRange = 'custom';
+        $this->dateFrom = $targetDate;
+        $this->dateTo = $targetDate;
+
+        $this->loadReport();
     }
 }

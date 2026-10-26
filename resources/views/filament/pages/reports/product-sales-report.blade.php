@@ -10,6 +10,22 @@
         </div>
     </form>
 
+    @if($this->canNavigateByDay())
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+            <x-filament::button type="button" color="gray" size="sm" icon="heroicon-o-chevron-right" wire:click="previousDay" wire:loading.attr="disabled">
+                روز قبل
+            </x-filament::button>
+
+            <p class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                گزارش روز {{ $this->selectedDayLabel() }}
+            </p>
+
+            <x-filament::button type="button" color="gray" size="sm" icon="heroicon-o-chevron-left" wire:click="nextDay" wire:loading.attr="disabled">
+                روز بعد
+            </x-filament::button>
+        </div>
+    @endif
+
     @if($submitted && $report->isNotEmpty())
         @php
             $maxQuantity = (int) $report->max('quantity');
@@ -39,13 +55,41 @@
                     @endphp
 
                     <div class="grid gap-2 sm:grid-cols-[minmax(10rem,0.34fr)_minmax(0,1fr)_5rem] sm:items-center sm:gap-4">
-                        <div class="min-w-0 text-sm font-medium text-gray-800 dark:text-gray-200" title="{{ $product['name'] }}">
-                            <span class="me-1 text-xs font-normal text-gray-400">{{ number_format($loop->iteration) }}.</span>
-                            <span class="break-words">{{ $product['name'] }}</span>
+                        <div class="min-w-0" title="{{ $product['name'] }}">
+                            <div class="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                <span class="me-1 text-xs font-normal text-gray-400">{{ number_format($loop->iteration) }}.</span>
+                                <span class="break-words">{{ $product['name'] }}</span>
+                            </div>
+                            <div class="mt-1.5 flex flex-wrap gap-1.5">
+                                <span @class([
+                                    'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
+                                    'bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300' => $product['metal_type'] === 'gold',
+                                    'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200' => $product['metal_type'] === 'silver',
+                                    'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' => $product['metal_type'] === null,
+                                ])>
+                                    {{ $product['metal_label'] }}
+                                </span>
+                                <span class="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-400/10 dark:text-blue-300">
+                                    {{ $product['form_label'] }}
+                                </span>
+                                <span @class([
+                                    'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
+                                    'bg-violet-50 text-violet-700 dark:bg-violet-400/10 dark:text-violet-300' => $product['brand_label'] === 'زیوتو پلاس',
+                                    'bg-primary-50 text-primary-800 dark:bg-primary-400/10 dark:text-primary-300' => $product['brand_label'] === 'زیوتو',
+                                    'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' => ! in_array($product['brand_label'], ['زیوتو پلاس', 'زیوتو'], true),
+                                ])>
+                                    {{ $product['brand_label'] }}
+                                </span>
+                            </div>
                         </div>
 
                         <div class="h-5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800" dir="rtl" role="img" aria-label="{{ $product['name'] }}: {{ number_format($product['quantity']) }} عدد">
-                            <div class="h-full rounded-full bg-primary-500 transition-all duration-500 dark:bg-primary-400" style="width: {{ $barWidth }}%"></div>
+                            <div @class([
+                                'h-full rounded-full transition-all duration-500',
+                                'bg-amber-500 dark:bg-amber-400' => $product['metal_type'] === 'gold',
+                                'bg-slate-400 dark:bg-slate-500' => $product['metal_type'] === 'silver',
+                                'bg-primary-500 dark:bg-primary-400' => $product['metal_type'] === null,
+                            ]) style="width: {{ $barWidth }}%"></div>
                         </div>
 
                         <div class="text-sm font-bold tabular-nums text-gray-950 dark:text-white sm:text-end">
