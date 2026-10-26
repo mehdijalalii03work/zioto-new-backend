@@ -11,6 +11,7 @@ use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
 use App\Services\DiscountCodeService;
 use App\Services\InstallmentService;
+use App\Services\OrderSmsNotificationService;
 use App\Services\Pricing\DynamicPriceService;
 use App\Services\Pricing\SalesRestrictionService;
 use App\Support\Platform;
@@ -33,6 +34,7 @@ class PaymentController extends Controller
         private readonly DiscountCodeService $discountCodeService,
         private readonly DynamicPriceService $dynamicPrice,
         private readonly SalesRestrictionService $salesRestrictions,
+        private readonly OrderSmsNotificationService $orderSmsNotifications,
     ) {}
 
     public function calculateFee(CalculateFeeRequest $request): JsonResponse
@@ -592,6 +594,22 @@ class PaymentController extends Controller
                 ]);
             }
         }
+
+        try {
+            $order->refresh();
+        } catch (\Throwable $exception) {
+            try {
+                report($exception);
+            } catch (\Throwable) {
+                // A read/reporting failure must not alter the confirmed payment response.
+            }
+
+            return redirect($frontendUrl.'/confirm?order_id='.$order->id);
+        }
+
+        // Notify only after successful payment and its confirmed order status have been persisted.
+        $this->orderSmsNotifications->queueConfirmation($order);
+        $this->orderSmsNotifications->queueReceivedHealthMessage($order);
 
         return redirect($frontendUrl.'/confirm?order_id='.$order->id);
     }

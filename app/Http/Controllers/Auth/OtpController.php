@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\SendOtpRequest;
 use App\Http\Requests\Auth\ShahkarVerifyRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
 use App\Http\Resources\UserResource;
+use App\Jobs\SendWelcomeSms;
 use App\Models\User;
 use App\Services\ShahkarService;
 use App\Services\SmsIrService;
@@ -15,7 +16,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class OtpController extends Controller
 {
@@ -33,18 +36,32 @@ class OtpController extends Controller
         $phone = $request->input('phone');
         $key = "otp:{$phone}";
 
-        if (Cache::has($key)) {
+        $code = str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+
+        if (! Cache::add($key, $code, self::OTP_TTL)) {
             return response()->json([
-                'message' => 'کد تایید قبلی هنوز معتبر است، لطفاً پس از ۲ دقیقه دوباره تلاش کنید',
+                'message' => 'کد تایید قبلی هنوز معتبر است، لطفاً پس از ۳ دقیقه دوباره تلاش کنید',
                 'error_code' => 'OTP_STILL_VALID',
             ], 429);
         }
 
-        $code = str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+        try {
+            $sent = $this->sms->sendVerificationCode($phone, $code);
+        } catch (Throwable $exception) {
+            try {
+                Log::warning('OTP SMS delivery outcome is unknown', [
+                    'phone_hash' => hash('sha256', $phone),
+                    'exception' => $exception::class,
+                ]);
+            } catch (Throwable) {
+                // The API must still return a controlled response if logging fails.
+            }
 
-        Cache::put($key, $code, self::OTP_TTL);
-
-        $sent = $this->sms->sendVerificationCode($phone, $code);
+            return response()->json([
+                'message' => 'نتیجه ارسال پیامک نامشخص است. اگر کد را دریافت کردید از همان استفاده کنید؛ در غیر این صورت پس از ۳ دقیقه دوباره تلاش کنید.',
+                'error_code' => 'SMS_OUTCOME_UNKNOWN',
+            ], 503);
+        }
 
         if (! $sent) {
             Cache::forget($key);
@@ -52,7 +69,7 @@ class OtpController extends Controller
             return response()->json([
                 'message' => 'ارسال پیامک با مشکل مواجه شد، لطفا دقایقی دیگر تلاش کنید',
                 'error_code' => 'SMS_FAILED',
-            ], 500);
+            ], 503);
         }
 
         return response()->json([
@@ -225,6 +242,16 @@ class OtpController extends Controller
         ]);
 
         Auth::guard('api')->setUser($user);
+
+        try {
+            SendWelcomeSms::dispatch($user->phone, $user->name);
+        } catch (Throwable $exception) {
+            try {
+                report($exception);
+            } catch (Throwable) {
+                // A queue or reporting failure must not change the successful registration response.
+            }
+        }
 
         return response()->json([
             'message' => 'احراز هویت با موفقیت انجام شد',

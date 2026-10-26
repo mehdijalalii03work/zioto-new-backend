@@ -15,6 +15,7 @@ class OrderShipping extends Model
         'shipping_cost', 'tax_amount', 'tax_rate',
         'pickup_date', 'tracking_number', 'tracking_url',
         'estimated_delivery_min', 'estimated_delivery_max', 'delivered_at',
+        'order_confirmation_sms_sent_at', 'received_health_sms_sent_at',
     ];
 
     protected function casts(): array
@@ -25,6 +26,8 @@ class OrderShipping extends Model
             'tax_rate' => 'decimal:2',
             'pickup_date' => 'date',
             'delivered_at' => 'datetime',
+            'order_confirmation_sms_sent_at' => 'datetime',
+            'received_health_sms_sent_at' => 'datetime',
         ];
     }
 

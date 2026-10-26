@@ -3,11 +3,14 @@
 namespace Tests\Feature\Api;
 
 use App\Http\Middleware\AuthenticateApiToken;
+use App\Jobs\SendWelcomeSms;
 use App\Models\User;
 use App\Services\ShahkarService;
 use App\Services\SmsIrService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
@@ -68,6 +71,7 @@ class TenantAuthFlowTest extends TestCase
 
     public function test_otp_login_on_nopay_creates_nopay_account_and_token(): void
     {
+        Queue::fake();
         $this->mockSms();
 
         // Send OTP with X-Platform: nopay
@@ -99,6 +103,10 @@ class TenantAuthFlowTest extends TestCase
 
         $reg->assertOk();
         $reg->assertJsonStructure(['token', 'user']);
+        Queue::assertPushed(SendWelcomeSms::class, fn (SendWelcomeSms $job): bool => $job->mobile === '09120000010'
+            && $job->name === 'علی تست'
+            && $job->afterCommit === true
+        );
 
         // The created user belongs to nopay and has the same phone
         $user = User::withoutTenantScope()->where('phone', '09120000010')->first();
@@ -151,8 +159,90 @@ class TenantAuthFlowTest extends TestCase
         $this->assertSame('verified', $user->identity_verification_status);
     }
 
+    public function test_existing_user_otp_login_does_not_send_welcome_message(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create([
+            'phone' => '09120000012',
+            'platform' => 'main',
+        ]);
+        $this->mockSms();
+
+        $this->postJson('/api/auth/send-otp', ['phone' => $user->phone])->assertOk();
+        $code = Cache::get('otp:'.$user->phone);
+
+        $this->postJson('/api/auth/verify-otp', ['phone' => $user->phone, 'code' => $code])
+            ->assertOk()
+            ->assertJsonPath('user.id', $user->id);
+
+        Queue::assertNotPushed(SendWelcomeSms::class);
+    }
+
+    public function test_otp_transport_exception_returns_a_controlled_response_and_keeps_the_code_valid(): void
+    {
+        Log::shouldReceive('warning')->once()->andThrow(new \RuntimeException('Logger unavailable'));
+        Log::shouldReceive('error')->zeroOrMoreTimes();
+
+        $this->mock(SmsIrService::class, function ($mock): void {
+            $mock->shouldReceive('sendVerificationCode')
+                ->once()
+                ->with('09120000030', \Mockery::type('string'))
+                ->andThrow(new \RuntimeException('SMS provider request timed out'));
+        });
+
+        $response = $this->postJson('/api/auth/send-otp', ['phone' => '09120000030']);
+
+        $response->assertStatus(503)->assertJsonPath('error_code', 'SMS_OUTCOME_UNKNOWN');
+        $this->assertMatchesRegularExpression('/^\d{5}$/', Cache::get('otp:09120000030'));
+    }
+
+    public function test_otp_provider_failure_returns_a_controlled_response_and_clears_the_code(): void
+    {
+        $this->mock(SmsIrService::class, function ($mock): void {
+            $mock->shouldReceive('sendVerificationCode')
+                ->once()
+                ->with('09120000031', \Mockery::type('string'))
+                ->andReturn(false);
+        });
+
+        $response = $this->postJson('/api/auth/send-otp', ['phone' => '09120000031']);
+
+        $response->assertStatus(503)->assertJsonPath('error_code', 'SMS_FAILED');
+        $this->assertNull(Cache::get('otp:09120000031'));
+    }
+
+    public function test_change_phone_transport_exception_returns_a_usable_token_and_keeps_the_code_valid(): void
+    {
+        Log::shouldReceive('warning')->once()->andThrow(new \RuntimeException('Logger unavailable'));
+        Log::shouldReceive('error')->zeroOrMoreTimes();
+
+        $plainToken = 'profile-token-for-change-phone';
+        User::factory()->create([
+            'phone' => '09120000032',
+            'platform' => 'main',
+            'api_token' => $plainToken,
+            'api_token_hash' => hash('sha256', $plainToken),
+            'token_created_at' => now(),
+        ]);
+
+        $this->mock(SmsIrService::class, function ($mock): void {
+            $mock->shouldReceive('sendVerificationCode')
+                ->once()
+                ->with('09120000033', \Mockery::type('string'))
+                ->andThrow(new \RuntimeException('SMS provider request timed out'));
+        });
+
+        $response = $this->withToken($plainToken)
+            ->postJson('/api/profile/change-phone/send-otp', ['phone' => '09120000033']);
+
+        $response->assertStatus(503)->assertJsonPath('error_code', 'SMS_OUTCOME_UNKNOWN');
+        $this->assertMatchesRegularExpression('/^\d{5}$/', Cache::get('change_phone_otp:09120000033'));
+        $this->assertSame('09120000033', Cache::get('change_phone_token:'.$response->json('token')));
+    }
+
     public function test_shahkar_verify_returns_birth_date_mismatch_when_identity_api_returns_404(): void
     {
+        Queue::fake();
         $this->mockSms();
 
         $this->withHeaders(['X-Platform' => 'main'])
@@ -179,6 +269,7 @@ class TenantAuthFlowTest extends TestCase
         $reg->assertJson([
             'error_code' => 'BIRTH_DATE_MISMATCH',
         ]);
+        Queue::assertNotPushed(SendWelcomeSms::class);
     }
 
     #[RunInSeparateProcess]

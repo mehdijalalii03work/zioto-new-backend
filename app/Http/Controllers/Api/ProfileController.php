@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Throwable;
 
 class ProfileController extends Controller
 {
@@ -177,29 +178,47 @@ class ProfileController extends Controller
         }
 
         $key = "change_phone_otp:{$newPhone}";
-        if (Cache::has($key)) {
+        $code = str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+
+        if (! Cache::add($key, $code, self::OTP_TTL)) {
             return response()->json([
-                'message' => 'کد تایید قبلی هنوز معتبر است، لطفاً پس از ۲ دقیقه دوباره تلاش کنید',
+                'message' => 'کد تایید قبلی هنوز معتبر است، لطفاً پس از ۳ دقیقه دوباره تلاش کنید',
                 'error_code' => 'OTP_STILL_VALID',
             ], 429);
         }
 
-        $code = str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
-        Cache::put($key, $code, self::OTP_TTL);
+        $token = Str::random(64);
+        $tokenKey = "change_phone_token:{$token}";
+        Cache::put($tokenKey, $newPhone, self::SHAHKAR_TOKEN_TTL);
 
-        $sent = $this->sms->sendVerificationCode($newPhone, $code);
+        try {
+            $sent = $this->sms->sendVerificationCode($newPhone, $code);
+        } catch (Throwable $exception) {
+            try {
+                Log::warning('Change-phone OTP SMS delivery outcome is unknown', [
+                    'phone_hash' => hash('sha256', $newPhone),
+                    'exception' => $exception::class,
+                ]);
+            } catch (Throwable) {
+                // The API must still return a controlled response if logging fails.
+            }
+
+            return response()->json([
+                'message' => 'نتیجه ارسال پیامک نامشخص است. اگر کد را دریافت کردید از همان استفاده کنید؛ در غیر این صورت پس از ۳ دقیقه دوباره تلاش کنید.',
+                'error_code' => 'SMS_OUTCOME_UNKNOWN',
+                'token' => $token,
+            ], 503);
+        }
 
         if (! $sent) {
             Cache::forget($key);
+            Cache::forget($tokenKey);
 
             return response()->json([
                 'message' => 'ارسال پیامک با مشکل مواجه شد، لطفا دقایقی دیگر تلاش کنید',
                 'error_code' => 'SMS_FAILED',
-            ], 500);
+            ], 503);
         }
-
-        $token = Str::random(64);
-        Cache::put("change_phone_token:{$token}", $newPhone, self::SHAHKAR_TOKEN_TTL);
 
         return response()->json([
             'message' => 'کد تایید با موفقیت ارسال شد',

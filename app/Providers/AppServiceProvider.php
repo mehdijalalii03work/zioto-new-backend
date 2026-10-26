@@ -12,6 +12,7 @@ use App\Models\ShippingMethod;
 use App\Models\User;
 use App\Observers\DiscountCodeUsageObserver;
 use App\Observers\HesabfaObserver;
+use App\Observers\OrderSmsNotificationObserver;
 use App\Observers\PricingSettingAuditObserver;
 use App\Observers\ProductImageObserver;
 use App\Observers\ProductPricingAuditObserver;
@@ -76,6 +77,7 @@ class AppServiceProvider extends ServiceProvider
         Order::observe(HesabfaObserver::class);
         Order::observe(DiscountCodeUsageObserver::class);
         Order::observe(StockReservationObserver::class);
+        Order::observe(OrderSmsNotificationObserver::class);
         ProductImage::observe(ProductImageObserver::class);
         Product::observe(ProductPricingAuditObserver::class);
         Setting::observe(PricingSettingAuditObserver::class);

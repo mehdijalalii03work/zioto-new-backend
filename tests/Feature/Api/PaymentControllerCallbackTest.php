@@ -2,7 +2,12 @@
 
 namespace Tests\Feature\Api;
 
+use App\Enums\OrderSmsType;
+use App\Jobs\SendOrderSms;
+use App\Models\OrderShipping;
+use App\Models\ShippingMethod;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Mockery;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
@@ -47,6 +52,7 @@ class PaymentControllerCallbackTest extends TestCase
     public function test_parsian_non_zero_status_marks_failed_without_calling_verify(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('parsian');
+        Queue::fake([SendOrderSms::class]);
 
         $response = $this->post("/api/payment/callback/{$order->id}/parsian", [
             'Token' => $payment->transaction_id,
@@ -62,12 +68,14 @@ class PaymentControllerCallbackTest extends TestCase
 
         $this->assertSame('failed', $payment->status);
         $this->assertSame('failed', $order->payment_status);
+        Queue::assertNotPushed(SendOrderSms::class);
     }
 
     #[RunInSeparateProcess]
     public function test_generic_verify_exception_marks_failed_not_pending(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+        $order->user->update(['phone' => '09120000000']);
 
         $mock = Mockery::mock('overload:'.ShetabitPayment::class);
         $mock->shouldReceive('via')->andReturnSelf();
@@ -96,6 +104,15 @@ class PaymentControllerCallbackTest extends TestCase
     public function test_successful_verify_marks_order_paid(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+        $order->user->update(['phone' => '09120000000']);
+        $shippingMethod = ShippingMethod::factory()->pickup()->create();
+        OrderShipping::create([
+            'order_id' => $order->id,
+            'shipping_method_id' => $shippingMethod->id,
+            'shipping_method_name' => $shippingMethod->name,
+            'shipping_cost' => 0,
+        ]);
+        Queue::fake([SendOrderSms::class]);
 
         $receipt = Mockery::mock(Receipt::class);
         $receipt->shouldReceive('getReferenceId')->andReturn('REF-123');
@@ -121,6 +138,8 @@ class PaymentControllerCallbackTest extends TestCase
         $this->assertSame('paid', $order->payment_status);
         $this->assertSame('confirmed', $order->status);
         $this->assertNotNull($payment->paid_at);
+        Queue::assertPushed(SendOrderSms::class, fn (SendOrderSms $job): bool => $job->orderId === $order->id && $job->type === OrderSmsType::Confirmation
+        );
     }
 
     #[RunInSeparateProcess]
