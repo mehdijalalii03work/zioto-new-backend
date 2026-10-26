@@ -3,6 +3,7 @@
 namespace App\Filament\Pages\Products;
 
 use App\Enums\Permission;
+use App\Services\Pricing\DynamicPriceService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Http\Client\Response;
@@ -87,6 +88,16 @@ class ProductComparisonPage extends Page
 
         $this->loadComparison();
 
+        if ($this->tokenikoError !== null) {
+            Notification::make()
+                ->title('قیمت توکنیکو دریافت نشد')
+                ->body($this->tokenikoError)
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         Notification::make()
             ->title('بروزرسانی شد')
             ->body('قیمت محصولات و قیمت توکنیکو دوباره خوانده شد.')
@@ -132,11 +143,32 @@ class ProductComparisonPage extends Page
 
         $tokeniko = $this->fetchTokeniko();
         $this->tokenikoError = $tokeniko['error'];
+        $dynamicPrice = app(DynamicPriceService::class);
+
+        $matchedProductCount = $products->filter(
+            fn (Product $product): bool => array_key_exists(
+                mb_strtolower(trim((string) $product->tokeniko_sku)),
+                $tokeniko['prices'],
+            ),
+        )->count();
+
+        if ($this->tokenikoError === null && $products->isNotEmpty() && $matchedProductCount === 0) {
+            $this->tokenikoError = 'پاسخ توکنیکو دریافت شد، اما شناسهٔ محصولات با قیمت‌های دریافتی تطبیق نکرد.';
+        }
 
         $rows = [];
 
         foreach ($products as $product) {
-            $ourPrice = is_numeric($product->price) ? (float) $product->price : null;
+            $ourPrice = $dynamicPrice->priceFor(
+                $product,
+                roleSlug: 'basic',
+                allowTokenikoPrice: false,
+            );
+
+            if ($ourPrice === null && is_numeric($product->price)) {
+                $ourPrice = (float) $product->price;
+            }
+
             $tokenikoUnitPrice = $tokeniko['prices'][mb_strtolower(trim((string) $product->tokeniko_sku))] ?? null;
             $tokPrice = $tokenikoUnitPrice === null ? null : $tokenikoUnitPrice * $product->pack_size;
 

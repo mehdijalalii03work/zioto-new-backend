@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     @php
         $toToman = fn ($value) => is_numeric($value) ? number_format((float) $value / 10, 0) : '—';
-        $pct = fn ($value) => $value === null ? '—' : number_format($value, 2).'٪';
+        $pct = fn ($value) => $value === null ? '—' : number_format($value, 4).'٪';
         $pctClass = fn ($value) => $value === null ? '' : ($value >= 0 ? 'text-emerald-700' : 'text-red-700');
         $isHl = fn ($diff) => $diffThreshold !== null && $diff !== null && abs($diff) >= $diffThreshold;
     @endphp
@@ -72,7 +72,7 @@
         </div>
 
         <p class="mt-3 text-sm text-gray-500">
-            درصد اختلاف نسبت به قیمت توکنیکو حساب می‌شود. قیمت توکنیکو ذخیره نمی‌شود و در هر بازدید دوباره خوانده می‌شود.
+            قیمت زیوتو با محاسبهٔ داخلی، سطح پایه و اجرت جاری محاسبه می‌شود. اختلاف نسبت به قیمت زندهٔ توکنیکو سنجیده می‌شود؛ قیمت توکنیکو ذخیره نمی‌شود.
         </p>
     @endif
 </x-filament-panels::page>
