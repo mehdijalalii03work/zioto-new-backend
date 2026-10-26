@@ -24,6 +24,8 @@ class PricingCalculatorPage extends Page
 
     public string $spotPrice = '';
 
+    public string $weight = '';
+
     public string $laborPercent = '';
 
     public string $taxScope = 'labor';
@@ -31,7 +33,7 @@ class PricingCalculatorPage extends Page
     public string $taxPercent = '10';
 
     /**
-     * @var array{spotPrice: float, laborPercent: float, laborAmount: float, subtotal: float, taxableAmount: float, taxPercent: float, taxAmount: float, totalPrice: float, formattedSpotPrice: string, formattedLaborAmount: string, formattedSubtotal: string, formattedTaxableAmount: string, formattedTaxAmount: string, formattedTotalPrice: string, taxScopeLabel: string}|null
+     * @var array{spotPrice: float, weight: float, productAmount: float, laborPercent: float, laborAmount: float, subtotal: float, taxableAmount: float, taxPercent: float, taxAmount: float, totalPrice: float, formattedSpotPrice: string, formattedWeight: string, formattedProductAmount: string, formattedLaborAmount: string, formattedSubtotal: string, formattedTaxableAmount: string, formattedTaxAmount: string, formattedTotalPrice: string, taxScopeLabel: string}|null
      */
     public ?array $result = null;
 
@@ -44,6 +46,7 @@ class PricingCalculatorPage extends Page
     {
         return [
             'spotPrice' => ['required', 'numeric', 'gt:0', 'max:999999999999999'],
+            'weight' => ['required', 'numeric', 'gt:0', 'max:100000'],
             'laborPercent' => ['required', 'numeric', 'min:0', 'max:1000'],
             'taxScope' => ['required', Rule::in(['labor', 'product_and_labor'])],
             'taxPercent' => ['required', 'numeric', 'min:0', 'max:1000'],
@@ -52,7 +55,7 @@ class PricingCalculatorPage extends Page
 
     public function updated(string $property): void
     {
-        if (in_array($property, ['spotPrice', 'laborPercent', 'taxScope', 'taxPercent'], true)) {
+        if (in_array($property, ['spotPrice', 'weight', 'laborPercent', 'taxScope', 'taxPercent'], true)) {
             if ($property !== 'taxScope') {
                 $this->{$property} = $this->normalizeNumericInput($this->{$property});
             }
@@ -66,10 +69,12 @@ class PricingCalculatorPage extends Page
         $validated = $this->validate();
 
         $spotPrice = (float) $validated['spotPrice'];
+        $weight = (float) $validated['weight'];
         $laborPercent = (float) $validated['laborPercent'];
         $taxPercent = (float) $validated['taxPercent'];
-        $laborAmount = $spotPrice * $laborPercent / 100;
-        $subtotal = $spotPrice + $laborAmount;
+        $productAmount = $spotPrice * $weight;
+        $laborAmount = $productAmount * $laborPercent / 100;
+        $subtotal = $productAmount + $laborAmount;
         $taxableAmount = $validated['taxScope'] === 'labor' ? $laborAmount : $subtotal;
         $taxAmount = $taxableAmount * $taxPercent / 100;
         $totalPrice = $subtotal + $taxAmount;
@@ -77,6 +82,8 @@ class PricingCalculatorPage extends Page
 
         $this->result = [
             'spotPrice' => $spotPrice,
+            'weight' => $weight,
+            'productAmount' => $productAmount,
             'laborPercent' => $laborPercent,
             'laborAmount' => $laborAmount,
             'subtotal' => $subtotal,
@@ -85,6 +92,8 @@ class PricingCalculatorPage extends Page
             'taxAmount' => $taxAmount,
             'totalPrice' => $totalPrice,
             'formattedSpotPrice' => $this->formatAmount($spotPrice),
+            'formattedWeight' => $this->formatWeight($weight),
+            'formattedProductAmount' => $this->formatAmount($productAmount),
             'formattedLaborAmount' => $this->formatAmount($laborAmount),
             'formattedSubtotal' => $this->formatAmount($subtotal),
             'formattedTaxableAmount' => $this->formatAmount($taxableAmount),
@@ -97,6 +106,11 @@ class PricingCalculatorPage extends Page
     private function formatAmount(float $amount): string
     {
         return number_format($amount, 0, '.', '٬');
+    }
+
+    private function formatWeight(float $weight): string
+    {
+        return rtrim(rtrim(number_format($weight, 6, '.', ','), '0'), '.');
     }
 
     private function normalizeNumericInput(string $value): string

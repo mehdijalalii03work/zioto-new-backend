@@ -48,17 +48,26 @@
         <form wire:submit="calculate" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
             <div class="mb-6 space-y-1">
                 <h2 class="text-base font-semibold text-gray-950 dark:text-white">ورودی‌های محاسبه</h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400">مقادیر را دستی وارد کنید. این ماشین‌حساب به قیمت تابلو و اطلاعات محصولات متصل نیست.</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">قیمت هر گرم، وزن و درصد اجرت را دستی وارد کنید. این ماشین‌حساب به قیمت تابلو و اطلاعات محصولات متصل نیست.</p>
             </div>
 
-            <div class="grid gap-5 sm:grid-cols-2">
+            <div class="grid gap-5 sm:grid-cols-2 2xl:grid-cols-3">
                 <div>
-                    <label for="spotPrice" class="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">قیمت لحظه‌ای</label>
+                    <label for="spotPrice" class="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">قیمت لحظه‌ای هر گرم</label>
                     <div class="relative rounded-xl border border-gray-300 bg-gray-50 transition focus-within:border-primary-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-500/20 dark:border-gray-700 dark:bg-gray-950 dark:focus-within:bg-gray-900">
                         <input id="spotPrice" type="text" wire:ignore inputmode="decimal" placeholder="مثلاً ۳۴۸٬۳۳۳٬۴۶۰" x-on:input="formatCalculatorInput($event, 'spotPrice')" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none placeholder:text-sm placeholder:font-normal placeholder:text-gray-400 focus:ring-0 dark:text-white" />
                         <span class="pointer-events-none absolute inset-y-0 end-4 flex items-center text-xs font-medium text-gray-500 dark:text-gray-400">تومان</span>
                     </div>
                     @error('spotPrice') <p class="mt-1 text-sm text-danger-600">قیمت لحظه‌ای باید عددی بیشتر از صفر باشد.</p> @enderror
+                </div>
+
+                <div>
+                    <label for="weight" class="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">وزن</label>
+                    <div class="relative rounded-xl border border-gray-300 bg-gray-50 transition focus-within:border-primary-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-500/20 dark:border-gray-700 dark:bg-gray-950 dark:focus-within:bg-gray-900">
+                        <input id="weight" type="text" wire:ignore inputmode="decimal" placeholder="مثلاً ۱٫۲۵" x-on:input="formatCalculatorInput($event, 'weight')" class="w-full rounded-xl border-0 bg-transparent px-4 py-3.5 pe-12 text-lg font-semibold tabular-nums text-gray-950 shadow-none outline-none placeholder:text-sm placeholder:font-normal placeholder:text-gray-400 focus:ring-0 dark:text-white" />
+                        <span class="pointer-events-none absolute inset-y-0 end-4 flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">گرم</span>
+                    </div>
+                    @error('weight') <p class="mt-1 text-sm text-danger-600">وزن باید عددی بیشتر از صفر باشد.</p> @enderror
                 </div>
 
                 <div>
@@ -118,8 +127,16 @@
                 <h2 class="mb-3 text-base font-semibold text-gray-950 dark:text-white">ریز محاسبات</h2>
                 <dl class="divide-y divide-gray-100 rounded-xl border border-gray-100 px-4 dark:divide-gray-800 dark:border-gray-800">
                     <div class="flex items-start justify-between gap-4 py-3 text-sm">
-                        <dt class="text-gray-600 dark:text-gray-300">قیمت لحظه‌ای واردشده</dt>
+                        <dt class="text-gray-600 dark:text-gray-300">قیمت هر گرم</dt>
                         <dd class="font-medium tabular-nums text-gray-950 dark:text-white">{{ $result['formattedSpotPrice'] }} تومان</dd>
+                    </div>
+                    <div class="flex items-start justify-between gap-4 py-3 text-sm">
+                        <dt class="text-gray-600 dark:text-gray-300">وزن محصول</dt>
+                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white">{{ $result['formattedWeight'] }} گرم</dd>
+                    </div>
+                    <div class="flex items-start justify-between gap-4 py-3 text-sm">
+                        <dt class="text-gray-600 dark:text-gray-300">قیمت پایه (قیمت هر گرم × وزن)</dt>
+                        <dd class="font-medium tabular-nums text-gray-950 dark:text-white">{{ $result['formattedProductAmount'] }} تومان</dd>
                     </div>
                     <div class="flex items-start justify-between gap-4 py-3 text-sm">
                         <dt class="text-gray-600 dark:text-gray-300">اجرت ({{ number_format($result['laborPercent'], 2) }}٪ قیمت پایه)</dt>
@@ -144,15 +161,16 @@
                 </dl>
 
                 <div class="mt-4 rounded-xl bg-gray-50 p-4 text-xs leading-6 text-gray-600 dark:bg-gray-800 dark:text-gray-300" dir="rtl">
-                    اجرت = قیمت لحظه‌ای × درصد اجرت ÷ ۱۰۰<br />
+                    قیمت پایه = قیمت لحظه‌ای هر گرم × وزن محصول<br />
+                    اجرت = قیمت پایه × درصد اجرت ÷ ۱۰۰<br />
                     مالیات = مبلغ مشمول مالیات × درصد مالیات ÷ ۱۰۰<br />
-                    قیمت نهایی = قیمت لحظه‌ای + اجرت + مالیات
+                    قیمت نهایی = قیمت پایه + اجرت + مالیات
                 </div>
             @else
                 <div class="flex h-full min-h-64 flex-col items-center justify-center text-center">
                     <x-filament::icon icon="heroicon-o-calculator" class="mb-3 h-10 w-10 text-gray-400" />
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white">آمادهٔ محاسبه</h2>
-                    <p class="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">قیمت لحظه‌ای و درصد اجرت را وارد کنید و دکمهٔ محاسبه را بزنید تا جزئیات قیمت اینجا نمایش داده شود.</p>
+                    <p class="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">قیمت هر گرم، وزن و درصد اجرت را وارد کنید و دکمهٔ محاسبه را بزنید تا جزئیات قیمت اینجا نمایش داده شود.</p>
                 </div>
             @endif
         </section>
