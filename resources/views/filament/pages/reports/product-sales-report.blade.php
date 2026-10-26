@@ -86,9 +86,10 @@
                         <div class="h-5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800" dir="rtl" role="img" aria-label="{{ $product['name'] }}: {{ number_format($product['quantity']) }} عدد">
                             <div @class([
                                 'h-full rounded-full transition-all duration-500',
-                                'bg-amber-500 dark:bg-amber-400' => $product['metal_type'] === 'gold',
-                                'bg-slate-400 dark:bg-slate-500' => $product['metal_type'] === 'silver',
-                                'bg-primary-500 dark:bg-primary-400' => $product['metal_type'] === null,
+                                'bg-emerald-500 dark:bg-emerald-400' => $product['brand_label'] === 'زیوتو پلاس',
+                                'bg-amber-500 dark:bg-amber-400' => $product['brand_label'] !== 'زیوتو پلاس' && $product['metal_type'] === 'gold',
+                                'bg-slate-400 dark:bg-slate-500' => $product['brand_label'] !== 'زیوتو پلاس' && $product['metal_type'] === 'silver',
+                                'bg-primary-500 dark:bg-primary-400' => $product['brand_label'] !== 'زیوتو پلاس' && $product['metal_type'] === null,
                             ]) style="width: {{ $barWidth }}%"></div>
                         </div>
 
