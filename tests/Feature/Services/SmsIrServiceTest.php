@@ -46,7 +46,7 @@ class SmsIrServiceTest extends TestCase
         );
     }
 
-    public function test_order_received_health_message_sends_name_to_the_requested_template(): void
+    public function test_order_received_health_message_sends_investor_label_to_the_requested_template(): void
     {
         Http::preventStrayRequests();
         Http::fake(['api.sms.ir/v1/send/verify' => Http::response(['status' => 1], 200)]);
@@ -55,7 +55,7 @@ class SmsIrServiceTest extends TestCase
         $this->assertTrue($service->sendOrderReceivedHealthMessage('09120000000', 'Sara'));
 
         Http::assertSent(fn (Request $request): bool => $request['templateId'] === 990301
-            && $request['parameters'] === [['name' => 'NAME', 'value' => 'Sara']]
+            && $request['parameters'] === [['name' => 'NAME', 'value' => 'سرمایه گذار']]
         );
     }
 

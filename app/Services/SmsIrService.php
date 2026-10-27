@@ -109,7 +109,7 @@ class SmsIrService
     public function sendOrderReceivedHealthMessage(string $mobile, string $name): bool
     {
         return $this->sendOrderTemplate($mobile, 990301, [
-            ['name' => 'NAME', 'value' => $name],
+            ['name' => 'NAME', 'value' => 'سرمایه گذار'],
         ]);
     }
 
