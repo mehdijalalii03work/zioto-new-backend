@@ -22,7 +22,7 @@ class AgencyRequestResource extends Resource
 
     protected static ?string $navigationLabel = 'درخواست‌های نمایندگی';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'مدیریت محتوا';
+    protected static string|\UnitEnum|null $navigationGroup = 'ارتباط با مشتریان';
 
     protected static ?int $navigationSort = 4;
 
