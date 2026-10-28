@@ -6,6 +6,7 @@ use App\Filament\Resources\AgencyRequests\AgencyRequestResource;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -17,78 +18,99 @@ class ViewAgencyRequest extends ViewRecord
 
     public function infolist(Schema $schema): Schema
     {
-        return $schema->schema([
-            Section::make('مشخصات فنی')
-                ->icon('heroicon-o-user')
+        return $schema->components([
+            Grid::make(['default' => 1, 'xl' => 3])
+                ->columnSpanFull()
                 ->schema([
-                    TextEntry::make('first_name')
-                        ->label('نام'),
-                    TextEntry::make('last_name')
-                        ->label('نام خانوادگی'),
-                    TextEntry::make('birth_date')
-                        ->label('تاریخ تولد'),
-                    TextEntry::make('email')
-                        ->label('پست الکترونیک'),
-                    TextEntry::make('phone')
-                        ->label('تلفن'),
-                    TextEntry::make('mobile')
-                        ->label('تلفن همراه'),
-                    TextEntry::make('father_name')
-                        ->label('نام پدر'),
-                    TextEntry::make('father_job')
-                        ->label('شغل پدر'),
-                    TextEntry::make('gender')
-                        ->label('جنسیت')
-                        ->formatStateUsing(fn (string $state): string => $state === 'male' ? 'مرد' : 'زن'),
-                    TextEntry::make('marital_status')
-                        ->label('وضعیت تاهل')
-                        ->formatStateUsing(fn (string $state): string => $state === 'single' ? 'مجرد' : 'متاهل'),
-                ])->columns(3),
+                    Section::make('اطلاعات متقاضی')
+                        ->icon('heroicon-o-user')
+                        ->columnSpan(['default' => 1, 'xl' => 2])
+                        ->schema([
+                            TextEntry::make('first_name')
+                                ->label('نام'),
+                            TextEntry::make('last_name')
+                                ->label('نام خانوادگی'),
+                            TextEntry::make('birth_date')
+                                ->label('تاریخ تولد'),
+                            TextEntry::make('mobile')
+                                ->label('تلفن همراه'),
+                            TextEntry::make('phone')
+                                ->label('تلفن'),
+                            TextEntry::make('email')
+                                ->label('پست الکترونیک')
+                                ->columnSpan(['default' => 1, 'md' => 2]),
+                            TextEntry::make('father_name')
+                                ->label('نام پدر'),
+                            TextEntry::make('father_job')
+                                ->label('شغل پدر'),
+                            TextEntry::make('gender')
+                                ->label('جنسیت')
+                                ->formatStateUsing(fn (string $state): string => $state === 'male' ? 'مرد' : 'زن'),
+                            TextEntry::make('marital_status')
+                                ->label('وضعیت تأهل')
+                                ->formatStateUsing(fn (string $state): string => $state === 'single' ? 'مجرد' : 'متأهل'),
+                        ])
+                        ->columns(['default' => 1, 'md' => 2, 'xl' => 3]),
 
-            Section::make('استان اخذ نمایندگی')
-                ->icon('heroicon-o-building-storefront')
-                ->schema([
-                    TextEntry::make('agencyProvince.name')
-                        ->label('استان اخذ نمایندگی'),
-                    TextEntry::make('agencyCity.name')
-                        ->label('شهر اخذ نمایندگی'),
-                ])->columns(2),
+                    Section::make('وضعیت درخواست')
+                        ->icon('heroicon-o-clock')
+                        ->schema([
+                            TextEntry::make('status')
+                                ->label('وضعیت')
+                                ->formatStateUsing(fn (string $state): string => match ($state) {
+                                    'pending' => 'در انتظار بررسی',
+                                    'approved' => 'تأیید شده',
+                                    'rejected' => 'رد شده',
+                                    default => $state,
+                                })
+                                ->badge()
+                                ->color(fn (string $state): string => match ($state) {
+                                    'approved' => 'success',
+                                    'rejected' => 'danger',
+                                    default => 'warning',
+                                }),
+                            TextEntry::make('is_read')
+                                ->label('وضعیت مطالعه')
+                                ->formatStateUsing(fn (bool $state): string => $state ? 'خوانده شده' : 'خوانده نشده')
+                                ->badge()
+                                ->color(fn (bool $state): string => $state ? 'success' : 'gray'),
+                            TextEntry::make('created_at')
+                                ->label('زمان ثبت')
+                                ->dateTime()
+                                ->jalaliDateTime('H:i Y/m/d'),
+                            TextEntry::make('updated_at')
+                                ->label('آخرین تغییر')
+                                ->dateTime()
+                                ->jalaliDateTime('H:i Y/m/d'),
+                        ]),
 
-            Section::make('محل سکونت')
-                ->icon('heroicon-o-home')
-                ->schema([
-                    TextEntry::make('residenceProvince.name')
-                        ->label('استان'),
-                    TextEntry::make('residenceCity.name')
-                        ->label('شهر'),
-                    TextEntry::make('neighborhood')
-                        ->label('محله'),
-                    TextEntry::make('address')
-                        ->label('آدرس')
-                        ->columnSpanFull(),
-                ])->columns(3),
+                    Section::make('استان اخذ نمایندگی')
+                        ->icon('heroicon-o-building-storefront')
+                        ->columnSpanFull()
+                        ->schema([
+                            TextEntry::make('agencyProvince.name')
+                                ->label('استان'),
+                            TextEntry::make('agencyCity.name')
+                                ->label('شهر'),
+                        ])
+                        ->columns(['default' => 1, 'md' => 2]),
 
-            Section::make('وضعیت درخواست')
-                ->icon('heroicon-o-clock')
-                ->schema([
-                    TextEntry::make('status')
-                        ->label('وضعیت')
-                        ->formatStateUsing(fn (string $state): string => match ($state) {
-                            'pending' => 'در انتظار بررسی',
-                            'approved' => 'تایید شده',
-                            'rejected' => 'رد شده',
-                            default => $state,
-                        })
-                        ->badge(fn (string $state): string => match ($state) {
-                            'approved' => 'success',
-                            'rejected' => 'danger',
-                            default => 'warning',
-                        }),
-                    TextEntry::make('created_at')
-                        ->label('تاریخ ثبت')
-                        ->dateTime()
-                        ->jalaliDateTime('H:i Y/m/d'),
-                ])->columns(2),
+                    Section::make('محل سکونت')
+                        ->icon('heroicon-o-home')
+                        ->columnSpanFull()
+                        ->schema([
+                            TextEntry::make('residenceProvince.name')
+                                ->label('استان'),
+                            TextEntry::make('residenceCity.name')
+                                ->label('شهر'),
+                            TextEntry::make('neighborhood')
+                                ->label('محله'),
+                            TextEntry::make('address')
+                                ->label('نشانی کامل')
+                                ->columnSpanFull(),
+                        ])
+                        ->columns(['default' => 1, 'md' => 3]),
+                ]),
         ]);
     }
 
