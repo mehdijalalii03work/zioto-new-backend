@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\AgencyRequestController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\ContactMessageController;
@@ -104,6 +105,7 @@ Route::prefix('blog')->group(function () {
 });
 
 Route::middleware('throttle:5,1')->post('/contact', [ContactMessageController::class, 'store']);
+Route::middleware('throttle:5,1')->post('/agency-requests', [AgencyRequestController::class, 'store']);
 
 Route::middleware('auth.token', 'throttle:60,1')->prefix('cart')->group(function () {
     Route::get('/', [CartController::class, 'index']);
