@@ -89,4 +89,44 @@ class ProductControllerTest extends TestCase
             ->assertJsonPath('data.0.purchasable', true)
             ->assertJsonPath('data.0.unavailable_reason', null);
     }
+
+    public function test_product_list_omits_detail_only_fields(): void
+    {
+        Product::create([
+            'name' => 'محصول فهرست',
+            'slug' => 'product-list-payload',
+            'price' => 100000,
+            'stock_quantity' => 1,
+            'description' => '<p>توضیح کامل محصول</p>',
+            'status' => 'published',
+            'visibility' => 'public',
+        ]);
+
+        $this->getJson('/api/products')
+            ->assertOk()
+            ->assertJsonPath('data.0.slug', 'product-list-payload')
+            ->assertJsonMissingPath('data.0.desc')
+            ->assertJsonMissingPath('data.0.full_desc')
+            ->assertJsonMissingPath('data.0.image_responsive')
+            ->assertJsonMissingPath('data.0.image_srcset')
+            ->assertJsonPath('data.0.image', null);
+    }
+
+    public function test_product_detail_keeps_description_fields(): void
+    {
+        Product::create([
+            'name' => 'محصول جزئیات',
+            'slug' => 'product-detail-description',
+            'price' => 100000,
+            'stock_quantity' => 1,
+            'description' => '<p>توضیح کامل محصول</p>',
+            'status' => 'published',
+            'visibility' => 'public',
+        ]);
+
+        $this->getJson('/api/products/product-detail-description')
+            ->assertOk()
+            ->assertJsonPath('data.desc', 'توضیح کامل محصول')
+            ->assertJsonPath('data.full_desc', '<p>توضیح کامل محصول</p>');
+    }
 }

@@ -12,6 +12,16 @@ class ProductResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        return $this->productArray($request, includeDetailFields: true);
+    }
+
+    public function toListingArray(Request $request): array
+    {
+        return $this->productArray($request, includeDetailFields: false);
+    }
+
+    private function productArray(Request $request, bool $includeDetailFields): array
+    {
         $packSize = $this->pack_size;
         $primaryImage = $this->images->firstWhere('is_primary', true) ?? $this->images->first();
 
@@ -33,11 +43,10 @@ class ProductResource extends JsonResource
             $weight .= ' × '.$packSize.' عدد';
         }
 
-        return [
+        $data = [
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
-            'sku' => $this->sku,
             'sub' => $this->category?->name ?? '',
             'cat' => $this->category?->name ?? '',
             'cat_slug' => $this->category?->slug ?? '',
@@ -63,13 +72,20 @@ class ProductResource extends JsonResource
             'is_nopay' => (bool) $this->is_nopay,
             'purchasable' => $blockedReason === null,
             'unavailable_reason' => $blockedReason,
-            'desc' => strip_tags($this->description ?? ''),
-            'full_desc' => $this->description ?? '',
             'image' => $primaryImage ? asset('storage/'.$primaryImage->image_path) : null,
-            'image_responsive' => $primaryImage ? ProductImageResource::getResponsiveImages($primaryImage->image_path) : null,
-            'image_srcset' => $primaryImage ? ProductImageResource::getSrcset(ProductImageResource::getResponsiveImages($primaryImage->image_path)) : null,
-            'images' => ProductImageResource::collection($this->images->sortBy('sort_order')),
         ];
+
+        if ($includeDetailFields) {
+            $responsiveImages = $primaryImage ? ProductImageResource::getResponsiveImages($primaryImage->image_path) : null;
+            $data['sku'] = $this->sku;
+            $data['desc'] = strip_tags($this->description ?? '');
+            $data['full_desc'] = $this->description ?? '';
+            $data['image_responsive'] = $responsiveImages;
+            $data['image_srcset'] = $responsiveImages ? ProductImageResource::getSrcset($responsiveImages) : null;
+            $data['images'] = ProductImageResource::collection($this->images->sortBy('sort_order'));
+        }
+
+        return $data;
     }
 
     public static function withoutImages(self $resource): array

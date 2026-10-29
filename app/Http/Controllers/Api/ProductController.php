@@ -20,7 +20,7 @@ class ProductController extends Controller
         $skus = request()->input('skus');
 
         $priceMode = PricingSettings::tokenikoProductPricesEnabled() ? 'tokeniko' : 'calculated';
-        $cacheKey = 'api:products:'.$priceMode.':'.($slugs ? md5($slugs) : ($skus ? md5($skus) : 'all'));
+        $cacheKey = 'api:products:v2:'.$priceMode.':'.($slugs ? md5($slugs) : ($skus ? md5($skus) : 'all'));
 
         $products = Cache::remember($cacheKey, 60, function () use ($slugs, $skus) {
             $query = Product::publiclyListed()
@@ -39,7 +39,7 @@ class ProductController extends Controller
                 ->orderBy('id')
                 ->get()
                 ->map(function (Product $p) {
-                    $data = ProductResource::withoutImages(new ProductResource($p));
+                    $data = (new ProductResource($p))->toListingArray(request());
 
                     // Cache always stores guest/basic pricing; per-user prices are applied after read.
                     $guestPrice = app(DynamicPriceService::class)->priceFor($p, null);
