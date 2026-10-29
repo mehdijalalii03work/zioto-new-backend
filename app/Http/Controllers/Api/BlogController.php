@@ -65,10 +65,46 @@ class BlogController extends Controller
         ];
     }
 
+    private function formatPostSummary(BlogPost $post): array
+    {
+        $media = $post->getFirstMedia('featured-image');
+
+        return [
+            'id' => $post->id,
+            'title' => $this->sanitize($post->title),
+            'slug' => $post->slug,
+            'summary' => strip_tags($this->sanitize($post->summary_source) ?? ''),
+            'image' => $media?->getUrl(),
+            'status' => $post->status,
+            'category' => $post->category ? [
+                'id' => $post->category->id,
+                'name' => $this->sanitize($post->category->name),
+                'slug' => $post->category->slug,
+            ] : null,
+            'tags_count' => $post->tags_count,
+            'published_at' => $post->published_at?->toISOString(),
+            'created_at' => $post->created_at->toISOString(),
+            'updated_at' => $post->updated_at?->toISOString(),
+        ];
+    }
+
     public function posts(): JsonResponse
     {
         $query = BlogPost::query()
-            ->with(['category:id,name,slug', 'tags:id,name,slug', 'media'])
+            ->select([
+                'id',
+                'title',
+                'slug',
+                'status',
+                'category_id',
+                'published_at',
+                'created_at',
+                'updated_at',
+                'sort_order',
+            ])
+            ->selectRaw('SUBSTRING(content, 1, 200) AS summary_source')
+            ->with(['category:id,name,slug', 'media'])
+            ->withCount('tags')
             ->where('status', 'published');
 
         if ($category = request()->input('category')) {
@@ -83,7 +119,7 @@ class BlogController extends Controller
             ->orderByDesc('published_at')
             ->paginate(perPage: 9);
 
-        $posts->getCollection()->transform(fn (BlogPost $post) => $this->formatPost($post));
+        $posts->getCollection()->transform(fn (BlogPost $post) => $this->formatPostSummary($post));
 
         return response()->json([
             'data' => $posts->items(),
