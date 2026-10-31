@@ -48,6 +48,7 @@ class ManageSettings extends Page
             'hesabfa_default_project' => config('hesabfa.default_project'),
             'hesabfa_shipping_item_code' => config('hesabfa.shipping_item_code'),
             'hesabfa_installment_fee_item_code' => config('hesabfa.installment_fee_item_code'),
+            'hesabfa_discount_item_code' => config('hesabfa.discount_item_code'),
             'hesabfa_warehouse_code' => config('hesabfa.warehouse_code'),
             'hesabfa_customer_node' => config('hesabfa.customer_node'),
             'hesabfa_customer_family' => config('hesabfa.customer_family'),
@@ -204,6 +205,9 @@ class ManageSettings extends Page
                         TextInput::make('hesabfa_installment_fee_item_code')
                             ->label('کد کالای کارمزد اقساطی')
                             ->maxLength(50),
+                        TextInput::make('hesabfa_discount_item_code')
+                            ->label('کد کالای تخفیف')
+                            ->maxLength(50),
                     ]),
                 ]),
 
@@ -351,6 +355,7 @@ class ManageSettings extends Page
             'hesabfa_default_project' => 'HESABFA_DEFAULT_PROJECT',
             'hesabfa_shipping_item_code' => 'HESABFA_SHIPPING_ITEM_CODE',
             'hesabfa_installment_fee_item_code' => 'HESABFA_INSTALLMENT_FEE_ITEM_CODE',
+            'hesabfa_discount_item_code' => 'HESABFA_DISCOUNT_ITEM_CODE',
             'hesabfa_warehouse_code' => 'HESABFA_WAREHOUSE_CODE',
             'hesabfa_customer_node' => 'HESABFA_CUSTOMER_NODE',
             'hesabfa_customer_family' => 'HESABFA_CUSTOMER_FAMILY',

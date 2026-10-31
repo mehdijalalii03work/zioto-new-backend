@@ -18,7 +18,7 @@ class HesabfaDiscountInvoiceTest extends TestCase
     public function test_discount_is_added_as_invoice_row_and_matches_order_total(): void
     {
         config([
-            'hesabfa.discount_item_code' => 'DISCOUNT-ITEM',
+            'hesabfa.discount_item_code' => '1212',
             'hesabfa.installment_fee_item_code' => 'INSTALLMENT-FEE',
         ]);
         $product = Product::create([
@@ -62,7 +62,7 @@ class HesabfaDiscountInvoiceTest extends TestCase
         $this->assertCount(3, $items);
         $this->assertSame(2_000_000, $items[0]['unitPrice']);
         $this->assertSame(-200_000, $items[1]['unitPrice']);
-        $this->assertSame('DISCOUNT-ITEM', $items[1]['itemCode']);
+        $this->assertSame('1212', $items[1]['itemCode']);
         $this->assertSame('تخفیف کد SAVE200', $items[1]['description']);
         $this->assertSame(72_000, $items[2]['unitPrice'] + $items[2]['tax']);
         $this->assertSame(1_872_000, array_sum(array_map(
