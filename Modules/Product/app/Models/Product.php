@@ -121,7 +121,9 @@ class Product extends Model implements HasMedia
     public function sellableSingles(): int
     {
         $source = $this->baseProduct ?? $this;
-        $physical = (int) ($source->hesabfa_physical_stock ?? $source->stock_quantity ?? 0);
+        $physical = $source->hesabfa_exclude_from_sync
+            ? (int) ($source->stock_quantity ?? 0)
+            : (int) ($source->hesabfa_physical_stock ?? $source->stock_quantity ?? 0);
 
         return $source->sellableStockFor($physical);
     }
