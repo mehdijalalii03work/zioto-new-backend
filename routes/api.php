@@ -91,6 +91,8 @@ Route::post('/price-board/refresh', [PriceBoardController::class, 'refresh'])->m
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::get('/categories', [\App\Http\Controllers\Api\ProductCategoryController::class, 'index']);
+Route::get('/categories/{slug}', [\App\Http\Controllers\Api\ProductCategoryController::class, 'show']);
 
 Route::get('/settings/tax', function () {
     return response()->json([

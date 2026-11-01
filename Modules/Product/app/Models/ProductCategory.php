@@ -24,6 +24,9 @@ class ProductCategory extends Model
         'is_active',
         'seo_title',
         'seo_description',
+        'header_image',
+        'guide_content',
+        'previous_slugs',
     ];
 
     protected function casts(): array
@@ -31,6 +34,7 @@ class ProductCategory extends Model
         return [
             'is_active' => 'boolean',
             'sort_order' => 'integer',
+            'previous_slugs' => 'array',
         ];
     }
 

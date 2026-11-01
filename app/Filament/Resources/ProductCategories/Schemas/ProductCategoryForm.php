@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProductCategories\Schemas;
 
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -34,6 +35,14 @@ class ProductCategoryForm
                                     ->label('آدرس محصول')
                                     ->required()
                                     ->unique(ignoreRecord: true)
+                                    ->afterStateUpdated(function (?ProductCategory $record, ?string $state): void {
+                                        if ($record && $state && $record->slug !== $state) {
+                                            $previous = $record->previous_slugs ?? [];
+                                            $record->forceFill([
+                                                'previous_slugs' => array_values(array_unique([...$previous, $record->slug])),
+                                            ])->saveQuietly();
+                                        }
+                                    })
                                     ->helperText('به صورت خودکار از نام تولید می‌شود'),
 
                                 Select::make('parent_id')
@@ -63,6 +72,24 @@ class ProductCategoryForm
                                 'bold', 'italic', 'underline', 'strike',
                                 'link', 'orderedList', 'bulletList',
                                 'h2', 'h3', 'blockquote', 'redo', 'undo',
+                            ])
+                            ->extraAttributes(['style' => 'min-height: 300px']),
+
+                        FileUpload::make('header_image')
+                            ->label('تصویر هدر کتگوری')
+                            ->image()
+                            ->disk('public')
+                            ->directory('category-images')
+                            ->nullable(),
+
+                        RichEditor::make('guide_content')
+                            ->label('محتوای راهنمای کتگوری')
+                            ->fileAttachmentsDisk('public')
+                            ->fileAttachmentsDirectory('category-content')
+                            ->toolbarButtons([
+                                ['bold', 'italic', 'underline', 'link'],
+                                ['h2', 'h3', 'blockquote', 'bulletList', 'orderedList'],
+                                ['undo', 'redo'],
                             ])
                             ->extraAttributes(['style' => 'min-height: 300px']),
                     ])
