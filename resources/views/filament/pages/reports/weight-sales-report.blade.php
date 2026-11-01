@@ -79,6 +79,10 @@
                 background-color: #d0ebff !important;
                 color: black !important;
             }
+            table.wsr-table .labor-col {
+                background-color: greenyellow !important;
+                color: black !important;
+            }
             table.wsr-table .bg-success {
                 --bs-bg-opacity: 1;
                 background-color: rgba(25, 135, 84, var(--bs-bg-opacity)) !important;
@@ -121,6 +125,7 @@
                     <col style="width: 4%">
                     <col style="width: 8%">
                     <col style="width: 6%">
+                    <col style="width: 8%">
                 </colgroup>
                 <thead class="table-dark wsr-thead-dark">
                     <tr>
@@ -142,6 +147,7 @@
                         <th scope="col" class="silver-col">میانگین وزن/قلم</th>
                         <th scope="col" class="silver-col">مبلغ فاکتورهای نقره</th>
                         <th scope="col" class="silver-col">قیمت روز نقره (ریال/گرم)</th>
+                        <th scope="col" class="labor-col">اجرت (ریال)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -165,6 +171,7 @@
                             <td class="text-end silver-col">{{ rtrim(rtrim(number_format($row['silver_avg_weight'], 2), '0'), '.') }}</td>
                             <td class="text-end silver-col">{{ number_format($row['silver_rial']) }}</td>
                             <td class="text-end silver-col price-col">{{ number_format($row['silver_price']) }}</td>
+                            <td class="text-end labor-col">{{ number_format($row['labor_rial']) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -196,6 +203,7 @@
                         <td class="text-end silver-col">{{ $totalSilverCount > 0 ? rtrim(rtrim(number_format($totalSilverWeight / $totalSilverCount, 2), '0'), '.') : '—' }}</td>
                         <td class="text-end silver-col">{{ number_format($report->sum('silver_rial')) }}</td>
                         <td class="text-end silver-col price-col">{{ $totalSilverWeight > 0 ? number_format($report->sum('silver_rial') / $totalSilverWeight) : '—' }}</td>
+                        <td class="text-end labor-col">{{ number_format($report->sum('labor_rial')) }}</td>
                     </tr>
                 </tfoot>
             </table>

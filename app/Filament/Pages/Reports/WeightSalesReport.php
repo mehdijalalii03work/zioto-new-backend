@@ -54,7 +54,7 @@ class WeightSalesReport extends Page
 
     public ?string $dateTo = null;
 
-    /** @var Collection<int, array{date: string, total_rial: float, total_items: int, bar_count: int, bar_weight: float, bar_avg_weight: float, bar_rial: float, bar_price: float, gold750_count: int, gold750_weight: float, gold750_avg_weight: float, gold750_rial: float, gold750_price: float, silver_count: int, silver_weight: float, silver_avg_weight: float, silver_rial: float, silver_price: float}> */
+    /** @var Collection<int, array{date: string, total_rial: float, total_items: int, labor_rial: float, bar_count: int, bar_weight: float, bar_avg_weight: float, bar_rial: float, bar_price: float, gold750_count: int, gold750_weight: float, gold750_avg_weight: float, gold750_rial: float, gold750_price: float, silver_count: int, silver_weight: float, silver_avg_weight: float, silver_rial: float, silver_price: float}> */
     public $report;
 
     public bool $submitted = false;
@@ -126,7 +126,7 @@ class WeightSalesReport extends Page
 
     /**
      * @param  Collection<int, Order>  $orders
-     * @return Collection<int, array{date: string, total_rial: float, total_items: int, bar_count: int, bar_weight: float, bar_avg_weight: float, bar_rial: float, bar_price: float, gold750_count: int, gold750_weight: float, gold750_avg_weight: float, gold750_rial: float, gold750_price: float, silver_count: int, silver_weight: float, silver_avg_weight: float, silver_rial: float, silver_price: float}>
+     * @return Collection<int, array{date: string, total_rial: float, total_items: int, labor_rial: float, bar_count: int, bar_weight: float, bar_avg_weight: float, bar_rial: float, bar_price: float, gold750_count: int, gold750_weight: float, gold750_avg_weight: float, gold750_rial: float, gold750_price: float, silver_count: int, silver_weight: float, silver_avg_weight: float, silver_rial: float, silver_price: float}>
      */
     protected function buildReportRows(Collection $orders): Collection
     {
@@ -167,6 +167,7 @@ class WeightSalesReport extends Page
                     'date' => $date,
                     'total_rial' => (float) $allItems->sum('subtotal'),
                     'total_items' => (int) $allItems->sum('quantity'),
+                    'labor_rial' => (float) $allItems->sum(fn ($item) => (float) ($item->labor_cost ?? 0) * $item->quantity),
                     'bar_count' => $barCount,
                     'bar_weight' => $barWeight,
                     'bar_avg_weight' => $barCount > 0 ? round($barWeight / $barCount, 2) : 0,
