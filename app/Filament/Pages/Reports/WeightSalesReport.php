@@ -3,6 +3,7 @@
 namespace App\Filament\Pages\Reports;
 
 use App\Enums\Permission;
+use App\Services\Pricing\DynamicPriceService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
 use Filament\Pages\Page;
@@ -167,7 +168,7 @@ class WeightSalesReport extends Page
                     'date' => $date,
                     'total_rial' => (float) $allItems->sum('subtotal'),
                     'total_items' => (int) $allItems->sum('quantity'),
-                    'labor_rial' => (float) $allItems->sum(fn ($item) => (float) ($item->labor_cost ?? 0) * $item->quantity),
+                    'labor_rial' => (float) $allItems->sum(fn ($item) => (float) ($item->labor_cost ?? 0) * $item->quantity * DynamicPriceService::RIAL_PER_TOMAN),
                     'bar_count' => $barCount,
                     'bar_weight' => $barWeight,
                     'bar_avg_weight' => $barCount > 0 ? round($barWeight / $barCount, 2) : 0,

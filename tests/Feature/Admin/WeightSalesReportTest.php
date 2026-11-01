@@ -54,9 +54,9 @@ class WeightSalesReportTest extends TestCase
             ->test(WeightSalesReport::class)
             ->call('loadReport')
             ->assertSee('اجرت (ریال)')
-            ->assertSee('20,000')
+            ->assertSee('200,000')
             ->assertSeeHtml('background-color: greenyellow');
 
-        $this->assertSame(20000.0, (float) $component->get('report')->first()['labor_rial']);
+        $this->assertSame(200000.0, (float) $component->get('report')->first()['labor_rial']);
     }
 }
