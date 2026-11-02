@@ -66,6 +66,97 @@ class DeferredIdentityOrderTest extends TestCase
         ]);
     }
 
+    public function test_checkout_can_verify_identity_before_gateway_selection_without_creating_order(): void
+    {
+        $user = User::factory()->create([
+            'first_name' => 'علی',
+            'last_name' => 'تست',
+            'national_code' => '0012345678',
+            'birth_date' => '1991-04-04',
+            'identity_verification_status' => 'pending',
+        ]);
+        $this->addProductToCart($user);
+        $shippingMethod = ShippingMethod::factory()->create();
+
+        $this->mock(ShahkarService::class, function ($mock): void {
+            $mock->shouldReceive('getIdentityInfo')->once()->with('0012345678', '1991-04-04')->andReturn([
+                'success' => true,
+                'info' => ['first_name' => 'مریم', 'last_name' => 'رضایی'],
+            ]);
+        });
+
+        $this->withHeaders($this->authHeaders($user))->postJson('/api/orders/verify-identity', [
+            'shipping_method_id' => $shippingMethod->id,
+        ])->assertOk()
+            ->assertJsonPath('user.identity_verification_status', 'verified')
+            ->assertJsonPath('user.first_name', 'مریم');
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_checkout_identity_mismatch_does_not_create_order(): void
+    {
+        $user = User::factory()->create([
+            'first_name' => 'علی',
+            'last_name' => 'تست',
+            'national_code' => '0012345678',
+            'birth_date' => '1991-04-04',
+            'identity_verification_status' => 'pending',
+        ]);
+        $this->addProductToCart($user);
+        $shippingMethod = ShippingMethod::factory()->create();
+
+        $this->mock(ShahkarService::class, function ($mock): void {
+            $mock->shouldReceive('getIdentityInfo')->once()->andReturn([
+                'success' => false,
+                'reason' => 'birth_date_mismatch',
+            ]);
+        });
+
+        $this->withHeaders($this->authHeaders($user))->postJson('/api/orders/verify-identity', [
+            'shipping_method_id' => $shippingMethod->id,
+        ])->assertUnprocessable()->assertJsonPath('error_code', 'BIRTH_DATE_MISMATCH');
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_checkout_skips_identity_inquiry_for_verified_user(): void
+    {
+        $user = User::factory()->create([
+            'identity_verification_status' => 'verified',
+        ]);
+        $this->addProductToCart($user);
+        $shippingMethod = ShippingMethod::factory()->create();
+
+        $this->mock(ShahkarService::class, function ($mock): void {
+            $mock->shouldNotReceive('getIdentityInfo');
+        });
+
+        $this->withHeaders($this->authHeaders($user))->postJson('/api/orders/verify-identity', [
+            'shipping_method_id' => $shippingMethod->id,
+        ])->assertOk()->assertJsonPath('user.identity_verification_status', 'verified');
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_checkout_does_not_inquire_for_empty_cart(): void
+    {
+        $user = User::factory()->create([
+            'identity_verification_status' => 'pending',
+        ]);
+        $shippingMethod = ShippingMethod::factory()->create();
+
+        $this->mock(ShahkarService::class, function ($mock): void {
+            $mock->shouldNotReceive('getIdentityInfo');
+        });
+
+        $this->withHeaders($this->authHeaders($user))->postJson('/api/orders/verify-identity', [
+            'shipping_method_id' => $shippingMethod->id,
+        ])->assertUnprocessable()->assertJsonPath('error_code', 'CART_EMPTY');
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
     public function test_incomplete_identity_response_does_not_verify_user_or_create_order(): void
     {
         $user = User::factory()->create([

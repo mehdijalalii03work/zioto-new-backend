@@ -64,6 +64,7 @@ Route::prefix('shipping')->group(function () {
 });
 
 Route::get('/orders', [OrderSubmitController::class, 'index'])->middleware('auth.token');
+Route::middleware('auth.token', 'throttle:10,1')->post('/orders/verify-identity', [OrderSubmitController::class, 'verifyIdentityForCheckout']);
 Route::get('/orders/{orderId}', [OrderSubmitController::class, 'show'])->middleware('auth.token');
 Route::get('/orders/{orderId}/notes', [OrderSubmitController::class, 'notes'])->middleware('auth.token');
 Route::middleware('auth.token', 'throttle:10,1')->post('/orders', [OrderSubmitController::class, 'store']);

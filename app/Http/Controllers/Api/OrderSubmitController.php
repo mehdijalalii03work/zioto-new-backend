@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Resources\OrderNoteResource;
 use App\Http\Resources\OrderResource;
+use App\Http\Resources\UserResource;
 use App\Models\Cart;
 use App\Models\DiscountCode;
 use App\Models\OrderShipping;
@@ -75,6 +76,16 @@ class OrderSubmitController extends Controller
     }
 
     public function store(StoreOrderRequest $request, DiscountCodeService $discountCodeService): JsonResponse
+    {
+        return $this->submitOrder($request, $discountCodeService, false);
+    }
+
+    public function verifyIdentityForCheckout(StoreOrderRequest $request, DiscountCodeService $discountCodeService): JsonResponse
+    {
+        return $this->submitOrder($request, $discountCodeService, true);
+    }
+
+    private function submitOrder(StoreOrderRequest $request, DiscountCodeService $discountCodeService, bool $verifyOnly): JsonResponse
     {
         if (! $this->salesRestrictions->salesEnabled()) {
             return response()->json([
@@ -185,6 +196,13 @@ class OrderSubmitController extends Controller
             } finally {
                 $identityLock->release();
             }
+        }
+
+        if ($verifyOnly) {
+            return response()->json([
+                'message' => 'احراز هویت با موفقیت انجام شد',
+                'user' => new UserResource($user->fresh()),
+            ]);
         }
 
         $result = DB::transaction(function () use ($validated, $user, $cartItems, $requestedDiscountCode, $discountCodeService) {
