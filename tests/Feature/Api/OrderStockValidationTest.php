@@ -98,7 +98,7 @@ class OrderStockValidationTest extends TestCase
     {
         config(['hesabfa.enable_reserved_stock' => true]);
 
-        $user = User::factory()->create();
+        $user = User::factory()->identityVerified()->create();
         $product = Product::create([
             'name' => 'شمش موجود',
             'slug' => 'in-stock-store-'.uniqid(),

@@ -25,7 +25,7 @@ class DiscountCodeReservationTest extends TestCase
 
     public function test_unpaid_order_does_not_consume_discount_capacity_and_cancelled_order_releases_reservation(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->identityVerified()->create();
         $product = Product::create([
             'name' => 'Product',
             'slug' => 'discount-reservation-product',

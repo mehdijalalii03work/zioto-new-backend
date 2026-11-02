@@ -44,28 +44,7 @@ class TenantAuthFlowTest extends TestCase
     {
         $this->mock(ShahkarService::class, function ($mock) {
             $mock->shouldReceive('verify')->andReturn(['success' => true, 'matched' => true]);
-            $mock->shouldReceive('getIdentityInfo')->andReturn([
-                'success' => true,
-                'info' => [
-                    'first_name' => 'علی',
-                    'last_name' => 'تست',
-                    'father_name' => 'رضا',
-                    'gender' => 'MALE',
-                    'birth_place' => 'تهران',
-                ],
-            ]);
-        });
-    }
-
-    private function mockShahkarIdentityMismatch(): void
-    {
-        $this->mock(ShahkarService::class, function ($mock) {
-            $mock->shouldReceive('verify')->andReturn(['success' => true, 'matched' => true]);
-            $mock->shouldReceive('getIdentityInfo')->andReturn([
-                'success' => false,
-                'reason' => 'birth_date_mismatch',
-                'message' => 'تاریخ تولد وارد شده صحیح نیست',
-            ]);
+            $mock->shouldNotReceive('getIdentityInfo');
         });
     }
 
@@ -99,6 +78,8 @@ class TenantAuthFlowTest extends TestCase
                 'token' => $registerToken,
                 'national_code' => '0012345678',
                 'birth_date' => '1370-01-15',
+                'first_name' => 'علی',
+                'last_name' => 'تست',
             ]);
 
         $reg->assertOk();
@@ -112,13 +93,13 @@ class TenantAuthFlowTest extends TestCase
         $user = User::withoutTenantScope()->where('phone', '09120000010')->first();
         $this->assertNotNull($user);
         $this->assertSame('nopay', $user->platform);
-        $this->assertSame('verified', $user->identity_verification_status);
-        $this->assertNotNull($user->identity_verified_at);
+        $this->assertSame('pending', $user->identity_verification_status);
+        $this->assertNull($user->identity_verified_at);
         $this->assertSame('علی', $user->first_name);
         $this->assertSame('تست', $user->last_name);
-        $this->assertSame('رضا', $user->father_name);
-        $this->assertSame('آقا', $user->gender);
-        $this->assertSame('تهران', $user->birth_place);
+        $this->assertNull($user->father_name);
+        $this->assertNull($user->gender);
+        $this->assertNull($user->birth_place);
 
         // The returned token works on nopay
         $this->withHeaders(['X-Platform' => 'nopay', 'Authorization' => 'Bearer '.$reg->json('token')])
@@ -142,13 +123,18 @@ class TenantAuthFlowTest extends TestCase
         $response->assertOk();
         $response->assertJson(['requires_registration' => true]);
 
-        $this->mockShahkarSuccess();
+        $this->mock(ShahkarService::class, function ($mock): void {
+            $mock->shouldReceive('verify')->once()->andReturn(['success' => true, 'matched' => true]);
+            $mock->shouldNotReceive('getIdentityInfo');
+        });
 
         $reg = $this->withHeaders(['X-Platform' => 'main'])
             ->postJson('/api/auth/shahkar-verify', [
                 'token' => $response->json('token'),
                 'national_code' => '0098765432',
                 'birth_date' => '1375-05-20',
+                'first_name' => 'مریم',
+                'last_name' => 'رضایی',
             ]);
 
         $reg->assertOk();
@@ -156,7 +142,7 @@ class TenantAuthFlowTest extends TestCase
         $user = User::withoutTenantScope()->where('phone', '09120000011')->first();
         $this->assertNotNull($user);
         $this->assertSame('main', $user->platform);
-        $this->assertSame('verified', $user->identity_verification_status);
+        $this->assertSame('pending', $user->identity_verification_status);
     }
 
     public function test_existing_user_otp_login_does_not_send_welcome_message(): void
@@ -256,20 +242,22 @@ class TenantAuthFlowTest extends TestCase
 
         $response->assertOk();
 
-        $this->mockShahkarIdentityMismatch();
+        $this->mock(ShahkarService::class, function ($mock): void {
+            $mock->shouldReceive('verify')->once()->andReturn(['success' => true, 'matched' => true]);
+            $mock->shouldNotReceive('getIdentityInfo');
+        });
 
         $reg = $this->withHeaders(['X-Platform' => 'main'])
             ->postJson('/api/auth/shahkar-verify', [
                 'token' => $response->json('token'),
                 'national_code' => '0011122233',
                 'birth_date' => '1370-01-01',
+                'first_name' => 'علی',
+                'last_name' => 'تست',
             ]);
 
-        $reg->assertStatus(422);
-        $reg->assertJson([
-            'error_code' => 'BIRTH_DATE_MISMATCH',
-        ]);
-        Queue::assertNotPushed(SendWelcomeSms::class);
+        $reg->assertOk()->assertJsonPath('user.identity_verification_status', 'pending');
+        Queue::assertPushed(SendWelcomeSms::class);
     }
 
     #[RunInSeparateProcess]
@@ -309,16 +297,7 @@ class TenantAuthFlowTest extends TestCase
         // If it were called, the mock would fail the test with "no expectation".
         $this->mock(ShahkarService::class, function ($mock) {
             $mock->shouldNotReceive('verify');
-            $mock->shouldReceive('getIdentityInfo')->andReturn([
-                'success' => true,
-                'info' => [
-                    'first_name' => 'علی',
-                    'last_name' => 'نوپی',
-                    'father_name' => 'رضا',
-                    'gender' => 'MALE',
-                    'birth_place' => 'تهران',
-                ],
-            ]);
+            $mock->shouldNotReceive('getIdentityInfo');
         });
 
         $reg = $this->withHeaders(['X-Platform' => 'nopay'])
@@ -326,6 +305,8 @@ class TenantAuthFlowTest extends TestCase
                 'token' => $response->json('token'),
                 'national_code' => '0011223344',
                 'birth_date' => '1370-01-15',
+                'first_name' => 'علی',
+                'last_name' => 'نوپی',
             ]);
 
         $reg->assertOk();
@@ -338,7 +319,7 @@ class TenantAuthFlowTest extends TestCase
             ->first();
         $this->assertNotNull($nopayUser);
         $this->assertTrue((bool) $nopayUser->shahkar_verified);
-        $this->assertSame('verified', $nopayUser->identity_verification_status);
+        $this->assertSame('pending', $nopayUser->identity_verification_status);
     }
 
     public function test_shahkar_api_is_called_when_phone_differs_across_platforms(): void
@@ -380,6 +361,8 @@ class TenantAuthFlowTest extends TestCase
                 'token' => $response->json('token'),
                 'national_code' => '0099887766',
                 'birth_date' => '1375-05-20',
+                'first_name' => 'مریم',
+                'last_name' => 'رضایی',
             ]);
 
         $reg->assertOk();
@@ -427,6 +410,98 @@ class TenantAuthFlowTest extends TestCase
 
         $user->refresh();
         $this->assertSame('test@example.com', $user->email);
+    }
+
+    public function test_profile_update_rejects_birth_date_change_after_identity_verification(): void
+    {
+        $user = User::factory()->create([
+            'first_name' => 'علی',
+            'last_name' => 'تست',
+            'national_code' => '0011223399',
+            'birth_date' => '1370-01-15',
+            'identity_verification_status' => 'verified',
+            'identity_verified_at' => now(),
+        ]);
+
+        $response = $this->withToken($user->api_token)
+            ->putJson('/api/profile', ['birth_date' => '1371-02-16']);
+
+        $response->assertUnprocessable()->assertJsonPath('error_code', 'IDENTITY_VERIFIED');
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'birth_date' => '1370-01-15',
+        ]);
+    }
+
+    public function test_registration_requires_birth_date(): void
+    {
+        $this->postJson('/api/auth/shahkar-verify', [
+            'token' => 'temporary-token',
+            'national_code' => '0012345678',
+            'first_name' => 'علی',
+            'last_name' => 'تست',
+        ])->assertUnprocessable()->assertJsonValidationErrors('birth_date');
+    }
+
+    public function test_unverified_user_can_edit_birth_date_without_identity_inquiry(): void
+    {
+        $user = User::factory()->create([
+            'birth_date' => '1991-04-04',
+            'identity_verification_status' => 'birth_date_mismatch',
+        ]);
+
+        $this->mock(ShahkarService::class, function ($mock): void {
+            $mock->shouldNotReceive('getIdentityInfo');
+        });
+
+        $this->withToken($user->api_token)
+            ->putJson('/api/profile', ['birth_date' => '1992-05-06'])
+            ->assertOk()
+            ->assertJsonPath('user.birth_date', '1992-05-06')
+            ->assertJsonPath('user.identity_verification_status', 'pending');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'birth_date' => '1992-05-06',
+            'identity_verification_status' => 'pending',
+        ]);
+    }
+
+    public function test_profile_cannot_change_identity_fields_during_order_identity_inquiry(): void
+    {
+        $user = User::factory()->create([
+            'birth_date' => '1991-04-04',
+            'identity_verification_status' => 'pending',
+        ]);
+        $lock = Cache::lock('identity-verification:user:'.$user->id, 60);
+        $this->assertTrue($lock->get());
+
+        try {
+            $this->withToken($user->api_token)
+                ->putJson('/api/profile', ['birth_date' => '1992-05-06'])
+                ->assertStatus(409)
+                ->assertJsonPath('error_code', 'IDENTITY_VERIFICATION_IN_PROGRESS');
+        } finally {
+            $lock->release();
+        }
+
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'birth_date' => '1991-04-04']);
+    }
+
+    public function test_profile_update_allows_email_change_after_identity_verification(): void
+    {
+        $user = User::factory()->create([
+            'national_code' => '0011223311',
+            'birth_date' => '1370-01-15',
+            'identity_verification_status' => 'verified',
+            'identity_verified_at' => now(),
+        ]);
+
+        $response = $this->withToken($user->api_token)
+            ->putJson('/api/profile', ['email' => 'updated@example.test']);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'email' => 'updated@example.test']);
     }
 
     #[RunInSeparateProcess]

@@ -145,7 +145,7 @@ class NopayProductEligibilityTest extends TestCase
 
     public function test_nopay_order_accepts_eligible_product(): void
     {
-        $user = User::factory()->nopay()->create();
+        $user = User::factory()->nopay()->identityVerified()->create();
         $product = $this->eligibleProduct();
         $method = $this->shippingMethod();
 
@@ -168,7 +168,7 @@ class NopayProductEligibilityTest extends TestCase
 
     public function test_main_order_accepts_non_eligible_product(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->identityVerified()->create();
         $product = $this->nonEligibleProduct();
         $method = $this->shippingMethod();
 

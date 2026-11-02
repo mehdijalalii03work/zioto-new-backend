@@ -26,7 +26,7 @@ class DirectTokenikoProductPricingTest extends TestCase
         ]);
         Cache::put('tokeniko:shop_prices', ['tokeniko-sku-1' => '250000'], 60);
 
-        $user = User::factory()->create();
+        $user = User::factory()->identityVerified()->create();
         $product = Product::create([
             'name' => 'محصول دارای قیمت توکنیکو',
             'slug' => 'tokeniko-order-product',

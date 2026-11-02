@@ -11,14 +11,17 @@ use App\Models\DiscountCode;
 use App\Models\OrderShipping;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
+use App\Models\User;
 use App\Models\UserAddress;
 use App\Services\DiscountCodeService;
 use App\Services\InstallmentService;
 use App\Services\Pricing\DynamicPriceService;
 use App\Services\Pricing\SalesRestrictionService;
+use App\Services\ShahkarService;
 use App\Support\Platform;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\Order\Models\Order;
@@ -28,6 +31,7 @@ class OrderSubmitController extends Controller
     public function __construct(
         private readonly DynamicPriceService $dynamicPrice,
         private readonly SalesRestrictionService $salesRestrictions,
+        private readonly ShahkarService $shahkar,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -125,9 +129,64 @@ class OrderSubmitController extends Controller
             ], 422);
         }
 
+        if (! empty($validated['user_address_id']) && ! $user->addresses()->whereKey($validated['user_address_id'])->exists()) {
+            return response()->json([
+                'message' => 'آدرس انتخاب‌شده معتبر نیست',
+                'error_code' => 'ADDRESS_INVALID',
+            ], 422);
+        }
+
+        if (! ShippingMethod::active()->whereKey($validated['shipping_method_id'])->exists()) {
+            return response()->json([
+                'message' => 'روش ارسال انتخاب‌شده معتبر نیست',
+                'error_code' => 'SHIPPING_METHOD_INVALID',
+            ], 422);
+        }
+
         $requestedDiscountCode = filled($validated['discount_code'] ?? null)
             ? Str::upper(trim($validated['discount_code']))
             : null;
+        if ($requestedDiscountCode !== null && ! $user->isIdentityVerified()) {
+            $discountValidation = $discountCodeService->validate($requestedDiscountCode, $user, Platform::fromRequest($request));
+            if ($discountValidation['error']) {
+                $hasPendingOrderWithCode = Order::query()
+                    ->where('user_id', $user->id)
+                    ->where('discount_code_snapshot', $requestedDiscountCode)
+                    ->where('status', 'pending')
+                    ->whereIn('payment_status', ['pending', 'failed'])
+                    ->where('created_at', '>=', now()->subMinutes(20))
+                    ->exists();
+                if (! $hasPendingOrderWithCode) {
+                    return response()->json([
+                        'message' => $discountValidation['error'],
+                        'error_code' => 'DISCOUNT_CODE_INVALID',
+                    ], 422);
+                }
+            }
+        }
+
+        if (! $user->isIdentityVerified()) {
+            $identityLock = Cache::lock('identity-verification:user:'.$user->id, 90);
+            if (! $identityLock->get()) {
+                return response()->json([
+                    'message' => 'استعلام هویتی شما در حال انجام است. لطفاً چند لحظه دیگر تلاش کنید',
+                    'error_code' => 'IDENTITY_VERIFICATION_IN_PROGRESS',
+                ], 409);
+            }
+
+            try {
+                $user->refresh();
+                if (! $user->isIdentityVerified()) {
+                    $identityError = $this->verifyIdentityForOrder($user);
+                    if ($identityError !== null) {
+                        return $identityError;
+                    }
+                }
+            } finally {
+                $identityLock->release();
+            }
+        }
+
         $result = DB::transaction(function () use ($validated, $user, $cartItems, $requestedDiscountCode, $discountCodeService) {
             $address = empty($validated['user_address_id'])
                 ? null
@@ -175,6 +234,82 @@ class OrderSubmitController extends Controller
             'message' => 'سفارش با موفقیت ثبت شد',
             'order' => new OrderResource($result['order']),
         ], 201);
+    }
+
+    private function verifyIdentityForOrder(User $user): ?JsonResponse
+    {
+        if (! $user->national_code || ! $user->birth_date || ! $user->first_name || ! $user->last_name) {
+            return response()->json([
+                'message' => 'برای ادامه خرید، اطلاعات هویتی خود را تکمیل کنید',
+                'error_code' => 'IDENTITY_INFORMATION_REQUIRED',
+            ], 422);
+        }
+
+        $birthDate = $user->birth_date instanceof \DateTimeInterface
+            ? $user->birth_date->format('Y-m-d')
+            : (string) $user->birth_date;
+        $identityResult = $this->shahkar->getIdentityInfo($user->national_code, $birthDate);
+        $identityQuery = User::query()
+            ->whereKey($user->id)
+            ->where('birth_date', $birthDate)
+            ->where('identity_verification_status', '!=', 'verified');
+
+        if (! ($identityResult['success'] ?? false)) {
+            if (in_array($identityResult['reason'] ?? null, ['birth_date_mismatch', 'invalid_date'], true)) {
+                $updated = $identityQuery->update([
+                    'identity_verification_status' => 'birth_date_mismatch',
+                    'identity_verified_at' => null,
+                ]);
+                if ($updated === 0) {
+                    return $this->identityChangedResponse();
+                }
+
+                return response()->json([
+                    'message' => 'تاریخ تولد وارد شده صحیح نیست. لطفاً آن را اصلاح کنید',
+                    'error_code' => ($identityResult['reason'] ?? null) === 'invalid_date' ? 'BIRTH_DATE_INVALID' : 'BIRTH_DATE_MISMATCH',
+                ], 422);
+            }
+
+            return response()->json([
+                'message' => $identityResult['message'] ?? 'سرویس استعلام هویتی موقتاً در دسترس نیست',
+                'error_code' => 'IDENTITY_SERVICE_UNAVAILABLE',
+            ], 503);
+        }
+
+        $info = $identityResult['info'] ?? [];
+        $firstName = trim((string) ($info['first_name'] ?? ''));
+        $lastName = trim((string) ($info['last_name'] ?? ''));
+        if ($firstName === '' || $lastName === '') {
+            return response()->json([
+                'message' => 'اطلاعات هویتی کامل دریافت نشد. لطفاً دوباره تلاش کنید',
+                'error_code' => 'IDENTITY_SERVICE_UNAVAILABLE',
+            ], 503);
+        }
+
+        $updated = $identityQuery->update([
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'name' => $firstName.' '.$lastName,
+            'father_name' => $info['father_name'] ?? $user->father_name,
+            'gender' => ShahkarService::mapGender($info['gender'] ?? $user->gender),
+            'birth_place' => $info['birth_place'] ?? $user->birth_place,
+            'identity_verification_status' => 'verified',
+            'identity_verified_at' => now(),
+        ]);
+        if ($updated === 0) {
+            return $this->identityChangedResponse();
+        }
+        $user->refresh();
+
+        return null;
+    }
+
+    private function identityChangedResponse(): JsonResponse
+    {
+        return response()->json([
+            'message' => 'اطلاعات هویتی در حین استعلام تغییر کرده است. لطفاً دوباره تلاش کنید',
+            'error_code' => 'IDENTITY_INFORMATION_CHANGED',
+        ], 409);
     }
 
     private function validateCartStock($cartItems): array
@@ -268,7 +403,7 @@ class OrderSubmitController extends Controller
             'discount_amount' => $orderData['discount_amount'],
             'payment_method' => $orderData['payment_method'],
             'payment_status' => 'pending',
-            'user_address_id' => $validated['user_address_id'] ?? null,
+            'user_address_id' => $address?->id,
             'notes' => json_encode($notesData),
         ]);
 

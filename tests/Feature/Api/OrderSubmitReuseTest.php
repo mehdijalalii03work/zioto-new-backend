@@ -27,7 +27,14 @@ class OrderSubmitReuseTest extends TestCase
 
     public function test_reusing_an_order_preserves_province_based_shipping_and_total(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'first_name' => 'علی',
+            'last_name' => 'تست',
+            'national_code' => '0012345678',
+            'birth_date' => '1370-01-15',
+            'identity_verification_status' => 'verified',
+            'identity_verified_at' => now(),
+        ]);
         $province = Province::factory()->create();
         $city = City::factory()->create(['province_id' => $province->id]);
         $address = UserAddress::factory()->create([

@@ -47,106 +47,70 @@ class ProfileController extends Controller
             'birth_date' => ['sometimes', 'nullable', 'date', 'before:today'],
         ]);
 
-        // Block identity fields when identity is already verified
-        if ($user->isIdentityVerified()) {
-            $blocked = array_intersect(array_keys($validated), ['first_name', 'last_name', 'birth_date']);
-            if (! empty($blocked)) {
+        $identityFields = array_intersect(array_keys($validated), ['first_name', 'last_name', 'birth_date']);
+        $identityLock = null;
+        if ($identityFields !== []) {
+            $identityLock = Cache::lock('identity-verification:user:'.$user->id, 90);
+            if (! $identityLock->get()) {
+                return response()->json([
+                    'message' => 'استعلام هویتی شما در حال انجام است. لطفاً چند لحظه دیگر تلاش کنید',
+                    'error_code' => 'IDENTITY_VERIFICATION_IN_PROGRESS',
+                ], 409);
+            }
+        }
+
+        try {
+            if ($identityLock !== null) {
+                $user->refresh();
+            }
+
+            if ($user->isIdentityVerified() && $identityFields !== []) {
                 return response()->json([
                     'message' => 'اطلاعات هویتی پس از احراز هویت قابل تغییر نیست',
                     'error_code' => 'IDENTITY_VERIFIED',
                 ], 422);
             }
-        }
 
-        $data = [];
-        $birthDateChanged = false;
+            $data = [];
+            $birthDateChanged = false;
 
-        if ($request->has('first_name')) {
-            $data['first_name'] = $validated['first_name'];
-        }
-
-        if ($request->has('last_name')) {
-            $data['last_name'] = $validated['last_name'];
-        }
-
-        if ($request->has('first_name') && $request->has('last_name')) {
-            $data['name'] = $validated['first_name'].' '.$validated['last_name'];
-        } elseif ($request->has('first_name') && $user->last_name) {
-            $data['name'] = $validated['first_name'].' '.$user->last_name;
-        } elseif ($request->has('last_name') && $user->first_name) {
-            $data['name'] = $user->first_name.' '.$validated['last_name'];
-        }
-
-        if ($request->has('email')) {
-            $data['email'] = $validated['email'] ?: null;
-        }
-
-        if ($request->has('birth_date') && $validated['birth_date'] !== $user->birth_date) {
-            $data['birth_date'] = $validated['birth_date'];
-            $birthDateChanged = true;
-        }
-
-        $user->update($data);
-
-        // When birth_date changes and identity was previously mismatched or verified,
-        // re-fetch identity info from Jibit (skip if same birth_date = duplicate prevention)
-        if ($birthDateChanged && in_array($user->identity_verification_status, ['birth_date_mismatch', 'verified'])) {
-            $normalizedMobile = $this->normalizeMobile($user->phone);
-            $nationalCode = $user->national_code;
-
-            Log::info('Profile identity re-verify started', [
-                'user_id' => $user->id,
-                'national_code' => substr($nationalCode, 0, 3).'***'.substr($nationalCode, -2),
-                'birth_date_input' => $validated['birth_date'],
-                'identity_status' => $user->identity_verification_status,
-            ]);
-
-            // First verify national code matches phone (shahkar matching)
-            $matchResult = $this->shahkar->verify($nationalCode, $normalizedMobile);
-
-            Log::info('Profile shahkar verify result', [
-                'user_id' => $user->id,
-                'match_result' => $matchResult,
-            ]);
-
-            if ($matchResult['success'] && ($matchResult['matched'] ?? false)) {
-                $identityResult = $this->shahkar->getIdentityInfo($nationalCode, $validated['birth_date']);
-
-                Log::info('Profile getIdentityInfo result', [
-                    'user_id' => $user->id,
-                    'birth_date_sent' => $validated['birth_date'],
-                    'identity_result' => $identityResult,
-                ]);
-
-                if ($identityResult['success']) {
-                    $user->update([
-                        'first_name' => $identityResult['info']['first_name'] ?? $user->first_name,
-                        'last_name' => $identityResult['info']['last_name'] ?? $user->last_name,
-                        'name' => ($identityResult['info']['first_name'] ?? '').' '.($identityResult['info']['last_name'] ?? ''),
-                        'father_name' => $identityResult['info']['father_name'] ?? $user->father_name,
-                        'gender' => ShahkarService::mapGender($identityResult['info']['gender'] ?? $user->gender),
-                        'birth_place' => $identityResult['info']['birth_place'] ?? $user->birth_place,
-                        'identity_verification_status' => 'verified',
-                        'identity_verified_at' => now(),
-                    ]);
-                } elseif ($identityResult['reason'] === 'birth_date_mismatch') {
-                    $user->update([
-                        'identity_verification_status' => 'birth_date_mismatch',
-                        'identity_verified_at' => null,
-                    ]);
-                }
-            } else {
-                Log::warning('Profile shahkar verify failed or not matched', [
-                    'user_id' => $user->id,
-                    'match_result' => $matchResult,
-                ]);
+            if ($request->has('first_name')) {
+                $data['first_name'] = $validated['first_name'];
             }
-        }
 
-        return response()->json([
-            'message' => 'اطلاعات با موفقیت بروزرسانی شد',
-            'user' => new UserResource($user->fresh()),
-        ]);
+            if ($request->has('last_name')) {
+                $data['last_name'] = $validated['last_name'];
+            }
+
+            $firstName = $validated['first_name'] ?? $user->first_name;
+            $lastName = $validated['last_name'] ?? $user->last_name;
+            if ($request->has('first_name') || $request->has('last_name')) {
+                $data['name'] = trim($firstName.' '.$lastName);
+            }
+
+            if ($request->has('email')) {
+                $data['email'] = $validated['email'] ?: null;
+            }
+
+            if ($request->has('birth_date') && $validated['birth_date'] !== $user->birth_date) {
+                $data['birth_date'] = $validated['birth_date'];
+                $birthDateChanged = true;
+            }
+
+            if ($birthDateChanged) {
+                $data['identity_verification_status'] = 'pending';
+                $data['identity_verified_at'] = null;
+            }
+
+            $user->update($data);
+
+            return response()->json([
+                'message' => 'اطلاعات با موفقیت بروزرسانی شد',
+                'user' => new UserResource($user->fresh()),
+            ]);
+        } finally {
+            $identityLock?->release();
+        }
     }
 
     public function changePhoneSendOtp(Request $request): JsonResponse

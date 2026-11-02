@@ -135,7 +135,7 @@ class ProductPackTest extends TestCase
 
     public function test_order_stores_pack_price_and_quantity(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->identityVerified()->create();
         $base = $this->baseProduct();
         $pack = $this->packProduct($base);
         $method = ShippingMethod::factory()->create(['is_active' => true]);
@@ -198,7 +198,7 @@ class ProductPackTest extends TestCase
     {
         config(['hesabfa.enable_reserved_stock' => true]);
 
-        $user = User::factory()->create();
+        $user = User::factory()->identityVerified()->create();
         $base = $this->baseProduct(['hesabfa_physical_stock' => 7]);
         $pack = $this->packProduct($base);
         $method = ShippingMethod::factory()->create(['is_active' => true]);

@@ -63,7 +63,7 @@ class DiscountCodeTest extends TestCase
 
     public function test_order_creation_records_discount_usage_and_reduces_the_payable_amount(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->identityVerified()->create();
         $product = Product::create([
             'name' => 'Product',
             'slug' => 'discount-order-product',
@@ -225,7 +225,7 @@ class DiscountCodeTest extends TestCase
 
     public function test_discount_is_capped_at_the_invoice_amount(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->identityVerified()->create();
         $product = Product::create([
             'name' => 'Small Product',
             'slug' => 'discount-cap-product',

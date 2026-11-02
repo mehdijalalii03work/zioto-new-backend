@@ -58,4 +58,12 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    public function identityVerified(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'identity_verification_status' => 'verified',
+            'identity_verified_at' => now(),
+        ]);
+    }
 }

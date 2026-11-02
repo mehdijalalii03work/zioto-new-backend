@@ -130,6 +130,8 @@ class OtpController extends Controller
         $token = $request->input('token');
         $nationalCode = $request->input('national_code');
         $birthDate = $request->input('birth_date');
+        $firstName = trim($request->input('first_name'));
+        $lastName = trim($request->input('last_name'));
 
         $registerData = Cache::pull("shahkar_register_token:{$token}");
         $phone = is_array($registerData) ? ($registerData['phone'] ?? null) : $registerData;
@@ -187,53 +189,23 @@ class OtpController extends Controller
             }
         }
 
-        // Fetch identity info from Jibit (name, father name, gender, birth place)
-        $identityResult = $this->shahkar->getIdentityInfo($nationalCode, $birthDate);
-
-        $firstName = $identityResult['info']['first_name'] ?? null;
-        $lastName = $identityResult['info']['last_name'] ?? null;
-        $fatherName = $identityResult['info']['father_name'] ?? null;
-        $gender = ShahkarService::mapGender($identityResult['info']['gender'] ?? null);
-        $birthPlace = $identityResult['info']['birth_place'] ?? null;
-
-        if (! $identityResult['success']) {
-            if ($identityResult['reason'] === 'birth_date_mismatch') {
-                return response()->json([
-                    'message' => 'تاریخ تولد وارد شده صحیح نیست',
-                    'error_code' => 'BIRTH_DATE_MISMATCH',
-                ], 422);
-            }
-
-            if ($identityResult['reason'] === 'rate_limit') {
-                return response()->json([
-                    'message' => $identityResult['message'],
-                    'error_code' => 'RATE_LIMITED',
-                ], 422);
-            }
-
-            return response()->json([
-                'message' => $identityResult['message'] ?? 'خطا در دریافت اطلاعات هویتی',
-                'error_code' => 'IDENTITY_FAILED',
-            ], 422);
-        }
-
         $apiToken = Str::random(64);
 
         $user = User::create([
             'name' => $firstName.' '.$lastName,
             'first_name' => $firstName,
             'last_name' => $lastName,
-            'father_name' => $fatherName,
-            'gender' => $gender,
-            'birth_place' => $birthPlace,
+            'father_name' => null,
+            'gender' => null,
+            'birth_place' => null,
             'phone' => $phone,
             'email' => null,
             'password' => Hash::make(Str::random(32)),
             'phone_verified_at' => now(),
             'national_code' => $nationalCode,
             'shahkar_verified' => true,
-            'identity_verification_status' => 'verified',
-            'identity_verified_at' => now(),
+            'identity_verification_status' => 'pending',
+            'identity_verified_at' => null,
             'birth_date' => $birthDate,
             'platform' => $platform,
             'api_token' => $apiToken,
