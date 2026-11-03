@@ -71,6 +71,7 @@ class Product extends Model implements HasMedia
             'stock_quantity' => 'integer',
             'pack_size' => 'integer',
             'sort_order' => 'integer',
+            'views_count' => 'integer',
             'hesabfa_physical_stock' => 'decimal:2',
             'hesabfa_reserved_stock' => 'decimal:2',
             'hesabfa_manual_reserved' => 'decimal:2',

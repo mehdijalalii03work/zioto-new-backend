@@ -8,8 +8,11 @@ use App\Models\User;
 use App\Services\Pricing\DynamicPriceService;
 use App\Services\Pricing\PricingSettings;
 use App\Support\Platform;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Modules\Order\Models\OrderItem;
 use Modules\Product\Models\Product;
 
 class ProductController extends Controller
@@ -18,6 +21,8 @@ class ProductController extends Controller
     {
         $slugs = request()->input('slugs');
         $skus = request()->input('skus');
+        $includeSortMetrics = config('product-analytics.sort_metrics_enabled')
+            && request()->boolean('include_sort_metrics');
 
         $priceMode = PricingSettings::tokenikoProductPricesEnabled() ? 'tokeniko' : 'calculated';
         $cacheKey = 'api:products:v2:'.$priceMode.':'.($slugs ? md5($slugs) : ($skus ? md5($skus) : 'all'));
@@ -76,12 +81,31 @@ class ProductController extends Controller
         $dynamicPrice = app(DynamicPriceService::class);
         $productModels = null;
         $salesEnabled = PricingSettings::salesEnabled();
+        $productIds = array_column($products, 'id');
+        $viewCounts = collect();
+        $salesCounts = collect();
+
+        if ($includeSortMetrics && $productIds !== []) {
+            $viewCounts = Product::query()
+                ->whereIn('id', $productIds)
+                ->pluck('views_count', 'id');
+            $salesCounts = OrderItem::query()
+                ->whereIn('product_id', $productIds)
+                ->whereHas('order', function (Builder $query): void {
+                    $query->whereIn('status', ['confirmed', 'completed'])
+                        ->whereDoesntHave('items.product', static fn (Builder $itemsQuery): Builder => $itemsQuery->where('slug', 'test'));
+                })
+                ->select('product_id')
+                ->selectRaw('SUM(quantity) as sales_count')
+                ->groupBy('product_id')
+                ->pluck('sales_count', 'product_id');
+        }
 
         if ($userId !== null) {
             $productModels = Product::whereIn('id', array_column($products, 'id'))->get()->keyBy('id');
         }
 
-        $products = array_map(function (array $p) use ($wishlistSet, $dynamicPrice, $userId, $productModels, $salesEnabled) {
+        $products = array_map(function (array $p) use ($wishlistSet, $dynamicPrice, $userId, $productModels, $salesEnabled, $includeSortMetrics, $viewCounts, $salesCounts) {
             $productId = $p['id'];
 
             if ($userId !== null && $productModels !== null) {
@@ -104,9 +128,16 @@ class ProductController extends Controller
                 $p['unavailable_reason'] = 'sales_closed';
             }
 
-            return array_merge($p, [
+            $product = array_merge($p, [
                 'is_wishlist' => isset($wishlistSet[$productId]),
             ]);
+
+            if ($includeSortMetrics) {
+                $product['views_count'] = (int) ($viewCounts->get($productId) ?? 0);
+                $product['sales_count'] = (int) ($salesCounts->get($productId) ?? 0);
+            }
+
+            return $product;
         }, $products);
 
         return response()->json([
@@ -157,5 +188,34 @@ class ProductController extends Controller
             'data' => $data,
             'sales_enabled' => $salesEnabled,
         ]);
+    }
+
+    public function recordView(Request $request, string $slugOrId): JsonResponse
+    {
+        if (! config('product-analytics.view_tracking_enabled')) {
+            return response()->noContent();
+        }
+
+        $validated = $request->validate([
+            'visitor_id' => ['required', 'uuid'],
+        ]);
+
+        $product = Product::publiclyListed()
+            ->where(function (Builder $query) use ($slugOrId): void {
+                $query->where('slug', $slugOrId)
+                    ->orWhere('id', $slugOrId);
+            })
+            ->first();
+
+        if (! $product) {
+            return response()->json(['message' => 'محصول یافت نشد', 'error_code' => 'PRODUCT_NOT_FOUND'], 404);
+        }
+
+        $dedupeKey = 'api:product-view:'.$product->id.':'.hash('sha256', $validated['visitor_id']);
+        if (Cache::add($dedupeKey, true, now()->addDay())) {
+            $product->increment('views_count');
+        }
+
+        return response()->noContent();
     }
 }

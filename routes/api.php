@@ -92,6 +92,7 @@ Route::post('/price-board/refresh', [PriceBoardController::class, 'refresh'])->m
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::post('/products/{id}/view', [ProductController::class, 'recordView'])->middleware('throttle:60,1');
 Route::get('/categories', [\App\Http\Controllers\Api\ProductCategoryController::class, 'index']);
 Route::get('/categories/{slug}', [\App\Http\Controllers\Api\ProductCategoryController::class, 'show']);
 
