@@ -62,7 +62,8 @@ class TapsiComparisonPageTest extends TestCase
             ->assertSee('TAPSI-123')
             ->assertSee('wire:click="sortByDiff"', false)
             ->assertSee('-1.96٪')
-            ->assertSee('bg-amber-200', false);
+            ->assertDontSee('اختلاف مجاز')
+            ->assertDontSee('bg-amber-200', false);
 
         $this->assertSame(2, $component->get('productCount'));
         $this->assertSame($product->id, $component->get('rows')[0]['id']);
@@ -76,28 +77,5 @@ class TapsiComparisonPageTest extends TestCase
             [$product->id, $productWithSmallerDifference->id],
             array_column($component->get('rows'), 'id'),
         );
-    }
-
-    public function test_allowed_difference_threshold_can_be_changed_or_cleared(): void
-    {
-        $user = User::factory()->create()->assignRole(Role::Admin->value);
-        Livewire::actingAs($user, 'web');
-
-        Product::create([
-            'name' => 'Gold bar',
-            'slug' => 'gold-bar-tapsi-threshold',
-            'price_type' => 'fixed',
-            'price' => 300_000_000,
-            'tapsi_product_id' => 'TAPSI-789',
-        ]);
-
-        Livewire::test(TapsiComparisonPage::class)
-            ->set('allowedDiffInput', '5')
-            ->call('applyThreshold')
-            ->assertSet('diffThreshold', 5.0)
-            ->assertDontSee('bg-amber-200', false)
-            ->set('allowedDiffInput', '')
-            ->call('applyThreshold')
-            ->assertSet('diffThreshold', null);
     }
 }

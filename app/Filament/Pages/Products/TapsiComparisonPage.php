@@ -33,10 +33,6 @@ class TapsiComparisonPage extends Page
 
     public int $productCount = 0;
 
-    public ?string $allowedDiffInput = '0.5';
-
-    public ?float $diffThreshold = 0.5;
-
     /** @var 'asc'|'desc'|null */
     public ?string $sortDirection = null;
 
@@ -60,29 +56,6 @@ class TapsiComparisonPage extends Page
             ->body('قیمت محصولات و قیمت ارسالی به تپسی‌شاپ دوباره محاسبه شد.')
             ->success()
             ->send();
-    }
-
-    public function applyThreshold(): void
-    {
-        $input = trim((string) $this->allowedDiffInput);
-
-        if ($input === '') {
-            $this->diffThreshold = null;
-
-            return;
-        }
-
-        if (! is_numeric($input) || (float) $input < 0 || (float) $input > 1000) {
-            Notification::make()
-                ->title('خطا')
-                ->body('درصد مجاز معتبر وارد کنید (۰ تا ۱۰۰۰).')
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        $this->diffThreshold = (float) $input;
     }
 
     public function sortByDiff(): void
