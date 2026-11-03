@@ -61,6 +61,7 @@ class TapsiComparisonPageTest extends TestCase
             ->assertSee('قیمت ارسالی به تپسی‌شاپ')
             ->assertSee('TAPSI-123')
             ->assertSee('wire:click="sortByDiff"', false)
+            ->assertSee('-1.96٪')
             ->assertSee('bg-amber-200', false);
 
         $this->assertSame(2, $component->get('productCount'));

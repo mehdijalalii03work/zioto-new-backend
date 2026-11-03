@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     @php
         $toToman = fn ($value) => is_numeric($value) ? number_format((float) $value / 10, 0) : '—';
-        $pct = fn ($value) => $value === null ? '—' : number_format($value, 4).'٪';
+        $pct = fn ($value) => $value === null ? '—' : number_format($value, 2).'٪';
         $pctClass = fn ($value) => $value === null ? '' : ($value >= 0 ? 'text-emerald-700' : 'text-red-700');
         $isHl = fn ($diff) => $diffThreshold !== null && $diff !== null && abs($diff) >= $diffThreshold;
     @endphp
