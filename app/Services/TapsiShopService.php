@@ -317,13 +317,18 @@ class TapsiShopService
 
     public function calculateTapsiPrice(float $priceInToman): int
     {
+        $markup = $this->markupPercentFor($priceInToman);
+
+        return (int) round($priceInToman * (1 + $markup / 100));
+    }
+
+    public function markupPercentFor(float $priceInToman): int
+    {
         $threshold = config('tapsi.markup_threshold', 50_000_000);
         $belowMarkup = config('tapsi.markup_below_threshold', 2);
         $aboveMarkup = config('tapsi.markup_above_threshold', 1);
 
-        $markup = $priceInToman < $threshold ? $belowMarkup : $aboveMarkup;
-
-        return (int) round($priceInToman * (1 + $markup / 100));
+        return (int) ($priceInToman < $threshold ? $belowMarkup : $aboveMarkup);
     }
 
     private function getToken(): string

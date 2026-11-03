@@ -28,10 +28,16 @@ class TapsiComparisonPage extends Page
 
     protected string $view = 'filament.pages.tapsi-comparison';
 
-    /** @var list<array{id: int, name: string, productId: string, ourPrice: float|null, tapsiPrice: int|null, diffPct: float|null}> */
+    /** @var list<array{id: int, name: string, productId: string, ourPrice: float|null, tapsiPrice: int|null, markupPercent: int|null, diffPct: float|null}> */
     public array $rows = [];
 
     public int $productCount = 0;
+
+    public int $markupThreshold = 0;
+
+    public int $markupBelowThreshold = 0;
+
+    public int $markupAboveThreshold = 0;
 
     /** @var 'asc'|'desc'|null */
     public ?string $sortDirection = null;
@@ -79,6 +85,10 @@ class TapsiComparisonPage extends Page
 
     private function loadComparison(DynamicPriceService $dynamicPrice, TapsiShopService $tapsiShop): void
     {
+        $this->markupThreshold = (int) config('tapsi.markup_threshold', 50_000_000);
+        $this->markupBelowThreshold = (int) config('tapsi.markup_below_threshold', 2);
+        $this->markupAboveThreshold = (int) config('tapsi.markup_above_threshold', 1);
+
         $products = Product::query()
             ->whereNotNull('tapsi_product_id')
             ->where('tapsi_product_id', '!=', '')
@@ -94,6 +104,7 @@ class TapsiComparisonPage extends Page
             }
 
             $tapsiPrice = $ourPrice === null ? null : $tapsiShop->calculateTapsiPrice($ourPrice);
+            $markupPercent = $ourPrice === null ? null : $tapsiShop->markupPercentFor($ourPrice);
 
             $this->rows[] = [
                 'id' => $product->getKey(),
@@ -101,6 +112,7 @@ class TapsiComparisonPage extends Page
                 'productId' => (string) $product->tapsi_product_id,
                 'ourPrice' => $ourPrice,
                 'tapsiPrice' => $tapsiPrice,
+                'markupPercent' => $markupPercent,
                 'diffPct' => self::diffPct($ourPrice, $tapsiPrice),
             ];
         }

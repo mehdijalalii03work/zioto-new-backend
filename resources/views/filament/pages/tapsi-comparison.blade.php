@@ -14,6 +14,21 @@
         </p>
     </div>
 
+    <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p class="text-xs text-gray-500">آستانهٔ قیمت <span dir="ltr">TAPSI_MARKUP_THRESHOLD</span></p>
+            <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900">{{ number_format($markupThreshold) }}</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p class="text-xs text-gray-500">ضریب زیر آستانه <span dir="ltr">TAPSI_MARKUP_BELOW_50M</span></p>
+            <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900">{{ number_format($markupBelowThreshold, 2) }}٪</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p class="text-xs text-gray-500">ضریب از آستانه به بالا <span dir="ltr">TAPSI_MARKUP_ABOVE_50M</span></p>
+            <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900">{{ number_format($markupAboveThreshold, 2) }}٪</p>
+        </div>
+    </div>
+
     @if(count($rows) === 0)
         <div class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
             محصولی با شناسهٔ تپسی‌شاپ یافت نشد.
@@ -25,6 +40,7 @@
                     <tr class="bg-gray-100 text-gray-700">
                         <th class="border-e border-gray-200 px-3 py-2 text-start">محصول</th>
                         <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت زیوتو (تومان)</th>
+                        <th class="border-e border-gray-200 px-3 py-2 text-start">ضریب اعمال‌شده</th>
                         <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت ارسالی به تپسی‌شاپ (تومان)</th>
                         <th class="px-3 py-2 text-start">
                             <button type="button" wire:click="sortByDiff" class="inline-flex items-center gap-1 font-semibold hover:text-gray-900" title="مرتب‌سازی بر اساس قدرمطلق اختلاف">
@@ -42,6 +58,7 @@
                                 <div class="font-mono text-xs text-gray-400" dir="ltr">{{ $row['productId'] }}</div>
                             </td>
                             <td class="px-3 py-2 tabular-nums">{{ $toToman($row['ourPrice']) }}</td>
+                            <td class="px-3 py-2 tabular-nums">{{ $row['markupPercent'] === null ? '—' : number_format($row['markupPercent'], 2).'٪' }}</td>
                             <td class="px-3 py-2 tabular-nums">{{ $toToman($row['tapsiPrice']) }}</td>
                             <td class="px-3 py-2 font-bold tabular-nums {{ $pctClass($row['diffPct']) }}">{{ $pct($row['diffPct']) }}</td>
                         </tr>

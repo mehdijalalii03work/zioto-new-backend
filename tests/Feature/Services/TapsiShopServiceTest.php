@@ -39,9 +39,11 @@ class TapsiShopServiceTest extends TestCase
 
         $belowThreshold = $this->service->calculateTapsiPrice(10_000_000);
         $this->assertSame(10_200_000, $belowThreshold);
+        $this->assertSame(2, $this->service->markupPercentFor(10_000_000));
 
         $aboveThreshold = $this->service->calculateTapsiPrice(60_000_000);
         $this->assertSame(60_600_000, $aboveThreshold);
+        $this->assertSame(1, $this->service->markupPercentFor(60_000_000));
 
         $atThreshold = $this->service->calculateTapsiPrice(50_000_000);
         $this->assertSame(50_500_000, $atThreshold);
