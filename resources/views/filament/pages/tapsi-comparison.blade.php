@@ -56,13 +56,18 @@
                             <thead>
                                 <tr class="bg-gray-100 text-gray-700">
                                     <th class="border-e border-gray-200 px-3 py-2 text-start">محصول</th>
-                                    <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت زیوتو (تومان)</th>
+                                    <th class="border-e border-gray-200 px-3 py-2 text-start">
+                                        <button type="button" wire:click="sortByPrice" class="inline-flex items-center gap-1 font-semibold hover:text-gray-900" title="مرتب‌سازی بر اساس قیمت زیوتو">
+                                            قیمت زیوتو (تومان)
+                                            <span aria-hidden="true">{{ $sortColumn === 'price' ? ($priceSortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span>
+                                        </button>
+                                    </th>
                                     <th class="border-e border-gray-200 px-3 py-2 text-start">ضریب اعمال‌شده</th>
                                     <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت ارسالی به تپسی‌شاپ (تومان)</th>
                                     <th class="px-3 py-2 text-start">
                                         <button type="button" wire:click="sortByDiff" class="inline-flex items-center gap-1 font-semibold hover:text-gray-900" title="مرتب‌سازی بر اساس قدرمطلق اختلاف">
                                             اختلاف ٪
-                                            <span aria-hidden="true">{{ $sortDirection === 'desc' ? '▼' : ($sortDirection === 'asc' ? '▲' : '↕') }}</span>
+                                            <span aria-hidden="true">{{ $sortColumn === 'diff' ? ($sortDirection === 'desc' ? '▼' : '▲') : '↕' }}</span>
                                         </button>
                                     </th>
                                 </tr>

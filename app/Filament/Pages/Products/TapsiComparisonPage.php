@@ -42,6 +42,10 @@ class TapsiComparisonPage extends Page
     /** @var 'asc'|'desc'|null */
     public ?string $sortDirection = null;
 
+    public string $priceSortDirection = 'asc';
+
+    public string $sortColumn = 'price';
+
     public function mount(DynamicPriceService $dynamicPrice, TapsiShopService $tapsiShop): void
     {
         $this->loadComparison($dynamicPrice, $tapsiShop);
@@ -66,6 +70,7 @@ class TapsiComparisonPage extends Page
 
     public function sortByDiff(): void
     {
+        $this->sortColumn = 'diff';
         $this->sortDirection = $this->sortDirection === 'desc' ? 'asc' : 'desc';
         $direction = $this->sortDirection;
 
@@ -83,8 +88,32 @@ class TapsiComparisonPage extends Page
         });
     }
 
+    public function sortByPrice(): void
+    {
+        $this->sortColumn = 'price';
+        $this->priceSortDirection = $this->priceSortDirection === 'asc' ? 'desc' : 'asc';
+        $direction = $this->priceSortDirection;
+
+        usort($this->rows, function (array $a, array $b) use ($direction): int {
+            $aNull = $a['ourPrice'] === null;
+            $bNull = $b['ourPrice'] === null;
+
+            if ($aNull || $bNull) {
+                return $aNull === $bNull ? 0 : ($aNull ? 1 : -1);
+            }
+
+            $compared = $a['ourPrice'] <=> $b['ourPrice'];
+
+            return $direction === 'desc' ? -$compared : $compared;
+        });
+    }
+
     private function loadComparison(DynamicPriceService $dynamicPrice, TapsiShopService $tapsiShop): void
     {
+        $this->rows = [];
+        $this->priceSortDirection = 'asc';
+        $this->sortDirection = null;
+        $this->sortColumn = 'price';
         $this->markupThreshold = (int) config('tapsi.markup_threshold', 50_000_000);
         $this->markupBelowThreshold = (int) config('tapsi.markup_below_threshold', 2);
         $this->markupAboveThreshold = (int) config('tapsi.markup_above_threshold', 1);
@@ -120,6 +149,7 @@ class TapsiComparisonPage extends Page
         }
 
         $this->productCount = count($this->rows);
+        usort($this->rows, static fn (array $a, array $b): int => ($a['ourPrice'] ?? PHP_INT_MAX) <=> ($b['ourPrice'] ?? PHP_INT_MAX));
     }
 
     public static function canAccess(): bool
