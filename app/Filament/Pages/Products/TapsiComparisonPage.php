@@ -5,6 +5,7 @@ namespace App\Filament\Pages\Products;
 use App\Enums\Permission;
 use App\Services\Pricing\DynamicPriceService;
 use App\Services\TapsiShopService;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Modules\Product\Models\Product;
 
@@ -32,7 +33,78 @@ class TapsiComparisonPage extends Page
 
     public int $productCount = 0;
 
+    public ?string $allowedDiffInput = '0.5';
+
+    public ?float $diffThreshold = 0.5;
+
+    /** @var 'asc'|'desc'|null */
+    public ?string $sortDirection = null;
+
     public function mount(DynamicPriceService $dynamicPrice, TapsiShopService $tapsiShop): void
+    {
+        $this->loadComparison($dynamicPrice, $tapsiShop);
+    }
+
+    public function refresh(): void
+    {
+        if (! auth()->user()?->can(Permission::PricingEdit->value)) {
+            Notification::make()->title('دسترسی غیرمجاز')->danger()->send();
+
+            return;
+        }
+
+        $this->loadComparison(app(DynamicPriceService::class), app(TapsiShopService::class));
+
+        Notification::make()
+            ->title('بروزرسانی شد')
+            ->body('قیمت محصولات و قیمت ارسالی به تپسی‌شاپ دوباره محاسبه شد.')
+            ->success()
+            ->send();
+    }
+
+    public function applyThreshold(): void
+    {
+        $input = trim((string) $this->allowedDiffInput);
+
+        if ($input === '') {
+            $this->diffThreshold = null;
+
+            return;
+        }
+
+        if (! is_numeric($input) || (float) $input < 0 || (float) $input > 1000) {
+            Notification::make()
+                ->title('خطا')
+                ->body('درصد مجاز معتبر وارد کنید (۰ تا ۱۰۰۰).')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $this->diffThreshold = (float) $input;
+    }
+
+    public function sortByDiff(): void
+    {
+        $this->sortDirection = $this->sortDirection === 'desc' ? 'asc' : 'desc';
+        $direction = $this->sortDirection;
+
+        usort($this->rows, function (array $a, array $b) use ($direction): int {
+            $aNull = $a['diffPct'] === null;
+            $bNull = $b['diffPct'] === null;
+
+            if ($aNull || $bNull) {
+                return $aNull === $bNull ? 0 : ($aNull ? 1 : -1);
+            }
+
+            $compared = abs($a['diffPct']) <=> abs($b['diffPct']);
+
+            return $direction === 'desc' ? -$compared : $compared;
+        });
+    }
+
+    private function loadComparison(DynamicPriceService $dynamicPrice, TapsiShopService $tapsiShop): void
     {
         $products = Product::query()
             ->whereNotNull('tapsi_product_id')
