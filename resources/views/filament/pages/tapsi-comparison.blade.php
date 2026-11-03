@@ -3,6 +3,14 @@
         $toToman = fn ($value) => is_numeric($value) ? number_format((float) $value / 10, 0) : '—';
         $pct = fn ($value) => $value === null ? '—' : number_format($value, 2).'٪';
         $pctClass = fn ($value) => $value === null ? '' : ($value >= 0 ? 'text-emerald-700' : 'text-red-700');
+        $belowThresholdRows = array_values(array_filter($rows, fn ($row) => $row['isBelowThreshold'] === true));
+        $aboveThresholdRows = array_values(array_filter($rows, fn ($row) => $row['isBelowThreshold'] === false));
+        $unknownPriceRows = array_values(array_filter($rows, fn ($row) => $row['isBelowThreshold'] === null));
+        $sections = [
+            ['title' => 'محصولات زیر آستانه', 'condition' => 'کمتر از '.number_format($markupThreshold), 'rows' => $belowThresholdRows],
+            ['title' => 'محصولات بالای آستانه', 'condition' => number_format($markupThreshold).' و بیشتر', 'rows' => $aboveThresholdRows],
+            ['title' => 'محصولات بدون قیمت', 'condition' => 'قیمت قابل محاسبه نیست', 'rows' => $unknownPriceRows],
+        ];
     @endphp
 
     <div class="mb-4 flex flex-wrap items-center gap-3">
@@ -34,38 +42,50 @@
             محصولی با شناسهٔ تپسی‌شاپ یافت نشد.
         </div>
     @else
-        <div class="overflow-x-auto rounded-2xl ring-1 ring-gray-950/5">
-            <table class="w-full min-w-[900px] border-collapse text-sm">
-                <thead>
-                    <tr class="bg-gray-100 text-gray-700">
-                        <th class="border-e border-gray-200 px-3 py-2 text-start">محصول</th>
-                        <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت زیوتو (تومان)</th>
-                        <th class="border-e border-gray-200 px-3 py-2 text-start">ضریب اعمال‌شده</th>
-                        <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت ارسالی به تپسی‌شاپ (تومان)</th>
-                        <th class="px-3 py-2 text-start">
-                            <button type="button" wire:click="sortByDiff" class="inline-flex items-center gap-1 font-semibold hover:text-gray-900" title="مرتب‌سازی بر اساس قدرمطلق اختلاف">
-                                اختلاف ٪
-                                <span aria-hidden="true">{{ $sortDirection === 'desc' ? '▼' : ($sortDirection === 'asc' ? '▲' : '↕') }}</span>
-                            </button>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($rows as $row)
-                        <tr class="border-t border-gray-100 odd:bg-white even:bg-gray-50">
-                            <td class="px-3 py-2">
-                                <div class="font-semibold text-gray-900">{{ $row['name'] }}</div>
-                                <div class="font-mono text-xs text-gray-400" dir="ltr">{{ $row['productId'] }}</div>
-                            </td>
-                            <td class="px-3 py-2 tabular-nums">{{ $toToman($row['ourPrice']) }}</td>
-                            <td class="px-3 py-2 tabular-nums">{{ $row['markupPercent'] === null ? '—' : number_format($row['markupPercent'], 2).'٪' }}</td>
-                            <td class="px-3 py-2 tabular-nums">{{ $toToman($row['tapsiPrice']) }}</td>
-                            <td class="px-3 py-2 font-bold tabular-nums {{ $pctClass($row['diffPct']) }}">{{ $pct($row['diffPct']) }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+        @foreach($sections as $section)
+            @if(count($section['rows']) > 0)
+                <section class="mb-6">
+                    <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                        <h2 class="text-lg font-semibold text-gray-900">{{ $section['title'] }}</h2>
+                        <div class="text-sm text-gray-500">
+                            {{ $section['condition'] }} <span dir="ltr">· {{ count($section['rows']) }} محصول</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto rounded-2xl ring-1 ring-gray-950/5">
+                        <table class="w-full min-w-[900px] border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-gray-100 text-gray-700">
+                                    <th class="border-e border-gray-200 px-3 py-2 text-start">محصول</th>
+                                    <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت زیوتو (تومان)</th>
+                                    <th class="border-e border-gray-200 px-3 py-2 text-start">ضریب اعمال‌شده</th>
+                                    <th class="border-e border-gray-200 px-3 py-2 text-start">قیمت ارسالی به تپسی‌شاپ (تومان)</th>
+                                    <th class="px-3 py-2 text-start">
+                                        <button type="button" wire:click="sortByDiff" class="inline-flex items-center gap-1 font-semibold hover:text-gray-900" title="مرتب‌سازی بر اساس قدرمطلق اختلاف">
+                                            اختلاف ٪
+                                            <span aria-hidden="true">{{ $sortDirection === 'desc' ? '▼' : ($sortDirection === 'asc' ? '▲' : '↕') }}</span>
+                                        </button>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($section['rows'] as $row)
+                                    <tr class="border-t border-gray-100 odd:bg-white even:bg-gray-50">
+                                        <td class="px-3 py-2">
+                                            <div class="font-semibold text-gray-900">{{ $row['name'] }}</div>
+                                            <div class="font-mono text-xs text-gray-400" dir="ltr">{{ $row['productId'] }}</div>
+                                        </td>
+                                        <td class="px-3 py-2 tabular-nums">{{ $toToman($row['ourPrice']) }}</td>
+                                        <td class="px-3 py-2 tabular-nums">{{ $row['markupPercent'] === null ? '—' : number_format($row['markupPercent'], 2).'٪' }}</td>
+                                        <td class="px-3 py-2 tabular-nums">{{ $toToman($row['tapsiPrice']) }}</td>
+                                        <td class="px-3 py-2 font-bold tabular-nums {{ $pctClass($row['diffPct']) }}">{{ $pct($row['diffPct']) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            @endif
+        @endforeach
 
         <p class="mt-3 text-sm text-gray-500">
             قیمت مرجع تپسی‌شاپ از قیمت فعلی زیوتو و ضریب تنظیم‌شده در تنظیمات تپسی‌شاپ محاسبه می‌شود؛ اختلاف نسبت به همین قیمت ارسالی سنجیده می‌شود.

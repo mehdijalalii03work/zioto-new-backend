@@ -28,7 +28,7 @@ class TapsiComparisonPage extends Page
 
     protected string $view = 'filament.pages.tapsi-comparison';
 
-    /** @var list<array{id: int, name: string, productId: string, ourPrice: float|null, tapsiPrice: int|null, markupPercent: int|null, diffPct: float|null}> */
+    /** @var list<array{id: int, name: string, productId: string, ourPrice: float|null, tapsiPrice: int|null, markupPercent: int|null, isBelowThreshold: bool|null, diffPct: float|null}> */
     public array $rows = [];
 
     public int $productCount = 0;
@@ -105,6 +105,7 @@ class TapsiComparisonPage extends Page
 
             $tapsiPrice = $ourPrice === null ? null : $tapsiShop->calculateTapsiPrice($ourPrice);
             $markupPercent = $ourPrice === null ? null : $tapsiShop->markupPercentFor($ourPrice);
+            $isBelowThreshold = $ourPrice === null ? null : $tapsiShop->isBelowMarkupThreshold($ourPrice);
 
             $this->rows[] = [
                 'id' => $product->getKey(),
@@ -113,6 +114,7 @@ class TapsiComparisonPage extends Page
                 'ourPrice' => $ourPrice,
                 'tapsiPrice' => $tapsiPrice,
                 'markupPercent' => $markupPercent,
+                'isBelowThreshold' => $isBelowThreshold,
                 'diffPct' => self::diffPct($ourPrice, $tapsiPrice),
             ];
         }

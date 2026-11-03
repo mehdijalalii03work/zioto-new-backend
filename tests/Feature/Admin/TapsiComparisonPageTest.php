@@ -62,6 +62,8 @@ class TapsiComparisonPageTest extends TestCase
             ->assertSee('TAPSI_MARKUP_THRESHOLD')
             ->assertSee('TAPSI_MARKUP_BELOW_50M')
             ->assertSee('TAPSI_MARKUP_ABOVE_50M')
+            ->assertSee('محصولات زیر آستانه')
+            ->assertSee('محصولات بالای آستانه')
             ->assertSee('TAPSI-123')
             ->assertSee('wire:click="sortByDiff"', false)
             ->assertSee('-1.96٪')
@@ -73,7 +75,9 @@ class TapsiComparisonPageTest extends TestCase
         $this->assertSame(300_000_000.0, $component->get('rows')[0]['ourPrice']);
         $this->assertSame(306_000_000, $component->get('rows')[0]['tapsiPrice']);
         $this->assertSame(2, $component->get('rows')[0]['markupPercent']);
+        $this->assertTrue($component->get('rows')[0]['isBelowThreshold']);
         $this->assertSame(1, $component->get('rows')[1]['markupPercent']);
+        $this->assertFalse($component->get('rows')[1]['isBelowThreshold']);
         $this->assertSame(-1.9607843137254901, $component->get('rows')[0]['diffPct']);
 
         $component->call('sortByDiff');

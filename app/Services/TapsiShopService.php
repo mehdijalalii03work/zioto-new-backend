@@ -324,11 +324,15 @@ class TapsiShopService
 
     public function markupPercentFor(float $priceInToman): int
     {
-        $threshold = config('tapsi.markup_threshold', 50_000_000);
         $belowMarkup = config('tapsi.markup_below_threshold', 2);
         $aboveMarkup = config('tapsi.markup_above_threshold', 1);
 
-        return (int) ($priceInToman < $threshold ? $belowMarkup : $aboveMarkup);
+        return (int) ($this->isBelowMarkupThreshold($priceInToman) ? $belowMarkup : $aboveMarkup);
+    }
+
+    public function isBelowMarkupThreshold(float $priceInToman): bool
+    {
+        return $priceInToman < config('tapsi.markup_threshold', 50_000_000);
     }
 
     private function getToken(): string
