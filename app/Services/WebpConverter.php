@@ -6,95 +6,156 @@ use Illuminate\Http\UploadedFile;
 
 class WebpConverter
 {
-    private static ?ImageManagerStatic $manager = null;
+    private const QUALITY = 82;
 
     public static function convertToWebp(string $filePath): ?string
     {
+        $mimeType = self::getImageMimeType($filePath);
+
+        if (! $mimeType || self::isAnimatedImage($filePath, $mimeType)) {
+            return null;
+        }
+
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        $webpPath = $extension === 'webp'
+            ? $filePath
+            : dirname($filePath).DIRECTORY_SEPARATOR.pathinfo($filePath, PATHINFO_FILENAME).'.webp';
+        $temporaryPath = tempnam(dirname($webpPath), '.webp-');
 
-        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
+        if ($temporaryPath === false) {
             return null;
         }
 
-        if (! file_exists($filePath)) {
-            return null;
+        try {
+            if (! self::encode($filePath, $temporaryPath)) {
+                return null;
+            }
+
+            if ($webpPath === $filePath && filesize($temporaryPath) >= filesize($filePath)) {
+                return $filePath;
+            }
+
+            if (! @rename($temporaryPath, $webpPath)) {
+                return null;
+            }
+
+            if ($filePath !== $webpPath) {
+                @unlink($filePath);
+            }
+
+            return $webpPath;
+        } finally {
+            if (is_file($temporaryPath)) {
+                @unlink($temporaryPath);
+            }
         }
-
-        $webpPath = preg_replace('/\.(jpg|jpeg|png|gif)$/i', '.webp', $filePath);
-
-        $image = self::loadImage($filePath, $extension);
-
-        if (! $image) {
-            return null;
-        }
-
-        if (imageistruecolor($image) === false) {
-            $trueColor = imagecreatetruecolor(imagesx($image), imagesy($image));
-            imagealphablending($trueColor, false);
-            imagesavealpha($trueColor, true);
-            $transparent = imagecolorallocatealpha($trueColor, 0, 0, 0, 127);
-            imagefilledrectangle($trueColor, 0, 0, imagesx($image) - 1, imagesy($image) - 1, $transparent);
-            imagecopy($trueColor, $image, 0, 0, 0, 0, imagesx($image), imagesy($image));
-            imagedestroy($image);
-            $image = $trueColor;
-        }
-
-        $webpPath = preg_replace('/\.(jpg|jpeg|png|gif)$/i', '.webp', $filePath);
-        $result = imagewebp($image, $webpPath, 82);
-        imagedestroy($image);
-
-        if (! $result || ! file_exists($webpPath)) {
-            return null;
-        }
-
-        if ($filePath !== $webpPath) {
-            @unlink($filePath);
-        }
-
-        return $webpPath;
     }
 
     public static function convertUploadedFile(UploadedFile $file): UploadedFile
     {
         $originalPath = $file->getRealPath();
-        $extension = strtolower(pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION));
 
-        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
+        if (! $originalPath) {
             return $file;
         }
 
-        $image = self::loadImage($originalPath, $extension);
+        $mimeType = self::getImageMimeType($originalPath);
 
-        if (! $image) {
+        if (! $mimeType || self::isAnimatedImage($originalPath, $mimeType)) {
             return $file;
         }
 
-        $webpPath = tempnam(sys_get_temp_dir(), 'webp_').'.webp';
-        $result = imagewebp($image, $webpPath, 82);
-        imagedestroy($image);
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'webp_');
 
-        if (! $result || ! file_exists($webpPath)) {
+        if ($temporaryPath === false) {
             return $file;
         }
 
-        $newName = preg_replace('/\.(jpg|jpeg|png|gif)$/i', '.webp', $file->getClientOriginalName());
+        if (! self::encode($originalPath, $temporaryPath)) {
+            @unlink($temporaryPath);
 
-        return new UploadedFile(
-            $webpPath,
-            $newName,
-            'image/webp',
-            null,
-            true
-        );
+            return $file;
+        }
+
+        if ($mimeType === 'image/webp' && filesize($temporaryPath) >= filesize($originalPath)) {
+            @unlink($temporaryPath);
+
+            if (strtolower(pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION)) === 'webp') {
+                return $file;
+            }
+
+            $temporaryPath = tempnam(sys_get_temp_dir(), 'webp_');
+
+            if ($temporaryPath === false || ! @copy($originalPath, $temporaryPath)) {
+                if ($temporaryPath) {
+                    @unlink($temporaryPath);
+                }
+
+                return $file;
+            }
+        }
+
+        $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME).'.webp';
+
+        return new UploadedFile($temporaryPath, $filename, 'image/webp', null, true);
     }
 
-    private static function loadImage(string $path, string $extension): ?\GdImage
+    private static function getImageMimeType(string $path): ?string
     {
-        return match (strtolower($extension)) {
-            'jpg', 'jpeg' => @imagecreatefromjpeg($path),
-            'png' => @imagecreatefrompng($path),
-            'gif' => @imagecreatefromgif($path),
-            default => null,
+        if (! is_file($path) || ! function_exists('imagecreatefromstring')) {
+            return null;
+        }
+
+        $imageInfo = @getimagesize($path);
+        $mimeType = $imageInfo['mime'] ?? null;
+
+        return is_string($mimeType) && str_starts_with($mimeType, 'image/') && $mimeType !== 'image/svg+xml'
+            ? $mimeType
+            : null;
+    }
+
+    private static function isAnimatedImage(string $path, string $mimeType): bool
+    {
+        if (! in_array($mimeType, ['image/gif', 'image/png', 'image/webp'], true)) {
+            return false;
+        }
+
+        $contents = @file_get_contents($path);
+
+        if (! is_string($contents)) {
+            return false;
+        }
+
+        // GD only encodes the first frame. Keep animated GIF, APNG, and WebP files intact.
+        return match ($mimeType) {
+            'image/gif' => preg_match_all('/\x21\xF9\x04/', $contents) > 1,
+            'image/png' => str_contains($contents, 'acTL'),
+            'image/webp' => str_contains($contents, 'ANIM'),
         };
+    }
+
+    private static function encode(string $sourcePath, string $destinationPath): bool
+    {
+        $contents = @file_get_contents($sourcePath);
+        $image = is_string($contents) ? @imagecreatefromstring($contents) : false;
+
+        if (! $image instanceof \GdImage) {
+            return false;
+        }
+
+        if (! imageistruecolor($image)) {
+            imagepalettetotruecolor($image);
+        }
+
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+
+        try {
+            return @imagewebp($image, $destinationPath, self::QUALITY)
+                && is_file($destinationPath)
+                && filesize($destinationPath) > 0;
+        } finally {
+            imagedestroy($image);
+        }
     }
 }

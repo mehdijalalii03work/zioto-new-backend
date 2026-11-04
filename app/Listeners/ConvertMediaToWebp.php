@@ -11,12 +11,6 @@ class ConvertMediaToWebp
     {
         $media = $event->media;
 
-        $extension = strtolower(pathinfo($media->file_name, PATHINFO_EXTENSION));
-
-        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
-            return;
-        }
-
         $fullPath = $media->getPath();
 
         if (! file_exists($fullPath)) {

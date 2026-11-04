@@ -32,7 +32,13 @@ use App\Policies\ProductPolicy;
 use App\Policies\RolePolicy;
 use App\Policies\ShippingMethodPolicy;
 use App\Policies\UserPolicy;
+use App\Services\WebpConverter;
 use App\Support\TenantScope;
+use Filament\Forms\Components\BaseFileUpload;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -40,6 +46,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Modules\Blog\Models\BlogCategory;
 use Modules\Blog\Models\BlogPost;
 use Modules\Blog\Models\BlogTag;
@@ -83,6 +90,56 @@ class AppServiceProvider extends ServiceProvider
         Setting::observe(PricingSettingAuditObserver::class);
 
         $this->app['events']->listen(MediaAdded::class, ConvertMediaToWebp::class);
+
+        FileUpload::configureUsing(static function (FileUpload $component): void {
+            // Spatie's upload component has its own media-library save handler;
+            // its MediaAdded listener converts the stored original instead.
+            if ($component instanceof SpatieMediaLibraryFileUpload) {
+                return;
+            }
+
+            $component->saveUploadedFileUsing(static function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
+                $optimizedFile = WebpConverter::convertUploadedFile($file);
+
+                if ($optimizedFile === $file) {
+                    return $component->saveUploadedFile($file);
+                }
+
+                try {
+                    $storedName = $component->getUploadedFileNameForStorage($file);
+                    $webpName = pathinfo($storedName, PATHINFO_FILENAME).'.webp';
+                    $path = $component->getDisk()->putFileAs(
+                        $component->getDirectory() ?? '',
+                        $optimizedFile,
+                        $webpName,
+                        [
+                            'mimetype' => 'image/webp',
+                            'visibility' => $component->getVisibility(),
+                        ],
+                    );
+
+                    return is_string($path) ? $path : $component->saveUploadedFile($file);
+                } catch (\Throwable $exception) {
+                    report($exception);
+
+                    return $component->saveUploadedFile($file);
+                } finally {
+                    $temporaryPath = $optimizedFile->getRealPath();
+
+                    if ($temporaryPath && $optimizedFile !== $file && is_file($temporaryPath)) {
+                        @unlink($temporaryPath);
+                    }
+                }
+            });
+        }, isImportant: true);
+
+        foreach ([RichEditor::class, MarkdownEditor::class] as $editorClass) {
+            $editorClass::configureUsing(static function (RichEditor|MarkdownEditor $component): void {
+                $component->saveUploadedFileAttachmentUsing(static function (RichEditor|MarkdownEditor $component, TemporaryUploadedFile $file): mixed {
+                    return self::storeRichTextAttachment($component, $file);
+                });
+            }, isImportant: true);
+        }
 
         $this->app['events']->listen(
             RoleAttachedEvent::class,
@@ -131,6 +188,56 @@ class AppServiceProvider extends ServiceProvider
                 return response()->json(['message' => 'تعداد درخواست‌ها بیش از حد مجاز است، لطفاً بعداً تلاش کنید'], 429);
             });
         });
+    }
+
+    private static function storeRichTextAttachment(RichEditor|MarkdownEditor $component, TemporaryUploadedFile $file): mixed
+    {
+        $optimizedFile = WebpConverter::convertUploadedFile($file);
+
+        if ($optimizedFile === $file) {
+            return self::storeOriginalRichTextAttachment($component, $file);
+        }
+
+        try {
+            $path = $component->getFileAttachmentsDisk()->putFile(
+                $component->getFileAttachmentsDirectory(),
+                $optimizedFile,
+                [
+                    'mimetype' => 'image/webp',
+                    'visibility' => $component->getFileAttachmentsVisibility(),
+                ],
+            );
+
+            return is_string($path) ? $path : self::storeOriginalRichTextAttachment($component, $file);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return self::storeOriginalRichTextAttachment($component, $file);
+        } finally {
+            $temporaryPath = $optimizedFile->getRealPath();
+
+            if ($temporaryPath && $optimizedFile !== $file && is_file($temporaryPath)) {
+                @unlink($temporaryPath);
+            }
+        }
+    }
+
+    private static function storeOriginalRichTextAttachment(RichEditor|MarkdownEditor $component, TemporaryUploadedFile $file): mixed
+    {
+        if (filled($savedFile = $component->defaultSaveUploadedFileAttachment($file))) {
+            return $savedFile;
+        }
+
+        $path = $file->store($component->getFileAttachmentsDirectory(), [
+            'disk' => $component->getFileAttachmentsDiskName(),
+            'mimetype' => $file->getMimeType(),
+        ]);
+
+        if ($component->getFileAttachmentsVisibility() === 'public') {
+            rescue(fn () => $component->getFileAttachmentsDisk()->setVisibility($path, 'public'), report: false);
+        }
+
+        return $path;
     }
 
     private function registerPolicies(): void
