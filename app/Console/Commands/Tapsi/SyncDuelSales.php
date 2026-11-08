@@ -93,8 +93,17 @@ class SyncDuelSales extends Command
                 throw new \RuntimeException('Tapsi rejected order list request.');
             }
             $orders = $response['data']['items'] ?? [];
+            $this->line(sprintf('Window %s to %s, page %d: %d orders (total %d)',
+                $from->toDateString(), $to->toDateString(), $page, count($orders), (int) ($response['data']['totalItems'] ?? 0)));
             foreach ($orders as $summary) {
                 $id = (string) ($summary['id'] ?? '');
+                if (empty($summary['createdOn'])) {
+                    throw new \RuntimeException("Tapsi order {$id} has no creation date.");
+                }
+                $createdOn = Carbon::parse($summary['createdOn']);
+                if ($createdOn->lt($from) || $createdOn->gt($to)) {
+                    throw new \RuntimeException("Tapsi returned order {$id} outside requested window {$from->toDateString()} to {$to->toDateString()}.");
+                }
                 if ($id === '' || ! in_array((string) ($summary['stateCode'] ?? ''), ['4', '6', '9'], true)) {
                     continue;
                 }

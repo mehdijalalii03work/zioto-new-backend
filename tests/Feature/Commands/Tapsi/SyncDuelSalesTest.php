@@ -44,4 +44,21 @@ class SyncDuelSalesTest extends TestCase
         $this->assertSame('2026-05-22', Setting::getValue('tapsi_duel_backfill_cursor'));
         $this->assertNotNull(Setting::getValue('tapsi_duel_last_error'));
     }
+
+    public function test_backfill_rejects_orders_outside_requested_window_before_fetching_details(): void
+    {
+        $this->travelTo(now()->setDate(2026, 6, 1)->startOfDay());
+        config(['tapsi.enabled' => true, 'tapsi.auth_token' => 'test-token', 'tapsi.order_detail_delay' => 0]);
+        Http::preventStrayRequests();
+        Http::fake(['*/orders' => Http::response(['success' => true, 'data' => [
+            'totalItems' => 1,
+            'items' => [['id' => '9001', 'stateCode' => '9', 'finalPrice' => 100, 'createdOn' => '2026-11-03T10:00:00Z']],
+        ]])]);
+
+        $this->artisan('tapsi:sync-duel --mode=backfill')->assertExitCode(1);
+
+        $this->assertDatabaseMissing('orders', ['tapsi_order_id' => '9001']);
+        $this->assertStringContainsString('outside requested window', Setting::getValue('tapsi_duel_last_error'));
+        Http::assertSentCount(1);
+    }
 }
