@@ -82,7 +82,11 @@ class SyncDuelSales extends Command
             'toDate' => now()->toIso8601String(),
             'orderStatusId' => ['4', '6', '9'],
         ]);
-        if (! ($response['success'] ?? false) || ! isset($response['data']['totalItems']) || ! is_array($response['data']['items'] ?? null)) {
+        if (! ($response['success'] ?? false)) {
+            $status = $response['status'] ?? 'unknown';
+            throw new \RuntimeException("Tapsi order list request failed (HTTP {$status}).");
+        }
+        if (! isset($response['data']['totalItems']) || ! is_array($response['data']['items'] ?? null)) {
             throw new \RuntimeException('Tapsi returned an invalid order list response.');
         }
         $orders = $response['data']['items'];
@@ -104,7 +108,7 @@ class SyncDuelSales extends Command
             if ($mode === 'recent' && $createdOn->lt($recentFrom) && ($existing === null || $existing->tapsi_synced_at)) {
                 continue;
             }
-            if ($mode === 'recent' && $existing?->tapsi_synced_at
+            if ($mode !== 'reconcile' && $existing?->tapsi_synced_at
                 && $existing->tapsi_order_status_id === (string) $summary['stateCode']
                 && (int) $existing->total_amount === (int) ($summary['finalPrice'] ?? -1)) {
                 continue;

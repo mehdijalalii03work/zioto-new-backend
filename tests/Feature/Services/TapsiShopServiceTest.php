@@ -5,6 +5,7 @@ namespace Tests\Feature\Services;
 use App\Models\Setting;
 use App\Services\TapsiShopService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -27,6 +28,24 @@ class TapsiShopServiceTest extends TestCase
         ]);
 
         $this->service = new TapsiShopService;
+    }
+
+    public function test_order_details_retry_a_temporary_connection_timeout(): void
+    {
+        config(['tapsi.order_retry_delay' => 0]);
+        $attempts = 0;
+        Http::preventStrayRequests();
+        Http::fake(['*/orders/123' => function () use (&$attempts) {
+            $attempts++;
+            if ($attempts === 1) {
+                throw new ConnectionException('Temporary timeout');
+            }
+
+            return Http::response(['success' => true, 'data' => ['items' => []]]);
+        }]);
+
+        $this->assertTrue($this->service->getOrderDetails('123')['success']);
+        $this->assertSame(2, $attempts);
     }
 
     public function test_calculate_tapsi_price_applies_markup(): void

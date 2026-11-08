@@ -3,6 +3,7 @@
 namespace Tests\Feature\Commands\Tapsi;
 
 use App\Models\Setting;
+use App\Services\TapsiOrderProjector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -43,7 +44,7 @@ class SyncDuelSalesTest extends TestCase
         $this->artisan('tapsi:sync-duel --mode=backfill')->assertExitCode(1);
 
         $this->assertSame(0, Setting::getValue('tapsi_duel_backfill_page'));
-        $this->assertNotNull(Setting::getValue('tapsi_duel_last_error'));
+        $this->assertStringContainsString('HTTP 503', Setting::getValue('tapsi_duel_last_error'));
     }
 
     public function test_backfill_scans_pages_and_imports_only_orders_after_start_date(): void
@@ -95,5 +96,23 @@ class SyncDuelSalesTest extends TestCase
 
         $this->assertDatabaseMissing('orders', ['tapsi_order_id' => 'old-order']);
         Http::assertSentCount(1);
+    }
+
+    public function test_backfill_restart_skips_orders_already_synced_on_the_same_page(): void
+    {
+        $this->travelTo(now()->setDate(2026, 11, 9)->startOfDay());
+        config(['tapsi.enabled' => true, 'tapsi.auth_token' => 'test-token', 'tapsi.order_detail_delay' => 0]);
+        $summary = ['id' => '9002', 'orderNumber' => 'TS-9002', 'stateCode' => '9',
+            'finalPrice' => 100, 'createdOn' => '2026-06-01T10:00:00+03:30'];
+        app(TapsiOrderProjector::class)->apply($summary, ['data' => ['items' => [], 'shipments' => []]]);
+        Http::preventStrayRequests();
+        Http::fake(['*/orders' => Http::response(['success' => true, 'data' => [
+            'totalItems' => 1, 'items' => [$summary],
+        ]])]);
+
+        $this->artisan('tapsi:sync-duel --mode=backfill')->assertExitCode(0);
+
+        Http::assertSentCount(1);
+        $this->assertSame('1', Setting::getValue('tapsi_duel_backfill_complete'));
     }
 }

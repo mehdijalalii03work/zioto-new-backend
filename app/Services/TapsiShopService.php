@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Setting;
 use Generator;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -75,7 +76,7 @@ class TapsiShopService
         $response = Http::withHeaders([
             'Accept' => 'text/plain',
             'Content-Type' => 'application/json',
-            'Tapsi-Shop-Hub-Authorization' => $this->token,
+            'TapsiShop.Hub.Authorization' => $this->token,
         ])->timeout(25)->put($url, ['products' => $chunk]);
 
         if ($response->failed()) {
@@ -270,16 +271,30 @@ class TapsiShopService
         $http = Http::withHeaders([
             'Accept' => 'text/plain',
             'Content-Type' => 'application/json',
-            'Tapsi-Shop-Hub-Authorization' => $this->token,
-        ])->timeout(30);
+            'TapsiShop.Hub.Authorization' => $this->token,
+        ])->connectTimeout(10)->timeout((int) config('tapsi.order_request_timeout', 60));
 
-        $response = match ($method) {
-            'GET' => $http->get($url),
-            'POST' => $http->post($url, $payload),
-            default => $http->send($method, $url, $payload ? ['json' => $payload] : []),
-        };
+        try {
+            $response = match ($method) {
+                'GET' => $http->get($url),
+                'POST' => $http->post($url, $payload),
+                default => $http->send($method, $url, $payload ? ['json' => $payload] : []),
+            };
+        } catch (ConnectionException $exception) {
+            if ($attempt >= 3) {
+                throw $exception;
+            }
+            sleep((int) config('tapsi.order_retry_delay', 2));
+
+            return $this->requestWithRetry($method, $url, $payload, $attempt + 1);
+        }
 
         if ($response->failed()) {
+            if ($response->serverError() && $attempt < 3) {
+                sleep((int) config('tapsi.order_retry_delay', 2));
+
+                return $this->requestWithRetry($method, $url, $payload, $attempt + 1);
+            }
             // 429 Too Many Requests — wait 12 seconds and retry (Tapsi limit: 1 req/10s)
             if ($response->status() === 429 && $attempt < 3) {
                 Log::info('[TapsiShop] Got 429 rate limit, waiting 12s and retrying...');
@@ -305,11 +320,9 @@ class TapsiShopService
                 'method' => $method,
                 'url' => $url,
                 'status' => $response->status(),
-                'body' => $response->body(),
-                'payload' => $payload,
             ]);
 
-            return ['success' => false, 'messages' => [], 'data' => null];
+            return ['success' => false, 'status' => $response->status(), 'messages' => [], 'data' => null];
         }
 
         return $response->json();

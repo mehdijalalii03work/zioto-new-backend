@@ -52,6 +52,8 @@ return [
     */
 
     'order_detail_delay' => (int) env('TAPSI_ORDER_DETAIL_DELAY', 11),
+    'order_request_timeout' => (int) env('TAPSI_ORDER_REQUEST_TIMEOUT', 60),
+    'order_retry_delay' => (int) env('TAPSI_ORDER_RETRY_DELAY', 2),
     'report_start_date' => env('TAPSI_REPORT_START_DATE', '2026-05-22'),
 
 ];
