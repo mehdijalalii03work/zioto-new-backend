@@ -78,7 +78,7 @@ class SyncDuelSales extends Command
     {
         $pageSize = 50;
         $response = $tapsi->getOrders($page, $pageSize, [
-            'fromDate' => $from->toIso8601String(),
+            'fromDate' => now()->subDays(6)->startOfDay()->toIso8601String(),
             'toDate' => now()->toIso8601String(),
             'orderStatusId' => ['4', '6', '9'],
         ]);

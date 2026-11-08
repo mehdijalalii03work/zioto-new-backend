@@ -4,6 +4,7 @@ namespace Tests\Feature\Commands\Tapsi;
 
 use App\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -69,6 +70,8 @@ class SyncDuelSalesTest extends TestCase
         $this->assertSame('1', Setting::getValue('tapsi_duel_backfill_page'));
         $this->assertNull(Setting::getValue('tapsi_duel_backfill_complete'));
         Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => Carbon::parse($request->data()['fromDate'])
+            ->diffInDays(Carbon::parse($request->data()['toDate'])) <= 7);
 
         $this->artisan('tapsi:sync-duel --mode=backfill --max-pages=1')->assertExitCode(0);
 
