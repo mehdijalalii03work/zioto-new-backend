@@ -10,6 +10,10 @@
         </div>
     </form>
 
+    @if($tapsiSyncStatus)
+        <div class="mt-4 rounded-lg bg-gray-50 p-3 text-sm text-gray-600 dark:bg-white/5 dark:text-gray-300">{{ $tapsiSyncStatus }}</div>
+    @endif
+
     @if($reports->contains(fn ($report) => $report->isNotEmpty()))
         <style>
             .wsr-responsive {

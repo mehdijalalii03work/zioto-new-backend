@@ -17,20 +17,19 @@ class TapsiWebhookController extends Controller
 {
     public function handle(Request $request): JsonResponse
     {
-        $this->logWebhook($request);
-
         if (! config('tapsi.enabled')) {
             Log::warning('[TapsiWebhook] Tapsi integration is disabled');
 
             return response()->json(['error' => 'Tapsi integration disabled'], 503);
         }
 
-        $token = $request->header('Tapsi-Shop-Hub-Authorization')
+        $token = $request->header('TapsiShop.Hub.Webhook-Authorization')
+            ?? $request->header('Tapsi-Shop-Hub-Authorization')
             ?? $request->header('tapsishopauthorization')
             ?? $request->header('tapsishop-hub-webhook-authorization');
 
         $expectedToken = config('tapsi.auth_token');
-        if ($expectedToken && $token !== $expectedToken) {
+        if (! $expectedToken || ! is_string($token) || ! hash_equals($expectedToken, $token)) {
             Log::warning('[TapsiWebhook] Invalid token');
 
             return response()->json(['error' => 'Unauthorized'], 401);
@@ -50,35 +49,66 @@ class TapsiWebhookController extends Controller
         }
 
         $changeType = $orderDetail['changeType'] ?? null;
-        if ($changeType != 1) {
-            Log::info('[TapsiWebhook] Ignoring non-create event', [
-                'order_id' => $tapsiOrderId,
-                'change_type' => $changeType,
-            ]);
-
-            return response()->json(['success' => true, 'message' => 'Event ignored']);
-        }
-
-        if (Order::withoutTenantScope()->where('tapsi_order_id', $tapsiOrderId)->exists()) {
-            Log::info('[TapsiWebhook] Duplicate order ignored', ['order_id' => $tapsiOrderId]);
-
-            return response()->json(['success' => true, 'message' => 'Duplicate']);
+        if (! in_array((int) $changeType, [1, 2], true)) {
+            return response()->json(['succeed' => false, 'message' => 'Unsupported change type'], 422);
         }
 
         try {
-            $order = DB::transaction(function () use ($tapsiOrderId, $orderDetail, $items) {
-                return $this->createOrder($tapsiOrderId, $orderDetail, $items);
+            $result = DB::transaction(function () use ($tapsiOrderId, $orderDetail, $items, $changeType): string {
+                $order = Order::withoutTenantScope()->where('tapsi_order_id', $tapsiOrderId)->lockForUpdate()->first();
+                if ((int) $changeType === 2 && ! $order) {
+                    throw new \DomainException('Order not found for cancellation');
+                }
+                if ((int) $changeType === 1 && ! $order) {
+                    $order = $this->createOrder($tapsiOrderId, $orderDetail, $items);
+                }
+                if ((int) $changeType === 1 && $order->wasRecentlyCreated) {
+                    foreach ($items as $item) {
+                        $this->recordRequest($tapsiOrderId, $item);
+                    }
+
+                    return 'Created';
+                }
+                $changed = false;
+                foreach ($items as $item) {
+                    if (! $this->recordRequest($tapsiOrderId, $item)) {
+                        continue;
+                    }
+                    if ((int) $changeType === 2) {
+                        $orderItem = $order->items()->where('tapsi_order_item_id', (string) ($item['orderItemId'] ?? ''))->first();
+                        if (! $orderItem) {
+                            throw new \DomainException('Order item not found for cancellation');
+                        }
+                        $oldQuantity = (int) $orderItem->quantity;
+                        $quantity = max(0, $oldQuantity - abs((int) ($item['quantity'] ?? 0)));
+                        $orderItem->subtotal = $oldQuantity > 0 ? (int) round((float) $orderItem->subtotal * $quantity / $oldQuantity) : 0;
+                        $orderItem->quantity = $quantity;
+                        $orderItem->save();
+                        $changed = true;
+                    }
+                }
+                if ($changed) {
+                    $order->total_amount = $order->items()->sum('subtotal');
+                    $order->tapsi_synced_at = null;
+                    if ($order->items()->sum('quantity') === 0) {
+                        $order->status = 'cancelled';
+                        $order->tapsi_order_status_id = '6';
+                    }
+                    $order->save();
+                }
+
+                return $changed ? 'Updated' : 'Duplicate';
             });
 
-            Log::info('[TapsiWebhook] Order created', [
-                'order_id' => $order->id,
-                'tapsi_order_id' => $tapsiOrderId,
-            ]);
-
             return response()->json([
+                'succeed' => true,
+                'message' => $result,
                 'success' => true,
-                'order_id' => $order->id,
             ]);
+        } catch (\DomainException $e) {
+            Log::warning('[TapsiWebhook] Event cannot be applied', ['order_id' => $tapsiOrderId, 'reason' => $e->getMessage()]);
+
+            return response()->json(['succeed' => false, 'message' => $e->getMessage()], 409);
         } catch (\Throwable $e) {
             Log::error('[TapsiWebhook] Failed to create order', [
                 'order_id' => $tapsiOrderId,
@@ -102,7 +132,7 @@ class TapsiWebhookController extends Controller
         $user = $this->findOrCreateUser($orderDetail);
 
         $orderNumber = (string) ($orderDetail['orderNumber'] ?? $tapsiOrderId);
-        $finalPrice = (float) ($items[0]['finalPrice'] ?? 0);
+        $finalPrice = array_sum(array_map(static fn (array $item): float => (float) ($item['finalPrice'] ?? 0), $items));
         $createdOn = $orderDetail['createdOnTimestamp'] ?? null;
 
         $order = new Order;
@@ -115,6 +145,7 @@ class TapsiWebhookController extends Controller
         $order->total_amount = (int) round($finalPrice);
 
         $order->tapsi_order_id = $tapsiOrderId;
+        $order->tapsi_order_status_id = null;
         $order->tapsi_order_number = $orderNumber;
 
         $order->notes = json_encode(array_filter([
@@ -199,6 +230,7 @@ class TapsiWebhookController extends Controller
         $quantity = abs((int) ($item['quantity'] ?? 1));
 
         $order->items()->create([
+            'tapsi_order_item_id' => isset($item['orderItemId']) ? (string) $item['orderItemId'] : null,
             'product_id' => $product?->id,
             'product_name' => $product?->name ?? $sku ?? 'Tapsi Item',
             'product_price' => (int) round($finalPrice / max($quantity, 1)),
@@ -207,44 +239,17 @@ class TapsiWebhookController extends Controller
         ]);
     }
 
-    private function logWebhook(Request $request): void
+    private function recordRequest(string $tapsiOrderId, array $item): bool
     {
-        $logDir = storage_path('logs/tapsi-webhooks');
-        if (! is_dir($logDir)) {
-            mkdir($logDir, 0755, true);
+        if (! isset($item['requestId'])) {
+            return true;
         }
 
-        $logFile = $logDir.'/webhook-'.date('Y-m-d').'.log';
-        $entry = [
-            'timestamp' => now()->toIso8601String(),
-            'ip' => $request->ip(),
-            'method' => $request->method(),
-            'url' => $request->fullUrl(),
-            'headers' => $request->headers->all(),
-            'query' => $request->query(),
-            'body' => $request->all(),
-            'raw_body' => $request->getContent(),
-        ];
-
-        file_put_contents($logFile, json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)."\n---\n", FILE_APPEND);
-
-        $this->cleanOldLogs($logDir);
-    }
-
-    private function cleanOldLogs(string $logDir): void
-    {
-        $files = glob($logDir.'/webhook-*.log');
-        $cutoff = now()->subDays(30);
-
-        foreach ($files as $file) {
-            $dateStr = str_replace('webhook-', '', basename($file, '.log'));
-            try {
-                if (Carbon::parse($dateStr)->lt($cutoff)) {
-                    unlink($file);
-                }
-            } catch (\Exception $e) {
-                // skip
-            }
-        }
+        return DB::table('tapsi_webhook_requests')->insertOrIgnore([
+            'request_id' => (string) $item['requestId'],
+            'tapsi_order_id' => $tapsiOrderId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]) === 1;
     }
 }

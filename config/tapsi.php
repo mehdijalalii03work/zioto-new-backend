@@ -52,5 +52,6 @@ return [
     */
 
     'order_detail_delay' => (int) env('TAPSI_ORDER_DETAIL_DELAY', 11),
+    'report_start_date' => env('TAPSI_REPORT_START_DATE', '2026-05-22'),
 
 ];

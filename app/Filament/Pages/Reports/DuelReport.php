@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Reports;
 
+use App\Models\Setting;
 use App\Support\Platform;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
@@ -22,6 +23,8 @@ class DuelReport extends WeightSalesReport
 
     /** @var Collection<string, Collection<int, array<string, int|float|string>>> */
     public $reports;
+
+    public ?string $tapsiSyncStatus = null;
 
     public static function getNavigationIcon(): string|\BackedEnum|null
     {
@@ -114,6 +117,10 @@ class DuelReport extends WeightSalesReport
         }
 
         $orders = $query->get();
+        $this->tapsiSyncStatus = Setting::getValue('tapsi_duel_last_error')
+            ?: (Setting::getValue('tapsi_duel_backfill_complete') === '1'
+                ? 'آخرین همگام‌سازی: '.(Setting::getValue('tapsi_duel_last_success_at') ?: 'نامشخص')
+                : 'واردسازی سوابق تپسی‌شاپ هنوز کامل نشده است.');
 
         $this->reports = collect([
             'site' => $this->buildReportRows($orders->filter(
@@ -131,7 +138,8 @@ class DuelReport extends WeightSalesReport
                     && $order->payments->contains('gateway', 'smartis'),
             )),
             'tapsi' => $this->buildReportRows($orders->filter(
-                static fn (Order $order): bool => $order->platform === Platform::TAPSI,
+                static fn (Order $order): bool => $order->platform === Platform::TAPSI
+                    && in_array((string) $order->tapsi_order_status_id, ['4', '9'], true),
             )),
         ]);
     }

@@ -74,6 +74,8 @@ class Order extends Model
         'notes',
         'cancel_reason',
         'tapsi_order_id',
+        'tapsi_order_status_id',
+        'tapsi_synced_at',
         'tapsi_order_number',
         'tapsi_shipment_bundle',
         'tapsi_delivery_method',

@@ -37,8 +37,8 @@ class DuelReportTest extends TestCase
         $this->createOrder('main', 'parsian', 100000);
         $this->createOrder('main', 'digipay', 200000);
         $this->createOrder('main', 'smartis', 500000);
-        $this->createOrder('tapsi', 'parsian', 300000);
-        $this->createOrder('tapsi', 'digipay', 400000);
+        $this->createOrder('tapsi', 'parsian', 300000, 'completed', '9');
+        $this->createOrder('tapsi', 'digipay', 400000, 'completed', '9');
 
         $component = Livewire::actingAs(User::factory()->create()->assignRole(Role::Admin->value), 'web')
             ->test(DuelReport::class)
@@ -120,7 +120,7 @@ class DuelReportTest extends TestCase
 
     public function test_pending_tapsi_orders_are_included_but_pending_site_orders_are_not(): void
     {
-        $this->createOrder('tapsi', 'parsian', 600000, 'pending');
+        $this->createOrder('tapsi', 'parsian', 600000, 'pending', '4');
         $this->createOrder('main', 'parsian', 700000, 'pending');
 
         $reports = Livewire::actingAs(User::factory()->create()->assignRole(Role::Admin->value), 'web')
@@ -132,12 +132,13 @@ class DuelReportTest extends TestCase
         $this->assertCount(0, $reports['site']);
     }
 
-    private function createOrder(string $platform, string $gateway, int $amount, string $status = 'completed'): Order
+    private function createOrder(string $platform, string $gateway, int $amount, string $status = 'completed', ?string $tapsiStatus = null): Order
     {
         $order = Order::factory()->create([
             'platform' => $platform,
             'status' => $status,
             'total_amount' => $amount,
+            'tapsi_order_status_id' => $tapsiStatus,
         ]);
 
         Payment::create([

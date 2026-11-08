@@ -195,6 +195,7 @@ class TapsiImportOrdersTest extends TestCase
             ->assertExitCode(0);
 
         $this->assertEquals(1, Order::withoutTenantScope()->where('tapsi_order_id', '100003')->count());
+        $this->assertEquals(2000000, Order::withoutTenantScope()->where('tapsi_order_id', '100003')->value('total_amount'));
     }
 
     public function test_dry_run_does_not_persist(): void

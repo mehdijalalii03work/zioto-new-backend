@@ -140,6 +140,32 @@ class TapsiWebhookControllerTest extends TestCase
         ])->assertOk();
     }
 
+    public function test_documented_header_and_response_are_supported(): void
+    {
+        $this->postJson('/api/tapsi/webhook', $this->validPayload(), [
+            'TapsiShop.Hub.Webhook-Authorization' => 'test-token-123',
+        ])->assertOk()->assertJson(['succeed' => true]);
+    }
+
+    public function test_cancellation_reduces_existing_order_once(): void
+    {
+        $headers = ['TapsiShop.Hub.Webhook-Authorization' => 'test-token-123'];
+        $this->postJson('/api/tapsi/webhook', $this->validPayload(), $headers)->assertOk();
+
+        $cancellation = $this->validPayload();
+        $cancellation['orderDetail']['changeType'] = 2;
+        $cancellation['items'][0]['changeType'] = 2;
+        $cancellation['items'][0]['quantity'] = 1;
+        $cancellation['items'][0]['requestId'] = 111112;
+
+        $this->postJson('/api/tapsi/webhook', $cancellation, $headers)->assertOk()->assertJson(['succeed' => true]);
+        $this->postJson('/api/tapsi/webhook', $cancellation, $headers)->assertOk();
+
+        $order = Order::withoutTenantScope()->where('tapsi_order_id', '999999999')->firstOrFail();
+        $this->assertSame('cancelled', $order->status);
+        $this->assertSame(0, $order->items()->sum('quantity'));
+    }
+
     public function test_webhook_ignores_non_create_event(): void
     {
         $payload = $this->validPayload();
@@ -147,9 +173,7 @@ class TapsiWebhookControllerTest extends TestCase
 
         $this->postJson('/api/tapsi/webhook', $payload, [
             'Tapsi-Shop-Hub-Authorization' => 'test-token-123',
-        ])
-            ->assertOk()
-            ->assertJson(['message' => 'Event ignored']);
+        ])->assertStatus(409)->assertJson(['succeed' => false]);
 
         $this->assertDatabaseMissing('orders', [
             'tapsi_order_id' => '999999999',
