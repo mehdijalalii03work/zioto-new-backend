@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Products\Tables;
 
 use App\Services\Pricing\DynamicPriceService;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -12,6 +13,9 @@ use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Modules\Product\Models\Product;
 
 class ProductsTable
 {
@@ -183,6 +187,50 @@ class ProductsTable
 
                 EditAction::make()
                     ->label('ویرایش'),
+
+                Action::make('copy')
+                    ->label('کپی')
+                    ->icon('heroicon-o-square-2-stack')
+                    ->authorize(fn (): bool => auth()->user()?->can('create', Product::class) ?? false)
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('کپی محصول ایجاد شد.')
+                    ->action(function (Product $record): void {
+                        $copy = $record->replicate();
+                        $copy->name = $record->name.' (کپی)';
+                        $copy->slug = Str::limit($record->slug, 200, '').'-copy-'.Str::uuid();
+                        $copy->sku = null;
+                        $copy->tapsi_product_id = null;
+                        $copy->status = 'draft';
+                        $copy->visibility = 'private';
+                        $copy->stock_quantity = 0;
+                        $copy->hesabfa_physical_stock = 0;
+                        $copy->hesabfa_reserved_stock = 0;
+                        $copy->hesabfa_manual_reserved = 0;
+                        $copy->hesabfa_stock_locked = false;
+                        $copy->hesabfa_stock_synced_at = null;
+                        $copy->views_count = 0;
+                        $copy->save();
+
+                        foreach ($record->getMedia('product-images') as $media) {
+                            $media->copy($copy, 'product-images', 'public');
+                        }
+
+                        foreach ($record->images as $image) {
+                            if (! Storage::disk('public')->exists($image->image_path)) {
+                                continue;
+                            }
+
+                            $path = 'product-images/'.Str::uuid().'.'.pathinfo($image->image_path, PATHINFO_EXTENSION);
+                            Storage::disk('public')->copy($image->image_path, $path);
+
+                            $copy->images()->create([
+                                'image_path' => $path,
+                                'alt' => $image->alt,
+                                'is_primary' => $image->is_primary,
+                                'sort_order' => $image->sort_order,
+                            ]);
+                        }
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
