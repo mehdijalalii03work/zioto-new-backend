@@ -159,10 +159,10 @@ class TapsiComparisonPage extends Page
 
     private static function diffPct(?float $ourPrice, ?int $tapsiPrice): ?float
     {
-        if ($ourPrice === null || $tapsiPrice === null || $tapsiPrice === 0) {
+        if ($ourPrice === null || $tapsiPrice === null || $ourPrice === 0) {
             return null;
         }
 
-        return ($ourPrice - $tapsiPrice) / $tapsiPrice * 100;
+        return ($ourPrice - $tapsiPrice) / $ourPrice * 100;
     }
 }

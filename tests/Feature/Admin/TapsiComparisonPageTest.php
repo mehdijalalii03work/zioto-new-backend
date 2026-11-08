@@ -59,15 +59,15 @@ class TapsiComparisonPageTest extends TestCase
         $component = Livewire::test(TapsiComparisonPage::class)
             ->assertSuccessful()
             ->assertSee('قیمت ارسالی به تپسی‌شاپ')
-            ->assertSee('TAPSI_MARKUP_THRESHOLD')
-            ->assertSee('TAPSI_MARKUP_BELOW_50M')
-            ->assertSee('TAPSI_MARKUP_ABOVE_50M')
+            ->assertSee('500,000,000')
+            ->assertSee('2.00٪')
+            ->assertSee('1.00٪')
             ->assertSee('محصولات زیر آستانه')
             ->assertSee('محصولات بالای آستانه')
             ->assertSee('TAPSI-123')
             ->assertSee('wire:click="sortByPrice"', false)
             ->assertSee('wire:click="sortByDiff"', false)
-            ->assertSee('-1.96٪')
+            ->assertSee('-2.00٪')
             ->assertDontSee('اختلاف مجاز')
             ->assertDontSee('bg-amber-200', false);
 
@@ -79,7 +79,7 @@ class TapsiComparisonPageTest extends TestCase
         $this->assertTrue($component->get('rows')[0]['isBelowThreshold']);
         $this->assertSame(1, $component->get('rows')[1]['markupPercent']);
         $this->assertFalse($component->get('rows')[1]['isBelowThreshold']);
-        $this->assertSame(-1.9607843137254901, $component->get('rows')[0]['diffPct']);
+        $this->assertSame(-2.0, $component->get('rows')[0]['diffPct']);
 
         $component->call('sortByPrice');
 
