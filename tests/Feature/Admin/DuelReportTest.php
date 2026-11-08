@@ -45,6 +45,7 @@ class DuelReportTest extends TestCase
             ->call('loadReport')
             ->assertSee('فروش نقدی از سایت زیوتو')
             ->assertSee('فروش اقساطی دیجی‌پی از سایت زیوتو')
+            ->assertSee('فروش اقساطی اسمارتیز از سایت زیوتو')
             ->assertSee('فروش تپسی‌شاپ');
 
         $reports = $component->get('reports');
@@ -52,6 +53,7 @@ class DuelReportTest extends TestCase
         $this->assertSame(100000, (int) $reports['site']->first()['total_rial']);
         $this->assertSame(700000, (int) $reports['tapsi']->first()['total_rial']);
         $this->assertSame(200000, (int) $reports['digipay']->first()['total_rial']);
+        $this->assertSame(500000, (int) $reports['smartis']->first()['total_rial']);
     }
 
     public function test_digipay_order_with_multiple_payments_is_excluded_from_the_site_table(): void
@@ -75,6 +77,29 @@ class DuelReportTest extends TestCase
 
         $this->assertCount(0, $reports['site']);
         $this->assertSame(100000, (int) $reports['digipay']->first()['total_rial']);
+    }
+
+    public function test_smartis_order_with_multiple_payments_is_excluded_from_the_site_table(): void
+    {
+        $order = $this->createOrder('main', 'parsian', 100000);
+
+        Payment::create([
+            'user_id' => $order->user_id,
+            'order_id' => $order->id,
+            'transaction_id' => 'duel-smartis-'.uniqid(),
+            'amount' => 100000,
+            'payment_method' => 'online',
+            'gateway' => 'smartis',
+            'status' => 'success',
+        ]);
+
+        $reports = Livewire::actingAs(User::factory()->create()->assignRole(Role::Admin->value), 'web')
+            ->test(DuelReport::class)
+            ->call('loadReport')
+            ->get('reports');
+
+        $this->assertCount(0, $reports['site']);
+        $this->assertSame(100000, (int) $reports['smartis']->first()['total_rial']);
     }
 
     public function test_pending_tapsi_orders_are_included_but_pending_site_orders_are_not(): void

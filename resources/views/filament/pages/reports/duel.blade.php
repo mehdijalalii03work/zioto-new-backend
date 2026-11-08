@@ -103,7 +103,7 @@
         </style>
         @foreach($reports as $reportKey => $tableReport)
             <h2 class="mt-4 text-lg font-bold">
-                {{ ['site' => 'فروش نقدی از سایت زیوتو', 'digipay' => 'فروش اقساطی دیجی‌پی از سایت زیوتو', 'tapsi' => 'فروش تپسی‌شاپ'][$reportKey] }}
+                {{ ['site' => 'فروش نقدی از سایت زیوتو', 'digipay' => 'فروش اقساطی دیجی‌پی از سایت زیوتو', 'smartis' => 'فروش اقساطی اسمارتیز از سایت زیوتو', 'tapsi' => 'فروش تپسی‌شاپ'][$reportKey] }}
             </h2>
         <div class="table-responsive mt-4 wsr-responsive">
             <table class="table table-hover table-bordered align-middle text-center shadow-sm rounded-3 overflow-hidden wsr-table">

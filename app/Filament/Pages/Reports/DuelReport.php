@@ -46,6 +46,7 @@ class DuelReport extends WeightSalesReport
             'site' => collect(),
             'tapsi' => collect(),
             'digipay' => collect(),
+            'smartis' => collect(),
         ]);
     }
 
@@ -118,11 +119,16 @@ class DuelReport extends WeightSalesReport
             'site' => $this->buildReportRows($orders->filter(
                 static fn (Order $order): bool => $order->platform === Platform::MAIN
                     && $order->payments->contains('gateway', 'parsian')
-                    && ! $order->payments->contains('gateway', 'digipay'),
+                    && ! $order->payments->contains('gateway', 'digipay')
+                    && ! $order->payments->contains('gateway', 'smartis'),
             )),
             'digipay' => $this->buildReportRows($orders->filter(
                 static fn (Order $order): bool => $order->platform !== Platform::TAPSI
                     && $order->payments->contains('gateway', 'digipay'),
+            )),
+            'smartis' => $this->buildReportRows($orders->filter(
+                static fn (Order $order): bool => $order->platform !== Platform::TAPSI
+                    && $order->payments->contains('gateway', 'smartis'),
             )),
             'tapsi' => $this->buildReportRows($orders->filter(
                 static fn (Order $order): bool => $order->platform === Platform::TAPSI,
