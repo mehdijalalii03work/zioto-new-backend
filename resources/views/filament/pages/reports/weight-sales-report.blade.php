@@ -130,7 +130,7 @@
                 <thead class="table-dark wsr-thead-dark">
                     <tr>
                         <th scope="col">تاریخ شمسی</th>
-                        <th scope="col" class="fw-bold bg-success text-white">جمع کل ریالی <span class="text-danger">طلاونقره</span></th>
+                        <th scope="col" class="fw-bold bg-success text-white">مبلغ نهایی سفارش‌ها (ریال)</th>
                         <th scope="col">تعداد اقلام</th>
                         <th scope="col" class="gold-col">تعداد شمش طلا</th>
                         <th scope="col" class="gold-col">وزن شمش طلا</th>

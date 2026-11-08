@@ -102,6 +102,22 @@ class DuelReportTest extends TestCase
         $this->assertSame(100000, (int) $reports['smartis']->first()['total_rial']);
     }
 
+    public function test_smartis_total_uses_final_order_amount_including_charges(): void
+    {
+        $order = $this->createOrder('main', 'smartis', 1000000);
+        $order->update(['total_amount' => 1140000]);
+
+        $component = Livewire::actingAs(User::factory()->create()->assignRole(Role::Admin->value), 'web')
+            ->test(DuelReport::class)
+            ->call('loadReport')
+            ->assertSee('مبلغ نهایی سفارش‌ها (ریال)');
+
+        $row = $component->get('reports')['smartis']->first();
+
+        $this->assertSame(1140000, (int) $row['total_rial']);
+        $this->assertSame(1000000, (int) $row['bar_rial']);
+    }
+
     public function test_pending_tapsi_orders_are_included_but_pending_site_orders_are_not(): void
     {
         $this->createOrder('tapsi', 'parsian', 600000, 'pending');

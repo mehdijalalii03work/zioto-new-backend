@@ -166,7 +166,7 @@ class WeightSalesReport extends Page
 
                 return [
                     'date' => $date,
-                    'total_rial' => (float) $allItems->sum('subtotal'),
+                    'total_rial' => (float) $orders->sum('total_amount'),
                     'total_items' => (int) $allItems->sum('quantity'),
                     'labor_rial' => (float) $allItems->sum(fn ($item) => (float) ($item->labor_cost ?? 0) * $item->quantity * DynamicPriceService::RIAL_PER_TOMAN),
                     'bar_count' => $barCount,

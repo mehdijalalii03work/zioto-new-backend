@@ -73,13 +73,16 @@
             }
             table.tir-table > tfoot.tir-tfoot-secondary > tr > td.text-start { text-align: left; }
         </style>
+        <p class="mt-4 text-sm text-gray-600 dark:text-gray-300">تفاوت مبلغ فاکتور و اقلام می‌تواند شامل هزینه ارسال، کارمزد اقساط، تخفیف یا سایر تعدیلات سفارش باشد.</p>
         <div class="table-responsive mt-4 tir-responsive">
             <table class="table table-hover table-bordered align-middle text-center shadow-sm rounded-3 overflow-hidden tir-table">
                 <thead class="table-dark tir-thead-dark">
                     <tr>
                         <th scope="col">تاریخ فاکتور</th>
                         <th scope="col">تعداد فاکتور</th>
-                        <th scope="col">مبلغ خالص (ریال)</th>
+                        <th scope="col">مبلغ اقلام (ریال)</th>
+                        <th scope="col">تفاوت فاکتور و اقلام (ریال)</th>
+                        <th scope="col">مبلغ نهایی فاکتورها (ریال)</th>
                         <th scope="col" class="gold-col">تعداد طلا</th>
                         <th scope="col" class="gold-col">ریال شمش</th>
                         <th scope="col" class="silver-col">تعداد نقره</th>
@@ -93,6 +96,8 @@
                         <tr>
                             <td class="fw-medium">{{ \Morilog\Jalali\Jalalian::fromCarbon(\Illuminate\Support\Carbon::parse($row['date']))->format('Y/m/d') }}</td>
                             <td>{{ number_format($row['invoice_count']) }}</td>
+                            <td class="text-end">{{ number_format($row['items_amount']) }}</td>
+                            <td class="text-end">{{ number_format($row['adjustments_amount']) }}</td>
                             <td class="text-end">{{ number_format($row['net_amount']) }}</td>
                             <td class="text-end gold-col">{{ number_format($row['gold_count']) }}</td>
                             <td class="text-end gold-col">{{ number_format($row['gold_amount']) }}</td>
@@ -107,6 +112,8 @@
                     <tr>
                         <td class="text-start">جمع کل</td>
                         <td>{{ number_format($report->sum('invoice_count')) }}</td>
+                        <td class="text-end">{{ number_format($report->sum('items_amount')) }}</td>
+                        <td class="text-end">{{ number_format($report->sum('adjustments_amount')) }}</td>
                         <td class="text-end">{{ number_format($report->sum('net_amount')) }}</td>
                         <td class="gold-col">{{ number_format($report->sum('gold_count')) }}</td>
                         <td class="text-end gold-col">{{ number_format($report->sum('gold_amount')) }}</td>

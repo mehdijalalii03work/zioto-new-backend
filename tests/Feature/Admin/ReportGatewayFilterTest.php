@@ -104,6 +104,28 @@ class ReportGatewayFilterTest extends TestCase
         $this->assertSame(350000, (int) $report[0]['net_amount']);
     }
 
+    public function test_total_invoice_report_reconciles_item_value_with_invoice_amount(): void
+    {
+        $installmentOrder = $this->completedOrderWithGateway('smartis', 1000000);
+        $installmentOrder->update(['total_amount' => 1140000]);
+        $discountedOrder = $this->completedOrderWithGateway('parsian', 200000);
+        $discountedOrder->update(['total_amount' => 180000]);
+
+        $component = Livewire::actingAs($this->admin(), 'web')
+            ->test(TotalInvoiceReport::class)
+            ->call('loadReport')
+            ->assertSee('مبلغ اقلام (ریال)')
+            ->assertSee('تفاوت فاکتور و اقلام (ریال)')
+            ->assertSee('مبلغ نهایی فاکتورها (ریال)');
+
+        $report = $component->get('report');
+
+        $this->assertCount(1, $report);
+        $this->assertSame(1200000, (int) $report[0]['items_amount']);
+        $this->assertSame(120000, (int) $report[0]['adjustments_amount']);
+        $this->assertSame(1320000, (int) $report[0]['net_amount']);
+    }
+
     public function test_total_invoice_report_filters_orders_by_selected_gateway(): void
     {
         $this->completedOrderWithGateway('parsian', 100000);

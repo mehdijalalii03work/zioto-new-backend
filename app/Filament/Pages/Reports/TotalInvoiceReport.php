@@ -54,7 +54,7 @@ class TotalInvoiceReport extends Page
 
     public ?string $dateTo = null;
 
-    /** @var Collection<int, array{date: string, invoice_count: int, net_amount: float, gold_count: int, gold_amount: float, silver_count: int, silver_amount: float, plaque_count: int, plaque_amount: float}> */
+    /** @var Collection<int, array{date: string, invoice_count: int, items_amount: float, adjustments_amount: float, net_amount: float, gold_count: int, gold_amount: float, silver_count: int, silver_amount: float, plaque_count: int, plaque_amount: float}> */
     public $report;
 
     public bool $submitted = false;
@@ -127,6 +127,8 @@ class TotalInvoiceReport extends Page
             ->groupBy(static fn (Order $order) => $order->created_at->format('Y-m-d'))
             ->map(static function ($orders, $date) {
                 $allItems = $orders->flatMap->items;
+                $itemsAmount = (float) $allItems->sum('subtotal');
+                $invoiceAmount = (float) $orders->sum('total_amount');
 
                 $goldItems = $allItems->filter(
                     static fn ($item) => $item->product
@@ -169,7 +171,9 @@ class TotalInvoiceReport extends Page
                 return [
                     'date' => $date,
                     'invoice_count' => $orders->count(),
-                    'net_amount' => $orders->sum('total_amount'),
+                    'items_amount' => $itemsAmount,
+                    'adjustments_amount' => $invoiceAmount - $itemsAmount,
+                    'net_amount' => $invoiceAmount,
                     'gold_count' => $goldCount,
                     'gold_amount' => (float) $goldItems->sum('subtotal'),
                     'silver_count' => $silverCount,

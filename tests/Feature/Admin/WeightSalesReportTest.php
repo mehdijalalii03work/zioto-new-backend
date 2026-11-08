@@ -59,4 +59,37 @@ class WeightSalesReportTest extends TestCase
 
         $this->assertSame(200000.0, (float) $component->get('report')->first()['labor_rial']);
     }
+
+    public function test_daily_total_uses_final_order_amount_including_charges(): void
+    {
+        $product = Product::create([
+            'name' => 'شمش طلا',
+            'slug' => 'gold-bar-final-total-test',
+            'metal_type' => 'gold',
+            'form' => 'shammesh',
+            'weight' => 1,
+            'price' => 1000000,
+        ]);
+        $order = Order::factory()->create([
+            'status' => 'completed',
+            'total_amount' => 1140000,
+        ]);
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_price' => 1000000,
+            'quantity' => 1,
+            'subtotal' => 1000000,
+        ]);
+
+        $component = Livewire::actingAs(User::factory()->create()->assignRole(Role::Admin->value), 'web')
+            ->test(WeightSalesReport::class)
+            ->call('loadReport')
+            ->assertSee('مبلغ نهایی سفارش‌ها (ریال)');
+
+        $row = $component->get('report')->first();
+
+        $this->assertSame(1140000, (int) $row['total_rial']);
+        $this->assertSame(1000000, (int) $row['bar_rial']);
+    }
 }
