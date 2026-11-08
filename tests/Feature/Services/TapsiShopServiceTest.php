@@ -46,6 +46,8 @@ class TapsiShopServiceTest extends TestCase
 
         $this->assertTrue($this->service->getOrderDetails('123')['success']);
         $this->assertSame(2, $attempts);
+        Http::assertSent(fn (Request $request) => $request->header('TapsiShop.Hub.Authorization') === ['test-token']
+            && $request->header('Tapsi-Shop-Hub-Authorization') === ['test-token']);
     }
 
     public function test_calculate_tapsi_price_applies_markup(): void
@@ -135,6 +137,7 @@ class TapsiShopServiceTest extends TestCase
         $this->assertTrue($result);
         $this->assertCount(3, $requests);
         $this->assertSame(['new-token'], $requests[2]->header('TapsiShop.Hub.Authorization'));
+        $this->assertSame(['new-token'], $requests[2]->header('Tapsi-Shop-Hub-Authorization'));
     }
 
     public function test_send_batch_aborts_on_failed_chunk(): void

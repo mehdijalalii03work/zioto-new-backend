@@ -77,6 +77,7 @@ class TapsiShopService
             'Accept' => 'text/plain',
             'Content-Type' => 'application/json',
             'TapsiShop.Hub.Authorization' => $this->token,
+            'Tapsi-Shop-Hub-Authorization' => $this->token,
         ])->timeout(25)->put($url, ['products' => $chunk]);
 
         if ($response->failed()) {
@@ -272,6 +273,7 @@ class TapsiShopService
             'Accept' => 'text/plain',
             'Content-Type' => 'application/json',
             'TapsiShop.Hub.Authorization' => $this->token,
+            'Tapsi-Shop-Hub-Authorization' => $this->token,
         ])->connectTimeout(10)->timeout((int) config('tapsi.order_request_timeout', 60));
 
         try {
