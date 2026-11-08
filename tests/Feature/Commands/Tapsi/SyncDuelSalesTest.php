@@ -41,24 +41,56 @@ class SyncDuelSalesTest extends TestCase
 
         $this->artisan('tapsi:sync-duel --mode=backfill')->assertExitCode(1);
 
-        $this->assertSame('2026-05-22', Setting::getValue('tapsi_duel_backfill_cursor'));
+        $this->assertSame(0, Setting::getValue('tapsi_duel_backfill_page'));
         $this->assertNotNull(Setting::getValue('tapsi_duel_last_error'));
     }
 
-    public function test_backfill_rejects_orders_outside_requested_window_before_fetching_details(): void
+    public function test_backfill_scans_pages_and_imports_only_orders_after_start_date(): void
     {
         $this->travelTo(now()->setDate(2026, 6, 1)->startOfDay());
         config(['tapsi.enabled' => true, 'tapsi.auth_token' => 'test-token', 'tapsi.order_detail_delay' => 0]);
         Http::preventStrayRequests();
-        Http::fake(['*/orders' => Http::response(['success' => true, 'data' => [
-            'totalItems' => 1,
-            'items' => [['id' => '9001', 'stateCode' => '9', 'finalPrice' => 100, 'createdOn' => '2026-11-03T10:00:00Z']],
-        ]])]);
+        Http::fake([
+            '*/orders' => function ($request) {
+                $page = $request->data()['pageNumber'];
 
-        $this->artisan('tapsi:sync-duel --mode=backfill')->assertExitCode(1);
+                return Http::response(['success' => true, 'data' => [
+                    'totalItems' => 51,
+                    'items' => $page === 0
+                        ? array_fill(0, 50, ['id' => 'old', 'stateCode' => '9', 'finalPrice' => 100, 'createdOn' => '2026-05-01T10:00:00Z'])
+                        : [['id' => '9001', 'stateCode' => '9', 'finalPrice' => 100, 'createdOn' => '2026-05-24T10:00:00Z']],
+                ]]);
+            },
+            '*/orders/9001' => Http::response(['success' => true, 'data' => ['items' => [], 'shipments' => []]]),
+        ]);
 
-        $this->assertDatabaseMissing('orders', ['tapsi_order_id' => '9001']);
-        $this->assertStringContainsString('outside requested window', Setting::getValue('tapsi_duel_last_error'));
+        $this->artisan('tapsi:sync-duel --mode=backfill --max-pages=1')->assertExitCode(0);
+
+        $this->assertSame('1', Setting::getValue('tapsi_duel_backfill_page'));
+        $this->assertNull(Setting::getValue('tapsi_duel_backfill_complete'));
+        Http::assertSentCount(1);
+
+        $this->artisan('tapsi:sync-duel --mode=backfill --max-pages=1')->assertExitCode(0);
+
+        $this->assertDatabaseHas('orders', ['tapsi_order_id' => '9001']);
+        $this->assertSame('1', Setting::getValue('tapsi_duel_backfill_complete'));
+    }
+
+    public function test_recent_sync_does_not_import_historical_orders_before_backfill(): void
+    {
+        $this->travelTo(now()->setDate(2026, 11, 9)->startOfDay());
+        config(['tapsi.enabled' => true, 'tapsi.auth_token' => 'test-token', 'tapsi.order_detail_delay' => 0]);
+        Http::preventStrayRequests();
+        Http::fake([
+            '*/orders' => Http::response(['success' => true, 'data' => ['totalItems' => 1, 'items' => [[
+                'id' => 'old-order', 'stateCode' => '9', 'finalPrice' => 100,
+                'createdOn' => '2026-06-01T10:00:00+03:30',
+            ]]]]),
+        ]);
+
+        $this->artisan('tapsi:sync-duel --mode=recent')->assertExitCode(0);
+
+        $this->assertDatabaseMissing('orders', ['tapsi_order_id' => 'old-order']);
         Http::assertSentCount(1);
     }
 }

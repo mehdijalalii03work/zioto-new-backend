@@ -12,7 +12,7 @@ use Modules\Order\Models\Order;
 
 class SyncDuelSales extends Command
 {
-    protected $signature = 'tapsi:sync-duel {--mode=recent} {--max-windows=4}';
+    protected $signature = 'tapsi:sync-duel {--mode=recent} {--max-pages=1}';
 
     protected $description = 'Synchronize Tapsi Shop sales used by the Duel report';
 
@@ -23,7 +23,7 @@ class SyncDuelSales extends Command
 
             return self::FAILURE;
         }
-        $lock = Cache::lock('tapsi:sync-duel', 86400);
+        $lock = Cache::lock('tapsi:sync-duel', 7200);
         if (! $lock->get()) {
             $this->warn('A Tapsi sales sync is already running.');
 
@@ -31,39 +31,32 @@ class SyncDuelSales extends Command
         }
         try {
             $mode = (string) $this->option('mode');
-            if ($mode === 'recent') {
-                $this->refreshWebhookOrders($tapsi, $projector);
-            }
-            $from = Carbon::parse(config('tapsi.report_start_date', '2026-05-22'))->startOfDay();
-            if ($mode === 'recent') {
-                $from = max($from, now()->subDays(7)->startOfDay());
-            } elseif ($mode === 'backfill') {
-                $from = Carbon::parse(Setting::getValue('tapsi_duel_backfill_cursor', $from->toDateString()))->startOfDay();
-            } elseif ($mode === 'reconcile') {
-                $from = Carbon::parse(Setting::getValue('tapsi_duel_reconcile_cursor', $from->toDateString()))->startOfDay();
-            } else {
+            if (! in_array($mode, ['recent', 'backfill', 'reconcile'], true)) {
                 throw new \InvalidArgumentException('Mode must be recent, reconcile, or backfill.');
             }
-            $maxWindows = $mode === 'recent' ? 2 : max(1, (int) $this->option('max-windows'));
-            $windows = 0;
-            while ($from->lte(now()) && $windows < $maxWindows) {
-                $to = min($from->copy()->addDays(6)->endOfDay(), now());
-                $this->syncWindow($tapsi, $projector, $from, $to, $mode !== 'recent');
-                $windows++;
-                if ($mode === 'backfill') {
-                    if ($to->isToday()) {
+            if ($mode === 'backfill' && Setting::getValue('tapsi_duel_backfill_complete') === '1') {
+                return self::SUCCESS;
+            }
+            if ($mode === 'reconcile' && Setting::getValue('tapsi_duel_backfill_complete') !== '1') {
+                return self::SUCCESS;
+            }
+            $from = Carbon::parse(config('tapsi.report_start_date', '2026-05-22'))->startOfDay();
+            $recentFrom = max($from, now()->subDays(7)->startOfDay());
+            $page = $mode === 'recent' ? 0 : (int) Setting::getValue("tapsi_duel_{$mode}_page", 0);
+            $maxPages = $mode === 'recent' ? PHP_INT_MAX : max(1, (int) $this->option('max-pages'));
+            for ($processed = 0; $processed < $maxPages; $processed++) {
+                $totalPages = $this->syncPage($tapsi, $projector, $page, $mode, $from, $recentFrom);
+                $page++;
+                if ($page >= $totalPages) {
+                    if ($mode === 'backfill') {
                         $this->saveSetting('tapsi_duel_backfill_complete', '1');
-                        $this->saveSetting('tapsi_duel_backfill_cursor', $to->toDateString());
-                        break;
+                    } elseif ($mode === 'reconcile') {
+                        $this->saveSetting('tapsi_duel_reconcile_page', '0');
                     }
-                    $from = $to->copy()->addDay()->startOfDay();
-                    $this->saveSetting('tapsi_duel_backfill_cursor', $from->toDateString());
-                } elseif ($mode === 'reconcile') {
-                    $from = $to->copy()->addSecond();
-                    $this->saveSetting('tapsi_duel_reconcile_cursor', $from->gt(now())
-                        ? config('tapsi.report_start_date', '2026-05-22') : $from->toDateString());
-                } else {
-                    $from = $to->copy()->addSecond();
+                    break;
+                }
+                if ($mode !== 'recent') {
+                    $this->saveSetting("tapsi_duel_{$mode}_page", (string) $page);
                 }
             }
             $this->saveSetting('tapsi_duel_last_success_at', now()->toIso8601String());
@@ -81,81 +74,53 @@ class SyncDuelSales extends Command
         }
     }
 
-    private function syncWindow(TapsiShopService $tapsi, TapsiOrderProjector $projector, Carbon $from, Carbon $to, bool $forceDetails): void
+    private function syncPage(TapsiShopService $tapsi, TapsiOrderProjector $projector, int $page, string $mode, Carbon $from, Carbon $recentFrom): int
     {
-        $page = 0;
-        do {
-            $response = $tapsi->getOrders($page, 50, [
-                'fromDate' => $from->toIso8601String(), 'toDate' => $to->toIso8601String(),
-                'orderStatusId' => ['4', '6', '9'],
-            ]);
-            if (! ($response['success'] ?? false)) {
-                throw new \RuntimeException('Tapsi rejected order list request.');
+        $pageSize = 50;
+        $response = $tapsi->getOrders($page, $pageSize, [
+            'fromDate' => $from->toIso8601String(),
+            'toDate' => now()->toIso8601String(),
+            'orderStatusId' => ['4', '6', '9'],
+        ]);
+        if (! ($response['success'] ?? false) || ! isset($response['data']['totalItems']) || ! is_array($response['data']['items'] ?? null)) {
+            throw new \RuntimeException('Tapsi returned an invalid order list response.');
+        }
+        $orders = $response['data']['items'];
+        $totalPages = max(1, (int) ceil((int) $response['data']['totalItems'] / $pageSize));
+        $this->line(sprintf('Page %d/%d: %d orders', $page + 1, $totalPages, count($orders)));
+        foreach ($orders as $summary) {
+            $id = (string) ($summary['id'] ?? '');
+            if ($id === '' || empty($summary['createdOn'])) {
+                throw new \RuntimeException('Tapsi returned an order without ID or creation date.');
             }
-            $orders = $response['data']['items'] ?? [];
-            $this->line(sprintf('Window %s to %s, page %d: %d orders (total %d)',
-                $from->toDateString(), $to->toDateString(), $page, count($orders), (int) ($response['data']['totalItems'] ?? 0)));
-            foreach ($orders as $summary) {
-                $id = (string) ($summary['id'] ?? '');
-                if (empty($summary['createdOn'])) {
-                    throw new \RuntimeException("Tapsi order {$id} has no creation date.");
-                }
-                $createdOn = Carbon::parse($summary['createdOn']);
-                if ($createdOn->lt($from) || $createdOn->gt($to)) {
-                    throw new \RuntimeException("Tapsi returned order {$id} outside requested window {$from->toDateString()} to {$to->toDateString()}.");
-                }
-                if ($id === '' || ! in_array((string) ($summary['stateCode'] ?? ''), ['4', '6', '9'], true)) {
-                    continue;
-                }
-                $existing = Order::withoutTenantScope()->where('tapsi_order_id', $id)->first();
-                if (! $forceDetails && $existing && $existing->tapsi_synced_at && $existing->tapsi_order_status_id === (string) $summary['stateCode']
-                    && (int) $existing->total_amount === (int) $summary['finalPrice']) {
-                    continue;
-                }
-                $details = $tapsi->getOrderDetails($id);
-                if (! ($details['success'] ?? false)) {
-                    throw new \RuntimeException("Tapsi rejected details request for order {$id}.");
-                }
-                $projector->apply($summary, $details);
-                $delay = (int) config('tapsi.order_detail_delay', 11);
-                if ($delay > 0) {
-                    sleep($delay);
-                }
+            $createdOn = Carbon::parse($summary['createdOn']);
+            if ($createdOn->lt($from) || $createdOn->gt(now())) {
+                continue;
             }
-            $page++;
-            if ($page * 50 >= (int) ($response['data']['totalItems'] ?? 0)) {
-                break;
+            if (! in_array((string) ($summary['stateCode'] ?? ''), ['4', '6', '9'], true)) {
+                continue;
             }
-        } while (true);
-    }
-
-    private function refreshWebhookOrders(TapsiShopService $tapsi, TapsiOrderProjector $projector): void
-    {
-        $orders = Order::withoutTenantScope()->where('platform', 'tapsi')
-            ->whereNull('tapsi_synced_at')->whereNotNull('tapsi_order_id')
-            ->orderBy('id')->limit(10)->get();
-        foreach ($orders as $order) {
-            $response = $tapsi->getOrders(0, 20, [
-                'orderId' => (string) $order->tapsi_order_id,
-                'fromDate' => $order->created_at->copy()->startOfDay()->toIso8601String(),
-                'toDate' => $order->created_at->copy()->addDays(6)->endOfDay()->toIso8601String(),
-                'orderStatusId' => ['4', '6', '9'],
-            ]);
-            if (! ($response['success'] ?? false)) {
-                throw new \RuntimeException('Tapsi rejected webhook reconciliation request.');
+            $existing = Order::withoutTenantScope()->where('tapsi_order_id', $id)->first();
+            if ($mode === 'recent' && $createdOn->lt($recentFrom) && ($existing === null || $existing->tapsi_synced_at)) {
+                continue;
             }
-            foreach ($response['data']['items'] ?? [] as $summary) {
-                if ((string) ($summary['id'] ?? '') !== (string) $order->tapsi_order_id) {
-                    continue;
-                }
-                $details = $tapsi->getOrderDetails((string) $order->tapsi_order_id);
-                if (! ($details['success'] ?? false)) {
-                    throw new \RuntimeException('Tapsi rejected webhook order details request.');
-                }
-                $projector->apply($summary, $details);
-                break;
+            if ($mode === 'recent' && $existing?->tapsi_synced_at
+                && $existing->tapsi_order_status_id === (string) $summary['stateCode']
+                && (int) $existing->total_amount === (int) ($summary['finalPrice'] ?? -1)) {
+                continue;
+            }
+            $details = $tapsi->getOrderDetails($id);
+            if (! ($details['success'] ?? false)) {
+                throw new \RuntimeException("Tapsi rejected details request for order {$id}.");
+            }
+            $projector->apply($summary, $details);
+            $delay = (int) config('tapsi.order_detail_delay', 11);
+            if ($delay > 0) {
+                sleep($delay);
             }
         }
+
+        return $totalPages;
     }
 
     private function saveSetting(string $key, string $value): void
