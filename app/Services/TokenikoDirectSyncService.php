@@ -70,15 +70,17 @@ class TokenikoDirectSyncService
 
         $emergencyActive = Setting::getValue('tapsi_emergency_status', 'open') === 'closed';
 
-        $products = Product::whereNotNull('tokeniko_sku')
-            ->where('tokeniko_sku', '!=', '')
+        $identifierColumn = $updatePrices ? 'tokeniko_sku' : 'tapsi_product_id';
+
+        $products = Product::whereNotNull($identifierColumn)
+            ->where($identifierColumn, '!=', '')
             ->get();
 
         $updates = [];
         $candidates = [];
 
         foreach ($products as $product) {
-            $sku = mb_strtolower(trim($product->tokeniko_sku));
+            $sku = mb_strtolower(trim((string) $product->tokeniko_sku));
 
             if ($updatePrices && ! isset($prices[$sku])) {
                 continue;

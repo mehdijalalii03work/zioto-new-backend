@@ -43,7 +43,7 @@ class TokenikoDirectSyncTest extends TestCase
         $this->service = app(TokenikoDirectSyncService::class);
     }
 
-    private function product(string $tokenikoSku, ?string $tapsiId, float $price, int $physical = 5, int $reserved = 1): Product
+    private function product(?string $tokenikoSku, ?string $tapsiId, float $price, int $physical = 5, int $reserved = 1): Product
     {
         return Product::create([
             'name' => 'Product '.uniqid(),
@@ -264,6 +264,40 @@ class TokenikoDirectSyncTest extends TestCase
         $this->assertCount(1, $payload);
         $this->assertSame('ZGB5-0001-0', $payload[0]['id']);
         $this->assertSame(2, $payload[0]['stock']);
+    }
+
+    public function test_sync_tapsi_sends_new_product_without_tokeniko_sku(): void
+    {
+        $product = $this->product(null, 'ZGB5-100-3', 41_440_000, physical: 26, reserved: 0);
+
+        $tapsiRequests = [];
+        $this->fakeTapsiOnly($tapsiRequests);
+
+        $result = $this->service->syncTapsi();
+
+        $this->assertSame(1, $result['tapsi_sent']);
+        $this->assertTrue($result['tapsi_success']);
+        $this->assertCount(1, $tapsiRequests);
+        $this->assertSame([
+            'id' => 'ZGB5-100-3',
+            'price' => 42_268_800,
+            'specialprice' => 42_268_800,
+            'stock' => 26,
+        ], collect($tapsiRequests[0]->data()['products'][0])->only(['id', 'price', 'specialprice', 'stock'])->all());
+        $this->assertSame(42_268_800, Cache::get('tapsi:last_pushed_payload')['products'][$product->id]['price']);
+    }
+
+    public function test_direct_sync_does_not_send_product_without_tokeniko_sku(): void
+    {
+        $this->product(null, 'ZGB5-100-3', 41_440_000, physical: 26, reserved: 0);
+
+        $tapsiRequests = [];
+        $this->fakeTokeniko(['zioto-gold-bar-1gram-995' => 300_000_000], $tapsiRequests);
+
+        $result = $this->service->sync();
+
+        $this->assertSame(0, $result['tapsi_sent']);
+        $this->assertCount(0, $tapsiRequests);
     }
 
     public function test_sync_tapsi_pushes_zero_stock_when_emergency_closes(): void
