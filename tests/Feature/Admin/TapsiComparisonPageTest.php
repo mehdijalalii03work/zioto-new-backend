@@ -71,6 +71,7 @@ class TapsiComparisonPageTest extends TestCase
             ->assertDontSee('اختلاف مجاز')
             ->assertDontSee('bg-amber-200', false);
 
+        $this->assertFalse(TapsiComparisonPage::shouldRegisterNavigation());
         $this->assertSame(2, $component->get('productCount'));
         $this->assertSame($product->id, $component->get('rows')[0]['id']);
         $this->assertSame(300_000_000.0, $component->get('rows')[0]['ourPrice']);

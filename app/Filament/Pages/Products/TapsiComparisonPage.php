@@ -22,6 +22,8 @@ class TapsiComparisonPage extends Page
 
     protected static ?string $navigationLabel = 'مقایسه با تپسی‌شاپ';
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|\UnitEnum|null $navigationGroup = 'قیمت‌گذاری زیوتو';
 
     protected static ?int $navigationSort = 8;
