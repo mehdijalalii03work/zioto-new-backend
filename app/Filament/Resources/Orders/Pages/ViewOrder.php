@@ -109,7 +109,7 @@ class ViewOrder extends ViewRecord
                                                         'parsian' => 'پارسیان',
                                                         'digipay' => 'دیجی‌پی',
                                                         'kamanlend' => 'کمان‌لند',
-                                                        'smartis' => 'اسمارتیس',
+                                                        'smartis' => 'اسمارتیز',
                                                         'nopay' => 'نوپی',
                                                         default => $state ?? '—',
                                                     }),

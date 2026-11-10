@@ -156,7 +156,7 @@ class OrdersTable
                         'parsian' => 'پارسیان',
                         'digipay' => 'دیجی‌پی',
                         'kamanlend' => 'کمان‌لند',
-                        'smartis' => ' اسمارتیس',
+                        'smartis' => ' اسمارتیز',
                         'nopay' => 'نوپی',
                         'tapsi' => 'تپسی شاپ',
                         default => $state ?? '—',
@@ -271,7 +271,7 @@ class OrdersTable
                         'parsian' => 'پارسیان',
                         'digipay' => 'دیجی‌پی',
                         'kamanlend' => 'کمان‌لند',
-                        'smartis' => 'اسمارتیس',
+                        'smartis' => 'اسمارتیز',
                         'nopay' => 'نوپی',
                     ])
                     ->query(function ($query, array $data) {
