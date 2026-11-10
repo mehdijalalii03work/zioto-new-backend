@@ -114,9 +114,11 @@ class ReportGatewayFilterTest extends TestCase
         $component = Livewire::actingAs($this->admin(), 'web')
             ->test(TotalInvoiceReport::class)
             ->call('loadReport')
-            ->assertSee('مبلغ اقلام (ریال)')
-            ->assertSee('تفاوت فاکتور و اقلام (ریال)')
-            ->assertSee('مبلغ نهایی فاکتورها (ریال)');
+            ->assertSee('مبلغ خالص (ریال)')
+            ->assertDontSee('مبلغ اقلام (ریال)')
+            ->assertDontSee('تفاوت فاکتور و اقلام (ریال)')
+            ->assertDontSee('مبلغ نهایی فاکتورها (ریال)')
+            ->assertDontSee('120,000');
 
         $report = $component->get('report');
 
