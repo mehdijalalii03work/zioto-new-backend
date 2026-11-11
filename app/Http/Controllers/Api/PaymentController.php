@@ -196,10 +196,6 @@ class PaymentController extends Controller
             'order_id' => $order->id,
             'gateway' => $validated['gateway'],
             'total_amount' => $order->total_amount,
-            'phone' => $phone,
-            'nationalCode' => $nationalCode,
-            'callbackUrl' => $callbackUrl,
-            'redirectToFrontend' => $redirectToFrontend,
         ]);
 
         try {
@@ -267,8 +263,6 @@ class PaymentController extends Controller
 
         Log::channel('payment')->info('Payment callback (bare) received', [
             'method' => $request->method(),
-            'query' => $request->query(),
-            'post' => $request->post(),
         ]);
 
         if (! $token) {
@@ -282,9 +276,7 @@ class PaymentController extends Controller
             ->first();
 
         if (! $payment) {
-            Log::channel('payment')->warning('Payment callback (bare) with unknown token', [
-                'token' => $token,
-            ]);
+            Log::channel('payment')->warning('Payment callback (bare) with unknown token');
 
             return redirect(config('app.frontend_url', 'http://localhost:3000').'/checkout');
         }
@@ -298,8 +290,6 @@ class PaymentController extends Controller
             'order_id' => $orderId,
             'gateway' => $gateway,
             'method' => $request->method(),
-            'query' => $request->query(),
-            'post' => $request->post(),
         ]);
 
         // Callback is a public gateway redirect (no X-Platform header):
@@ -329,7 +319,6 @@ class PaymentController extends Controller
                 Log::channel('payment')->warning('Payment callback with unknown transaction_id', [
                     'order_id' => $order->id,
                     'gateway' => $gateway,
-                    'callback_transaction_id' => $callbackTransactionId,
                 ]);
 
                 return redirect($frontendUrl.'/checkout');
@@ -424,7 +413,6 @@ class PaymentController extends Controller
                 'payment_id' => $payment->id,
                 'order_id' => $order->id,
                 'reference_id' => $receipt->getReferenceId(),
-                'details' => $receipt->getDetails(),
             ]);
 
         } catch (InvalidPaymentException $e) {

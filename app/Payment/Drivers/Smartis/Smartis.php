@@ -63,7 +63,6 @@ class Smartis extends Driver
 
         Log::channel('payment')->info('Smartis purchase response', [
             'status_code' => $response->getStatusCode(),
-            'body' => $body,
         ]);
 
         if (($body['status'] ?? '') !== 'SUCCESS') {

@@ -49,7 +49,6 @@ class Kamanlend extends Driver
 
         Log::channel('payment')->info('Kamanlend purchase request', [
             'url' => $this->settings->apiRegisterPaymentUrl,
-            'payload' => $payload,
         ]);
 
         $response = $this->client->request('POST', $this->settings->apiRegisterPaymentUrl, [
@@ -62,7 +61,6 @@ class Kamanlend extends Driver
 
         Log::channel('payment')->info('Kamanlend purchase response', [
             'status_code' => $response->getStatusCode(),
-            'body' => $body,
         ]);
 
         if (empty($body['success'])) {
@@ -70,9 +68,7 @@ class Kamanlend extends Driver
             throw new PurchaseFailedException($message);
         }
 
-        Log::channel('payment')->info('Kamanlend purchase success', [
-            'result' => $body['result'],
-        ]);
+        Log::channel('payment')->info('Kamanlend purchase success');
 
         $token = $body['result']['token'] ?? $body['result']['Token'] ?? null;
         $this->invoice->transactionId($token);
@@ -113,8 +109,6 @@ class Kamanlend extends Driver
         ];
 
         Log::channel('payment')->info('Kamanlend verify request', [
-            'token' => $token,
-            'nationalCode' => $nationalCode,
             'url' => $this->settings->apiGetPaymentStateUrl,
         ]);
 
@@ -127,7 +121,6 @@ class Kamanlend extends Driver
 
         Log::channel('payment')->info('Kamanlend verify response', [
             'status_code' => $response->getStatusCode(),
-            'body' => $body,
         ]);
 
         if (empty($body['success'])) {

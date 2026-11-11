@@ -105,8 +105,7 @@ class Nopay extends Driver
         ]);
 
         $this->log('info', 'Nopay purchase success', [
-            'token' => $token,
-            'redirectURL' => $redirectUrl,
+            'amount' => $this->invoice->getAmount(),
         ]);
 
         return $this->invoice->getTransactionId();
@@ -140,9 +139,7 @@ class Nopay extends Driver
             'token' => $token,
         ];
 
-        $this->log('info', 'Nopay verify request', [
-            'token' => $token,
-        ]);
+        $this->log('info', 'Nopay verify request');
 
         $body = $this->apiRequest('/BNPL/Financial/CPG/VerifyTransaction', $payload, 'BNPL/Financial/CPG/VerifyTransaction');
 
@@ -213,7 +210,6 @@ class Nopay extends Driver
         $this->log('debug', 'Nopay API response', [
             'path' => $path,
             'status_code' => $response->getStatusCode(),
-            'body' => $body,
         ]);
 
         $notification = $this->arrayGet($body, 'Notification');
