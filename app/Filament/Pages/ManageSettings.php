@@ -13,6 +13,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class ManageSettings extends Page
@@ -65,6 +66,11 @@ class ManageSettings extends Page
             'tapsi_emergency_status' => setting('tapsi_emergency_status', 'open'),
             'tapsi_auth_token' => config('tapsi.auth_token'),
             'tapsi_auth_name' => config('tapsi.auth_name'),
+            'digiexpress_registration_timing' => Setting::getValue('digiexpress_registration_timing', 'after_preparation'),
+            'digiexpress_parcel_mode' => Setting::getValue('digiexpress_parcel_mode', 'estimated'),
+            'digiexpress_estimated_length_cm' => Setting::getValue('digiexpress_estimated_length_cm'),
+            'digiexpress_estimated_width_cm' => Setting::getValue('digiexpress_estimated_width_cm'),
+            'digiexpress_estimated_height_cm' => Setting::getValue('digiexpress_estimated_height_cm'),
         ]);
     }
 
@@ -150,6 +156,51 @@ class ManageSettings extends Page
                                                 'closed' => 'بسته (اضطراری) - موجودی صفر',
                                             ])
                                             ->default('open'),
+                                    ]),
+                            ]),
+                        Tabs\Tab::make('digiexpress')
+                            ->label('دیجی‌اکسپرس')
+                            ->icon('heroicon-o-truck')
+                            ->schema([
+                                Section::make('نحوه ثبت مرسوله')
+                                    ->description('نام دیجی‌اکسپرس به مشتری نمایش داده نمی‌شود؛ این تنظیمات فقط زمان و شیوه عملیات ارسال را مشخص می‌کنند.')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            Select::make('digiexpress_registration_timing')
+                                                ->label('زمان ثبت مرسوله')
+                                                ->options([
+                                                    'after_preparation' => 'پس از پرداخت و آماده‌سازی',
+                                                    'after_payment' => 'خودکار پس از پرداخت',
+                                                ])
+                                                ->required(),
+                                            Select::make('digiexpress_parcel_mode')
+                                                ->label('روش تعیین بسته‌ها')
+                                                ->options([
+                                                    'estimated' => 'ظرفیت تخمینی و افزودن بسته پس از آماده‌سازی',
+                                                    'specified' => 'ثبت پارسل‌های مشخص در زمان ثبت مرسوله',
+                                                ])
+                                                ->required(),
+                                        ]),
+                                        Grid::make(3)->schema([
+                                            TextInput::make('digiexpress_estimated_length_cm')
+                                                ->label('طول تخمینی بسته (سانتی‌متر)')
+                                                ->numeric()
+                                                ->minValue(1)
+                                                ->maxValue(300)
+                                                ->required(fn (Get $get): bool => $get('digiexpress_registration_timing') === 'after_payment'),
+                                            TextInput::make('digiexpress_estimated_width_cm')
+                                                ->label('عرض تخمینی بسته (سانتی‌متر)')
+                                                ->numeric()
+                                                ->minValue(1)
+                                                ->maxValue(300)
+                                                ->required(fn (Get $get): bool => $get('digiexpress_registration_timing') === 'after_payment'),
+                                            TextInput::make('digiexpress_estimated_height_cm')
+                                                ->label('ارتفاع تخمینی بسته (سانتی‌متر)')
+                                                ->numeric()
+                                                ->minValue(1)
+                                                ->maxValue(300)
+                                                ->required(fn (Get $get): bool => $get('digiexpress_registration_timing') === 'after_payment'),
+                                        ]),
                                     ]),
                             ]),
                     ]),
@@ -277,6 +328,30 @@ class ManageSettings extends Page
     {
         $data = $this->form->getState();
 
+        if (($data['digiexpress_registration_timing'] ?? 'after_preparation') === 'after_payment'
+            && ($data['digiexpress_parcel_mode'] ?? 'estimated') !== 'estimated') {
+            Notification::make()
+                ->title('ثبت خودکار پس از پرداخت فقط با ظرفیت تخمینی امکان‌پذیر است')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        if (($data['digiexpress_registration_timing'] ?? 'after_preparation') === 'after_payment'
+            && collect([
+                $data['digiexpress_estimated_length_cm'] ?? null,
+                $data['digiexpress_estimated_width_cm'] ?? null,
+                $data['digiexpress_estimated_height_cm'] ?? null,
+            ])->contains(fn (mixed $value): bool => ! is_numeric($value) || (float) $value <= 0)) {
+            Notification::make()
+                ->title('ابعاد تخمینی بسته برای ثبت خودکار الزامی است')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
         $taxSettings = [
             'tax_gold' => $data['tax_gold'] ?? 0,
             'tax_silver' => $data['tax_silver'] ?? 0,
@@ -309,11 +384,32 @@ class ManageSettings extends Page
         $this->saveHesabfaSettings($hesabfaData->toArray());
 
         $this->saveTapsiSettings($data);
+        $this->saveDigiExpressSettings($data);
 
         Notification::make()
             ->title('تنظیمات با موفقیت ذخیره شد')
             ->success()
             ->send();
+    }
+
+    private function saveDigiExpressSettings(array $data): void
+    {
+        $values = [
+            'digiexpress_registration_timing' => [$data['digiexpress_registration_timing'] ?? 'after_preparation', 'زمان ثبت مرسوله'],
+            'digiexpress_parcel_mode' => [$data['digiexpress_parcel_mode'] ?? 'estimated', 'روش تعیین بسته‌ها'],
+            'digiexpress_estimated_length_cm' => [$data['digiexpress_estimated_length_cm'] ?? null, 'طول تخمینی بسته'],
+            'digiexpress_estimated_width_cm' => [$data['digiexpress_estimated_width_cm'] ?? null, 'عرض تخمینی بسته'],
+            'digiexpress_estimated_height_cm' => [$data['digiexpress_estimated_height_cm'] ?? null, 'ارتفاع تخمینی بسته'],
+        ];
+
+        foreach ($values as $key => [$value, $label]) {
+            Setting::updateOrCreate(['key' => $key], [
+                'value' => (string) ($value ?? ''),
+                'type' => 'string',
+                'category' => 'digiexpress',
+                'label' => $label,
+            ]);
+        }
     }
 
     private function saveTapsiSettings(array $data): void

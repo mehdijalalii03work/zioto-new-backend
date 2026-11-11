@@ -4,10 +4,16 @@ namespace App\Filament\Resources\Orders\Pages;
 
 use App\Enums\Permission;
 use App\Filament\Resources\Orders\OrderResource;
+use App\Models\Setting;
 use App\Observers\HesabfaObserver;
+use App\Services\DigiExpressService;
+use App\Services\DigiExpressShipmentService;
+use App\Services\DigiExpressWebhookService;
 use App\Support\Platform;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
@@ -16,6 +22,7 @@ use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 
 class ViewOrder extends ViewRecord
@@ -144,6 +151,48 @@ class ViewOrder extends ViewRecord
                                                     ->label('هزینه ارسال')
                                                     ->formatStateUsing(fn ($state): string => $state ? number_format($state).' ریال' : '0')
                                                     ->placeholder('-'),
+
+                                                TextEntry::make('shipping.shipping_status')
+                                                    ->label('وضعیت ارسال')
+                                                    ->badge()
+                                                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                                        'processing' => 'در حال بررسی',
+                                                        'route_searching' => 'یافتن مسیر',
+                                                        'route_found' => 'مسیر پیدا شد',
+                                                        'awaiting_pickup' => 'در انتظار ارسال',
+                                                        'in_transit' => 'در حال ارسال',
+                                                        'delivered' => 'تحویل‌شده',
+                                                        'failed', 'manual_review' => 'نیازمند بررسی دستی',
+                                                        'manual_fallback' => 'شرکت جایگزین ثبت شد',
+                                                        'cancelled' => 'لغو شده',
+                                                        default => $state ?: '—',
+                                                    }),
+
+                                                TextEntry::make('shipping.carrier_code')
+                                                    ->label('شرکت حمل (داخلی)')
+                                                    ->placeholder('—'),
+
+                                                TextEntry::make('shipping.tracking_number')
+                                                    ->label('شماره رهگیری')
+                                                    ->placeholder('—'),
+
+                                                TextEntry::make('shipping.provider_error')
+                                                    ->label('خطای آخر ارسال')
+                                                    ->placeholder('—')
+                                                    ->columnSpanFull(),
+
+                                                TextEntry::make('digiExpressEventHistory')
+                                                    ->label('تاریخچه رخدادهای ارسال')
+                                                    ->state(function ($record): HtmlString {
+                                                        $events = app(DigiExpressWebhookService::class)->recentEventsForOrder((int) $record->id);
+                                                        if ($events->isEmpty()) {
+                                                            return new HtmlString('—');
+                                                        }
+                                                        $lines = $events->map(fn ($event): string => e(($event->occurred_at?->format('Y-m-d H:i:s') ?? $event->created_at->format('Y-m-d H:i:s')).' · '.($event->shipment_status ?: $event->parcel_status ?: $event->progress_type).' · '.($event->processed_at ? 'پردازش‌شده' : 'در انتظار پردازش')));
+
+                                                        return new HtmlString($lines->implode('<br>'));
+                                                    })
+                                                    ->columnSpanFull(),
 
                                                 TextEntry::make('installment_fee')
                                                     ->label('کارمزد اقساط')
@@ -472,6 +521,149 @@ class ViewOrder extends ViewRecord
                     }
 
                     $this->refreshFormData(['hesabfa_contact_code', 'hesabfa_invoice_number', 'hesabfa_synced_at']);
+                }),
+
+            Action::make('registerDigiExpressShipment')
+                ->label('ثبت مرسوله ارسال به آدرس')
+                ->icon('heroicon-o-truck')
+                ->color('primary')
+                ->authorize(Permission::ShippingEdit->value)
+                ->visible(fn ($record): bool => $record->shipping?->shippingMethod?->code === 'digiexpress_address' && blank($record->shipping?->provider_shipment_id))
+                ->modalHeading('ثبت مرسوله')
+                ->form([
+                    TextInput::make('weight_grams')->label('وزن تخمینی (گرم)')->numeric()->minValue(1)
+                        ->visible(fn (): bool => Setting::getValue('digiexpress_parcel_mode', 'estimated') === 'estimated'),
+                    TextInput::make('length_cm')->label('طول (سانتی‌متر)')->numeric()->minValue(1)
+                        ->visible(fn (): bool => Setting::getValue('digiexpress_parcel_mode', 'estimated')),
+                    TextInput::make('width_cm')->label('عرض (سانتی‌متر)')->numeric()->minValue(1)
+                        ->visible(fn (): bool => Setting::getValue('digiexpress_parcel_mode', 'estimated')),
+                    TextInput::make('height_cm')->label('ارتفاع (سانتی‌متر)')->numeric()->minValue(1)
+                        ->visible(fn (): bool => Setting::getValue('digiexpress_parcel_mode', 'estimated')),
+                    Repeater::make('parcels')->label('پارسل‌ها')->schema([
+                        TextInput::make('weight_grams')->label('وزن (گرم)')->numeric()->minValue(1)->required(),
+                        TextInput::make('length_cm')->label('طول')->numeric()->minValue(1)->required(),
+                        TextInput::make('width_cm')->label('عرض')->numeric()->minValue(1)->required(),
+                        TextInput::make('height_cm')->label('ارتفاع')->numeric()->minValue(1)->required(),
+                        Select::make('packaging_type')->label('نوع بسته‌بندی')->options(['box' => 'جعبه', 'packet' => 'پاکت'])->required(),
+                        Select::make('characteristic')->label('ماهیت کالا')->options(['normal' => 'عادی', 'gold' => 'طلا'])->required(),
+                    ])->columns(3)->minItems(1)
+                        ->visible(fn (): bool => Setting::getValue('digiexpress_parcel_mode', 'estimated') === 'specified'),
+                ])
+                ->action(function ($record, array $data): void {
+                    $preparation = [];
+                    if (Setting::getValue('digiexpress_parcel_mode', 'estimated') === 'estimated') {
+                        $dims = array_filter([$data['length_cm'] ?? null, $data['width_cm'] ?? null, $data['height_cm'] ?? null], fn ($value): bool => filled($value));
+                        if (count($dims) === 3) {
+                            $preparation['dimensions_cm'] = array_map('intval', array_values($dims));
+                        }
+                        if (filled($data['weight_grams'] ?? null)) {
+                            $preparation['weight_grams'] = (int) $data['weight_grams'];
+                        }
+                    } else {
+                        $preparation['parcels'] = array_map(fn (array $parcel, int $index): array => [
+                            'consignor_reference_id' => $record->id.'-'.($index + 1),
+                            'dimensionsInCMs' => [(string) $parcel['length_cm'], (string) $parcel['width_cm'], (string) $parcel['height_cm']],
+                            'weight_grams' => (string) $parcel['weight_grams'],
+                            'packaging_type' => $parcel['packaging_type'],
+                            'characteristics' => [$parcel['characteristic']],
+                        ], $data['parcels'] ?? [], array_keys($data['parcels'] ?? []));
+                    }
+                    $shipping = app(DigiExpressShipmentService::class)->register($record, $preparation);
+                    Notification::make()
+                        ->title($shipping->shipping_status === 'manual_review' ? 'ثبت مرسوله ناموفق بود؛ سفارش در صف بررسی دستی قرار گرفت' : 'مرسوله ثبت شد')
+                        ->color($shipping->shipping_status === 'manual_review' ? 'danger' : 'success')
+                        ->send();
+                    $this->refreshFormData(['shipping']);
+                }),
+
+            Action::make('saveManualCarrier')
+                ->label('ثبت شرکت جایگزین و رهگیری')
+                ->icon('heroicon-o-pencil-square')
+                ->authorize(Permission::ShippingEdit->value)
+                ->visible(fn ($record): bool => $record->shipping?->shippingMethod?->code === 'digiexpress_address')
+                ->form([
+                    TextInput::make('carrier_code')->label('شرکت حمل')->required()->maxLength(50),
+                    TextInput::make('tracking_number')->label('شماره رهگیری')->maxLength(100),
+                    TextInput::make('tracking_url')->label('لینک رهگیری')->url()->maxLength(500),
+                ])
+                ->action(function ($record, array $data): void {
+                    $record->shipping?->forceFill($data + ['shipping_status' => 'manual_fallback'])->save();
+                    Notification::make()->title('اطلاعات شرکت جایگزین ذخیره شد')->success()->send();
+                    $this->refreshFormData(['shipping']);
+                }),
+
+            Action::make('cancelDigiExpressShipment')
+                ->label('لغو مرسوله')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->authorize(Permission::ShippingEdit->value)
+                ->visible(fn ($record): bool => $record->shipping?->shippingMethod?->code === 'digiexpress_address' && filled($record->shipping?->provider_shipment_id) && ! in_array($record->shipping?->shipping_status, ['cancelled', 'delivered'], true))
+                ->requiresConfirmation()
+                ->action(function ($record): void {
+                    app(DigiExpressShipmentService::class)->cancel($record->shipping);
+                    Notification::make()->title('مرسوله لغو شد')->success()->send();
+                    $this->refreshFormData(['shipping']);
+                }),
+
+            Action::make('addDigiExpressParcels')
+                ->label('افزودن بسته‌های آماده‌شده')
+                ->icon('heroicon-o-archive-box')
+                ->authorize(Permission::ShippingEdit->value)
+                ->visible(fn ($record): bool => $record->shipping?->shippingMethod?->code === 'digiexpress_address' && filled($record->shipping?->provider_shipment_id) && Setting::getValue('digiexpress_parcel_mode', 'estimated') === 'estimated')
+                ->form([
+                    Repeater::make('parcels')->label('بسته‌ها')->schema([
+                        TextInput::make('weight_grams')->label('وزن (گرم)')->numeric()->minValue(1)->required(),
+                        TextInput::make('length_cm')->label('طول')->numeric()->minValue(1)->required(),
+                        TextInput::make('width_cm')->label('عرض')->numeric()->minValue(1)->required(),
+                        TextInput::make('height_cm')->label('ارتفاع')->numeric()->minValue(1)->required(),
+                        Select::make('packaging_type')->label('بسته‌بندی')->options(['box' => 'جعبه', 'packet' => 'پاکت'])->required(),
+                        Select::make('characteristic')->label('ماهیت')->options(['normal' => 'عادی', 'gold' => 'طلا'])->required(),
+                    ])->columns(3)->minItems(1)->required(),
+                ])
+                ->action(function ($record, array $data): void {
+                    $parcels = array_map(fn (array $parcel, int $index): array => [
+                        'consignor_reference_id' => $record->id.'-'.now()->format('His').'-'.($index + 1),
+                        'dimensionsInCMs' => [(string) $parcel['length_cm'], (string) $parcel['width_cm'], (string) $parcel['height_cm']],
+                        'weight_grams' => (string) $parcel['weight_grams'],
+                        'content_value_price_rials' => (string) (int) $record->total_amount,
+                        'packaging_type' => $parcel['packaging_type'],
+                        'characteristics' => [$parcel['characteristic']],
+                        'items_description' => 'سفارش اینترنتی',
+                    ], $data['parcels'], array_keys($data['parcels']));
+                    app(DigiExpressShipmentService::class)->addPreparedParcels($record->shipping, $parcels);
+                    Notification::make()->title('بسته‌ها ثبت شدند')->success()->send();
+                    $this->refreshFormData(['shipping']);
+                }),
+
+            Action::make('downloadDigiExpressLabel')
+                ->label('دریافت لیبل پارسل')
+                ->icon('heroicon-o-document-arrow-down')
+                ->authorize(Permission::ShippingView->value)
+                ->visible(fn ($record): bool => $record->shipping?->digiExpressParcels()->exists() ?? false)
+                ->form([
+                    Select::make('parcel_id')->label('پارسل')->options(fn ($record): array => $record->shipping->digiExpressParcels()->get()->mapWithKeys(fn ($parcel): array => [$parcel->id => $parcel->parcel_code ?: $parcel->consignor_reference_id])->all())->required(),
+                ])
+                ->action(function ($record, array $data) {
+                    $parcel = $record->shipping->digiExpressParcels()->findOrFail($data['parcel_id']);
+                    $path = app(DigiExpressShipmentService::class)->downloadParcelLabel($parcel);
+
+                    return Storage::disk('local')->download($path);
+                }),
+
+            Action::make('recoverDigiExpressEvents')
+                ->label('بازیابی رخدادهای ارسال')
+                ->icon('heroicon-o-arrow-path-rounded-square')
+                ->authorize(Permission::ShippingEdit->value)
+                ->visible(fn ($record): bool => $record->shipping?->shippingMethod?->code === 'digiexpress_address')
+                ->action(function ($record): void {
+                    $shipping = $record->shipping;
+                    if (filled($shipping?->provider_reference_id)) {
+                        $feed = app(DigiExpressService::class)->webhookFeed([$shipping->provider_reference_id]);
+                        app(DigiExpressWebhookService::class)->ingestFeed($feed);
+                    }
+                    $count = app(DigiExpressWebhookService::class)->replayUnprocessed();
+                    Notification::make()->title("رخدادهای بازیابی‌شده: {$count}")->success()->send();
+                    $this->refreshFormData(['shipping']);
                 }),
 
             Action::make('edit')

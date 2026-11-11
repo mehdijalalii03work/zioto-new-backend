@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
+use App\Services\DigiExpressShippingAvailability;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ShippingController extends Controller
 {
+    public function __construct(private readonly DigiExpressShippingAvailability $shippingAvailability) {}
+
     public function methods(Request $request): JsonResponse
     {
         $cityId = $request->input('city_id');
@@ -75,6 +78,12 @@ class ShippingController extends Controller
             });
         }
 
+        $methods = $methods->filter(fn (ShippingMethod $method): bool => $this->shippingAvailability->isAvailable(
+            $method,
+            $cityId ? (int) $cityId : null,
+            $provinceId ? (int) $provinceId : null,
+        ));
+
         $methods = $methods->map(function (ShippingMethod $method) use ($cityId, $provinceId) {
             if (($cityId || $provinceId) && $method->rates->isNotEmpty()) {
                 $rateType = $method->rates->first()->rate_type;
@@ -114,6 +123,16 @@ class ShippingController extends Controller
         ]);
 
         $method = ShippingMethod::active()->findOrFail($validated['shipping_method_id']);
+        if (! $this->shippingAvailability->isAvailable(
+            $method,
+            isset($validated['city_id']) ? (int) $validated['city_id'] : null,
+            isset($validated['province_id']) ? (int) $validated['province_id'] : null,
+        )) {
+            return response()->json([
+                'message' => 'روش ارسال انتخاب‌شده برای این مقصد فعال نیست',
+                'error_code' => 'SHIPPING_METHOD_INVALID',
+            ], 422);
+        }
 
         $totalWeight = 0;
         if (! empty($validated['cart_items'])) {

@@ -41,4 +41,23 @@ return [
         'base_url' => env('SHAHKAR_BASE_URL', 'https://napi.jibit.ir/ide'),
     ],
 
+    'digiexpress' => [
+        'base_url' => env('DIGIEXPRESS_BASE_URL', 'https://api-demo.digiexpress.ir'),
+        'username' => env('DIGIEXPRESS_USERNAME'),
+        'password' => env('DIGIEXPRESS_PASSWORD'),
+        'webhook_token' => env('DIGIEXPRESS_WEBHOOK_TOKEN'),
+        'origin_city_id' => env('DIGIEXPRESS_ORIGIN_CITY_ID'),
+        'origin_point_id' => env('DIGIEXPRESS_ORIGIN_POINT_ID'),
+        'origin_address' => env('DIGIEXPRESS_ORIGIN_ADDRESS'),
+        'origin_building_number' => env('DIGIEXPRESS_ORIGIN_BUILDING_NUMBER'),
+        'origin_postal_code' => env('DIGIEXPRESS_ORIGIN_POSTAL_CODE'),
+        'origin_latitude' => env('DIGIEXPRESS_ORIGIN_LATITUDE'),
+        'origin_longitude' => env('DIGIEXPRESS_ORIGIN_LONGITUDE'),
+        'sender_first_name' => env('DIGIEXPRESS_SENDER_FIRST_NAME'),
+        'sender_last_name' => env('DIGIEXPRESS_SENDER_LAST_NAME'),
+        'sender_national_code' => env('DIGIEXPRESS_SENDER_NATIONAL_CODE'),
+        'sender_mobile' => env('DIGIEXPRESS_SENDER_MOBILE'),
+        'sender_phone' => env('DIGIEXPRESS_SENDER_PHONE'),
+    ],
+
 ];

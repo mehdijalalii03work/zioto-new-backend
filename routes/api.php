@@ -5,12 +5,14 @@ use App\Http\Controllers\Api\AgencyRequestController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\ContactMessageController;
+use App\Http\Controllers\Api\DigiExpressWebhookController;
 use App\Http\Controllers\Api\DiscountCodeController;
 use App\Http\Controllers\Api\HesabfaWebhookController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\OrderSubmitController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PriceBoardController;
+use App\Http\Controllers\Api\ProductCategoryController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RigeController;
@@ -87,14 +89,20 @@ Route::prefix('tapsi')->group(function () {
     Route::get('/webhook', [TapsiWebhookController::class, 'test']);
 });
 
+Route::prefix('digiexpress')->group(function () {
+    Route::post('/webhook', [DigiExpressWebhookController::class, 'handle'])
+        ->name('digiexpress.webhook')
+        ->middleware('throttle:60,1');
+});
+
 Route::get('/price-board', [PriceBoardController::class, 'index']);
 Route::post('/price-board/refresh', [PriceBoardController::class, 'refresh'])->middleware('throttle:10,1');
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::post('/products/{id}/view', [ProductController::class, 'recordView'])->middleware('throttle:60,1');
-Route::get('/categories', [\App\Http\Controllers\Api\ProductCategoryController::class, 'index']);
-Route::get('/categories/{slug}', [\App\Http\Controllers\Api\ProductCategoryController::class, 'show']);
+Route::get('/categories', [ProductCategoryController::class, 'index']);
+Route::get('/categories/{slug}', [ProductCategoryController::class, 'show']);
 
 Route::get('/settings/tax', function () {
     return response()->json([

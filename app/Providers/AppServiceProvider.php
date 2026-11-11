@@ -10,6 +10,7 @@ use App\Models\DiscountCode;
 use App\Models\Setting;
 use App\Models\ShippingMethod;
 use App\Models\User;
+use App\Observers\DigiExpressOrderObserver;
 use App\Observers\DiscountCodeUsageObserver;
 use App\Observers\HesabfaObserver;
 use App\Observers\OrderSmsNotificationObserver;
@@ -85,6 +86,7 @@ class AppServiceProvider extends ServiceProvider
         Order::observe(DiscountCodeUsageObserver::class);
         Order::observe(StockReservationObserver::class);
         Order::observe(OrderSmsNotificationObserver::class);
+        Order::observe(DigiExpressOrderObserver::class);
         ProductImage::observe(ProductImageObserver::class);
         Product::observe(ProductPricingAuditObserver::class);
         Setting::observe(PricingSettingAuditObserver::class);

@@ -14,6 +14,7 @@ use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
 use App\Models\User;
 use App\Models\UserAddress;
+use App\Services\DigiExpressShippingAvailability;
 use App\Services\DiscountCodeService;
 use App\Services\InstallmentService;
 use App\Services\Pricing\DynamicPriceService;
@@ -33,6 +34,7 @@ class OrderSubmitController extends Controller
         private readonly DynamicPriceService $dynamicPrice,
         private readonly SalesRestrictionService $salesRestrictions,
         private readonly ShahkarService $shahkar,
+        private readonly DigiExpressShippingAvailability $shippingAvailability,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -147,7 +149,16 @@ class OrderSubmitController extends Controller
             ], 422);
         }
 
-        if (! ShippingMethod::active()->whereKey($validated['shipping_method_id'])->exists()) {
+        $shippingMethod = ShippingMethod::active()->find($validated['shipping_method_id']);
+        $shippingAddress = empty($validated['user_address_id'])
+            ? null
+            : $user->addresses()->with(['province', 'city'])->find($validated['user_address_id']);
+
+        if (! $shippingMethod || ! $this->shippingAvailability->isAvailable(
+            $shippingMethod,
+            $shippingAddress?->city_id,
+            $shippingAddress?->province_id,
+        )) {
             return response()->json([
                 'message' => 'روش ارسال انتخاب‌شده معتبر نیست',
                 'error_code' => 'SHIPPING_METHOD_INVALID',
