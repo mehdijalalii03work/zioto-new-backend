@@ -8,8 +8,9 @@ use Modules\Order\Models\Order;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Verifies that fee distribution is limited to installment gateways that
- * actually charge a fee ('installment'), excluding fee-free gateways.
+ * Verifies that the Hesabfa invoice fee row is only added for installment
+ * gateways that actually charge a fee ('installment'), and NOT for
+ * fee-free installment gateways like nopay ('installment_nofee').
  */
 class InstallmentFeeItemTest extends TestCase
 {
@@ -30,17 +31,17 @@ class InstallmentFeeItemTest extends TestCase
         return $method->invoke($observer, $order);
     }
 
-    public function test_fee_charging_installment_is_eligible_for_fee_distribution(): void
+    public function test_installment_with_fee_adds_fee_row(): void
     {
         $this->assertTrue($this->shouldAddFee($this->makeOrder('installment')));
     }
 
-    public function test_fee_free_installment_is_not_eligible_for_fee_distribution(): void
+    public function test_installment_nofee_does_not_add_fee_row(): void
     {
         $this->assertFalse($this->shouldAddFee($this->makeOrder('installment_nofee')));
     }
 
-    public function test_online_payment_is_not_eligible_for_fee_distribution(): void
+    public function test_online_does_not_add_fee_row(): void
     {
         $this->assertFalse($this->shouldAddFee($this->makeOrder('online')));
     }

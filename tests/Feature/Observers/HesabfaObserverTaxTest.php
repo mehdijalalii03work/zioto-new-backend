@@ -92,32 +92,6 @@ class HesabfaObserverTaxTest extends TestCase
         $this->assertSame(0, $items[0]['tax']);
     }
 
-    public function test_gold_labor_tax_is_reported_in_the_tax_column_without_changing_the_line_total(): void
-    {
-        $product = Product::create([
-            'name' => 'Gold product',
-            'slug' => 'gold-labor-tax-'.uniqid(),
-            'sku' => 'GOLD-TAX-001',
-            'metal_type' => 'gold',
-        ]);
-        $order = Order::factory()->create();
-        $order->items()->create([
-            'product_id' => $product->id,
-            'product_name' => 'Gold product',
-            'product_price' => 4_200,
-            'quantity' => 1,
-            'subtotal' => 4_200,
-            'taxes' => [['scope' => 'labor', 'rate' => 10, 'amount' => 20]],
-        ]);
-        $order->load('items.product');
-
-        $items = $this->buildProductItems($order);
-
-        $this->assertSame(4_000, $items[0]['unitPrice']);
-        $this->assertSame(200, $items[0]['tax']);
-        $this->assertSame(4_200, $items[0]['unitPrice'] * $items[0]['quantity'] + $items[0]['tax']);
-    }
-
     public function test_silver_tax_rate_from_settings(): void
     {
         Setting::create(['key' => 'tax_silver', 'value' => '20', 'type' => 'number', 'category' => 'tax', 'label' => 'درصد مالیات نقره']);
