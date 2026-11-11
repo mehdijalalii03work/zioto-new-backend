@@ -7,6 +7,7 @@ use App\Models\HesabfaSyncLog;
 use App\Models\Setting;
 use App\Services\HesabfaService;
 use App\Services\InstallmentService;
+use App\Services\Pricing\DynamicPriceService;
 use App\Support\Platform;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -258,18 +259,6 @@ class HesabfaObserver
             }
         }
 
-        // 'installment_nofee' (e.g. nopay) has no fee row, so no fee item code is required
-        if ($this->shouldAddInstallmentFee($order)) {
-            $feeCode = config('hesabfa.installment_fee_item_code');
-            if (empty($feeCode)) {
-                return ['success' => false, 'message' => 'کد کالای کارمزد خرید اقساطی در تنظیمات وارد نشده است'];
-            }
-            $feeItem = $this->hesabfa->getItemByCode($feeCode);
-            if (! $feeItem || isset($feeItem['error'])) {
-                return ['success' => false, 'message' => "کد کالای کارمزد خرید اقساطی '{$feeCode}' در حسابفا یافت نشد"];
-            }
-        }
-
         return ['success' => true];
     }
 
@@ -306,15 +295,11 @@ class HesabfaObserver
             $rowNumber++;
         }
 
+        $items = $this->applyInstallmentFee($order, $items);
+
         $discountItem = $this->buildDiscountItem($order, $rowNumber);
         if ($discountItem) {
             $items[] = $discountItem;
-            $rowNumber++;
-        }
-
-        $installmentItem = $this->buildInstallmentFeeItem($order, $rowNumber);
-        if ($installmentItem) {
-            $items[] = $installmentItem;
         }
 
         return $items;
@@ -373,12 +358,26 @@ class HesabfaObserver
             $priceBoardItem = $product?->price_board_item ?? '';
             $isSilver = $metalType === MetalType::Silver
                 || str_starts_with($priceBoardItem, 'Silver');
+            $isGold = $metalType === MetalType::Gold
+                || str_starts_with($priceBoardItem, 'Gold');
 
             if ($isSilver) {
                 $taxRate = (float) Setting::getValue('tax_silver', 10);
                 if ($taxRate > 0) {
                     $unitPrice = (int) round($price / (1 + $taxRate / 100));
                     $tax = ($price - $unitPrice) * $quantity;
+                }
+            } elseif ($isGold) {
+                $laborTaxPerPack = collect($orderItem->taxes ?? [])
+                    ->filter(static fn (array $tax): bool => ($tax['scope'] ?? null) === 'labor')
+                    ->sum(static fn (array $tax): float => (float) ($tax['amount'] ?? 0));
+
+                if ($laborTaxPerPack > 0) {
+                    $laborTaxPerUnit = (int) round(
+                        $laborTaxPerPack * DynamicPriceService::RIAL_PER_TOMAN / $packSize,
+                    );
+                    $unitPrice -= $laborTaxPerUnit;
+                    $tax = $laborTaxPerUnit * $quantity;
                 }
             }
 
@@ -442,45 +441,102 @@ class HesabfaObserver
     }
 
     /**
-     * Only 'installment' (fee-charging gateways like digipay/smartis/kamanlend)
-     * gets a fee row. 'installment_nofee' (e.g. nopay) must NOT get one.
+     * Only fee-charging installment gateways receive the distributed fee.
      */
     private function shouldAddInstallmentFee(Order $order): bool
     {
         return $order->payment_method === 'installment';
     }
 
-    private function buildInstallmentFeeItem(Order $order, int $rowNumber): ?array
+    /**
+     * Distributes the installment fee's untaxed amount and tax over positive invoice rows.
+     * Per-unit price rounding is reconciled in the added tax so the invoice total stays exact.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function applyInstallmentFee(Order $order, array $items): array
     {
         if (! $this->shouldAddInstallmentFee($order)) {
-            return null;
+            return $items;
         }
 
-        $installmentFeeCode = config('hesabfa.installment_fee_item_code');
-        if (! $installmentFeeCode) {
-            return null;
+        $notes = json_decode($order->notes ?? '', true);
+        $storedFee = data_get($notes, 'installment_fee');
+
+        if (is_numeric($storedFee)) {
+            $totalIncludingTax = max(0, (int) $storedFee);
+        } else {
+            $baseAmount = max(0, (int) $order->items->sum('subtotal') + (int) ($order->shipping?->shipping_cost ?? 0) - (int) $order->discount_amount);
+            $totalIncludingTax = InstallmentService::calculateFee($baseAmount);
         }
 
-        $baseAmount = max(0, $order->items->sum('subtotal') + ($order->shipping?->shipping_cost ?? 0) - (int) $order->discount_amount);
-        $totalIncludingTax = InstallmentService::calculateFee((int) $baseAmount);
-
-        if ($totalIncludingTax <= 0) {
-            return null;
+        if ($totalIncludingTax <= 0 || $items === []) {
+            return $items;
         }
 
-        $unitPrice = (int) round($totalIncludingTax / 1.10);
-        $taxOnCommission = $totalIncludingTax - $unitPrice;
+        $weights = array_map(
+            static fn (array $item): int => max(0, (int) $item['unitPrice'] * (int) $item['quantity'] + (int) $item['tax'] - (int) $item['discount']),
+            $items,
+        );
+        $weightTotal = array_sum($weights);
 
-        return [
-            'rowNumber' => $rowNumber,
-            'description' => 'کارمزد خرید اقساطی ('.InstallmentService::FEE_PERCENT.'٪)',
-            'itemCode' => $installmentFeeCode,
-            'unit' => config('hesabfa.default_unit', 'عدد'),
-            'quantity' => 1,
-            'unitPrice' => $unitPrice,
-            'discount' => 0,
-            'tax' => $taxOnCommission,
-        ];
+        if ($weightTotal <= 0) {
+            return $items;
+        }
+
+        $baseFee = (int) round($totalIncludingTax / 1.10);
+        $feeTax = $totalIncludingTax - $baseFee;
+        $baseShares = $this->allocateAmountByWeights($baseFee, $weights, $weightTotal);
+        $taxShares = $this->allocateAmountByWeights($feeTax, $weights, $weightTotal);
+
+        foreach ($items as $index => &$item) {
+            $quantity = max(1, (int) $item['quantity']);
+            $perUnitIncrease = intdiv($baseShares[$index], $quantity);
+            $actualBaseIncrease = $perUnitIncrease * $quantity;
+
+            $item['unitPrice'] += $perUnitIncrease;
+            $item['tax'] += $taxShares[$index] + ($baseShares[$index] - $actualBaseIncrease);
+        }
+        unset($item);
+
+        return $items;
+    }
+
+    /**
+     * @param  list<int>  $weights
+     * @return list<int>
+     */
+    private function allocateAmountByWeights(int $amount, array $weights, int $weightTotal): array
+    {
+        $shares = [];
+        $remainders = [];
+        $allocated = 0;
+
+        foreach ($weights as $index => $weight) {
+            $numerator = $amount * $weight;
+            $shares[$index] = intdiv($numerator, $weightTotal);
+            $remainders[$index] = $numerator % $weightTotal;
+            $allocated += $shares[$index];
+        }
+
+        arsort($remainders, SORT_NUMERIC);
+        $unallocated = $amount - $allocated;
+
+        foreach (array_keys($remainders) as $index) {
+            if ($unallocated <= 0) {
+                break;
+            }
+
+            if ($weights[$index] > 0) {
+                $shares[$index]++;
+                $unallocated--;
+            }
+        }
+
+        ksort($shares);
+
+        return array_values($shares);
     }
 
     private function buildInvoicePayload(Order $order, string $reference, string $date, string $contactCode, array $items): array
