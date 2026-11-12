@@ -101,7 +101,10 @@ class PaymentController extends Controller
     {
         $validated = $request->validated();
 
-        $order = Order::with(['user', 'address'])->findOrFail($validated['order_id']);
+        $order = Order::with(['user', 'address'])
+            ->where('user_id', $request->user('api')->getAuthIdentifier())
+            ->where('platform', $request->user('api')->platform)
+            ->findOrFail($validated['order_id']);
 
         if ($order->payment_status === 'paid') {
             return response()->json(['message' => 'سفارش قبلاً پرداخت شده', 'error_code' => 'ORDER_ALREADY_PAID'], 422);

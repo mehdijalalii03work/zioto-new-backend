@@ -122,7 +122,7 @@ Route::middleware('auth.token', 'throttle:60,1')->prefix('cart')->group(function
 Route::post('/payment/calculate-fee', [PaymentController::class, 'calculateFee'])->middleware('auth.token');
 
 Route::prefix('payment')->group(function () {
-    Route::post('/init', [PaymentController::class, 'init']);
+    Route::post('/init', [PaymentController::class, 'init'])->middleware('auth.token');
     Route::match(['get', 'post'], '/callback', [PaymentController::class, 'callbackByToken'])->name('payment.callback.bare');
     Route::match(['get', 'post'], '/callback/{orderId}/{gateway}', [PaymentController::class, 'callback'])->name('payment.callback');
     Route::get('/status/{orderId}', [PaymentController::class, 'status'])->middleware('auth.token');

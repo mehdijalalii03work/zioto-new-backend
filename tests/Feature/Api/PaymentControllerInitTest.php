@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserAddress;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Mockery;
 use Modules\Order\Models\Order;
 use Modules\Payment\Models\Payment;
@@ -17,6 +18,38 @@ use Tests\TestCase;
 class PaymentControllerInitTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function initAsOrderOwner(Order $order, array $data): TestResponse
+    {
+        return $this->withHeaders([
+            'Authorization' => 'Bearer '.$order->user->api_token,
+            'X-Platform' => $order->platform,
+        ])->postJson('/api/payment/init', $data);
+    }
+
+    private function fakeSuccessfulPurchase(string $transactionId): void
+    {
+        $gateway = Mockery::mock('overload:'.ShetabitPayment::class);
+        $gateway->shouldReceive('via')->andReturnSelf();
+        $gateway->shouldReceive('callbackUrl')->andReturnSelf();
+        $gateway->shouldReceive('purchase')->andReturnUsing(function ($invoice, $callback) use ($transactionId) {
+            $callback(null, $transactionId);
+
+            return new class
+            {
+                public function pay(): object
+                {
+                    return new class
+                    {
+                        public function getAction(): string
+                        {
+                            return 'https://gateway.example.test/pay';
+                        }
+                    };
+                }
+            };
+        });
+    }
 
     protected function tearDown(): void
     {
@@ -31,7 +64,7 @@ class PaymentControllerInitTest extends TestCase
             'total_amount' => 100000,
         ]);
 
-        $response = $this->postJson('/api/payment/init', [
+        $response = $this->initAsOrderOwner($order, [
             'order_id' => $order->id,
             'gateway' => 'parsian',
         ]);
@@ -50,7 +83,7 @@ class PaymentControllerInitTest extends TestCase
             'total_amount' => 100000,
         ]);
 
-        $response = $this->postJson('/api/payment/init', [
+        $response = $this->initAsOrderOwner($order, [
             'order_id' => $order->id,
             'gateway' => 'parsian',
         ]);
@@ -69,7 +102,7 @@ class PaymentControllerInitTest extends TestCase
             'total_amount' => 100000,
         ]);
 
-        $response = $this->postJson('/api/payment/init', [
+        $response = $this->initAsOrderOwner($order, [
             'order_id' => $order->id,
             'gateway' => 'parsian',
         ]);
@@ -80,6 +113,7 @@ class PaymentControllerInitTest extends TestCase
         ]);
     }
 
+    #[RunInSeparateProcess]
     public function test_init_retries_immediately_when_previous_payment_is_still_pending(): void
     {
         $order = Order::factory()->create([
@@ -99,18 +133,21 @@ class PaymentControllerInitTest extends TestCase
             'description' => 'در انتظار پرداخت',
         ]);
 
-        $response = $this->postJson('/api/payment/init', [
+        $this->fakeSuccessfulPurchase('replacement-txn');
+
+        $response = $this->initAsOrderOwner($order, [
             'order_id' => $order->id,
             'gateway' => 'parsian',
         ]);
 
-        $this->assertNotSame(422, $response->getStatusCode());
+        $response->assertOk();
         $this->assertDatabaseHas('payments', [
             'id' => Payment::where('transaction_id', 'existing-txn')->value('id'),
             'status' => 'failed',
         ]);
     }
 
+    #[RunInSeparateProcess]
     public function test_init_retries_immediately_for_abandoned_pending_payment(): void
     {
         $this->travelTo(now()->startOfSecond());
@@ -130,18 +167,20 @@ class PaymentControllerInitTest extends TestCase
             'status' => 'pending',
             'description' => 'در انتظار پرداخت',
         ]);
-        $response = $this->postJson('/api/payment/init', [
+        $this->fakeSuccessfulPurchase('abandoned-replacement-txn');
+        $response = $this->initAsOrderOwner($order, [
             'order_id' => $order->id,
             'gateway' => 'parsian',
         ]);
 
-        $this->assertNotSame(422, $response->getStatusCode());
+        $response->assertOk();
         $this->assertDatabaseHas('payments', [
             'id' => $payment->id,
             'status' => 'failed',
         ]);
     }
 
+    #[RunInSeparateProcess]
     public function test_init_allows_new_payment_for_order_with_previous_failed_payment(): void
     {
         Setting::updateOrCreate(['key' => 'zioto_pricing_sales_enabled'], [
@@ -180,12 +219,14 @@ class PaymentControllerInitTest extends TestCase
             'description' => 'پرداخت ناموفق',
         ]);
 
-        $response = $this->postJson('/api/payment/init', [
+        $this->fakeSuccessfulPurchase('failed-retry-txn');
+
+        $response = $this->initAsOrderOwner($order, [
             'order_id' => $order->id,
             'gateway' => 'parsian',
         ]);
 
-        $this->assertNotEquals(422, $response->getStatusCode(), 'Init should allow retry after failed payment');
+        $response->assertOk();
     }
 
     public function test_init_rejects_insufficient_stock(): void
@@ -213,7 +254,7 @@ class PaymentControllerInitTest extends TestCase
             'subtotal' => $product->price,
         ]);
 
-        $response = $this->postJson('/api/payment/init', [
+        $response = $this->initAsOrderOwner($order, [
             'order_id' => $order->id,
             'gateway' => 'parsian',
         ]);
@@ -271,7 +312,7 @@ class PaymentControllerInitTest extends TestCase
             };
         });
 
-        $response = $this->postJson('/api/payment/init', [
+        $response = $this->initAsOrderOwner($order, [
             'order_id' => $order->id,
             'gateway' => 'parsian',
         ]);

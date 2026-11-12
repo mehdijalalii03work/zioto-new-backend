@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class InitPaymentRequest extends FormRequest
 {
@@ -14,7 +15,9 @@ class InitPaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'order_id' => ['required', 'integer', 'exists:orders,id'],
+            'order_id' => ['required', 'integer', Rule::exists('orders', 'id')
+                ->where('user_id', $this->user('api')->getAuthIdentifier())
+                ->where('platform', $this->user('api')->platform)],
             'gateway' => ['required', 'in:parsian,digipay,kamanlend,smartis,nopay'],
         ];
     }

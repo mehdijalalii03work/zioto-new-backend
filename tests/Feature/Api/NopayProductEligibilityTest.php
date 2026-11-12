@@ -290,7 +290,10 @@ class NopayProductEligibilityTest extends TestCase
             'subtotal' => $product->price,
         ]);
 
-        $response = $this->postJson('/api/payment/init', [
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$user->api_token,
+            'X-Platform' => 'main',
+        ])->postJson('/api/payment/init', [
             'order_id' => $order->id,
             'gateway' => 'nopay',
         ]);
