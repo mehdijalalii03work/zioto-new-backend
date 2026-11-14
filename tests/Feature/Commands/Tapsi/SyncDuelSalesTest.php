@@ -13,6 +13,28 @@ class SyncDuelSalesTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_projector_uses_customer_name_from_order_details_for_existing_order(): void
+    {
+        $summary = [
+            'id' => '9003',
+            'orderNumber' => 'TS-9003',
+            'stateCode' => '9',
+            'finalPrice' => 100,
+            'customerMobile' => '09123334455',
+            'customerFullName' => '',
+        ];
+        $projector = app(TapsiOrderProjector::class);
+        $projector->apply($summary, ['data' => ['items' => [], 'shipments' => []]]);
+
+        $order = $projector->apply($summary, ['data' => [
+            'order' => ['customerFullName' => 'سارا احمدی'],
+            'items' => [],
+            'shipments' => [],
+        ]]);
+
+        $this->assertSame('سارا احمدی', json_decode($order->notes, true)['customer_name']);
+    }
+
     public function test_backfill_imports_confirmed_order_and_records_completion(): void
     {
         $this->travelTo(now()->setDate(2026, 5, 23)->startOfDay());

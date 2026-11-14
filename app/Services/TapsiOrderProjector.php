@@ -29,6 +29,11 @@ class TapsiOrderProjector
         }
 
         return DB::transaction(function () use ($summary, $details, $tapsiOrderId, $statusId): Order {
+            $customerName = collect([
+                $summary['customerFullName'] ?? null,
+                data_get($details, 'data.order.customerFullName'),
+                data_get($details, 'data.items.0.customerFullName'),
+            ])->map(fn ($name): string => trim((string) $name))->first(fn (string $name): bool => $name !== '') ?? '';
             $order = Order::withoutTenantScope()->where('tapsi_order_id', $tapsiOrderId)->lockForUpdate()->first();
             $isNew = $order === null;
             $order ??= new Order;
@@ -49,8 +54,14 @@ class TapsiOrderProjector
                 '1' => 'vendor', '2' => 'platform', '3' => 'pickup', default => $order->tapsi_delivery_method,
             };
             $order->tapsi_synced_at = now();
+            if ($customerName !== '') {
+                $notes = json_decode($order->notes ?? '', true);
+                $notes = is_array($notes) ? $notes : [];
+                $notes['customer_name'] = $customerName;
+                $order->notes = json_encode($notes, JSON_UNESCAPED_UNICODE);
+            }
             if ($isNew) {
-                $order->user_id = $this->findOrCreateUser($summary)?->id;
+                $order->user_id = $this->findOrCreateUser($summary, $customerName)?->id;
                 if (! empty($summary['createdOn'])) {
                     $order->created_at = Carbon::parse($summary['createdOn']);
                 }
@@ -93,7 +104,7 @@ class TapsiOrderProjector
         });
     }
 
-    private function findOrCreateUser(array $summary): ?User
+    private function findOrCreateUser(array $summary, string $customerName): ?User
     {
         $phone = preg_replace('/\D/', '', (string) ($summary['customerMobile'] ?? ''));
         if ($phone === '') {
@@ -107,7 +118,7 @@ class TapsiOrderProjector
             return $existing;
         }
 
-        $name = (string) ($summary['customerFullName'] ?? 'مشتری تپسی');
+        $name = $customerName !== '' ? $customerName : 'مشتری تپسی';
         $parts = explode(' ', trim($name));
 
         return User::withoutTenantScope()->create([

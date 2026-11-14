@@ -41,6 +41,13 @@ class OrdersTable
                     ->searchable()
                     ->sortable()
                     ->state(function ($record): string {
+                        if ($record->platform === 'tapsi') {
+                            $customerName = data_get(json_decode($record->notes ?? '', true), 'customer_name');
+                            if (filled($customerName)) {
+                                return $customerName;
+                            }
+                        }
+
                         if ($record->user?->name) {
                             return $record->user->name;
                         }

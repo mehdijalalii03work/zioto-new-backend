@@ -198,6 +198,25 @@ class TapsiWebhookControllerTest extends TestCase
         $this->assertEquals('تهران', $notes['province']);
     }
 
+    public function test_webhook_updates_customer_name_on_an_existing_synced_order(): void
+    {
+        $order = Order::factory()->create([
+            'platform' => 'tapsi',
+            'tapsi_order_id' => '999999999',
+            'order_number' => '405060999999',
+            'notes' => json_encode(['existing_note' => 'keep']),
+        ]);
+
+        $this->postJson('/api/tapsi/webhook', $this->validPayload(), [
+            'Tapsi-Shop-Hub-Authorization' => 'test-token-123',
+        ])->assertOk();
+
+        $this->assertSame([
+            'existing_note' => 'keep',
+            'customer_name' => 'علی رضایی',
+        ], json_decode($order->refresh()->notes, true));
+    }
+
     public function test_webhook_returns_400_without_order_detail(): void
     {
         $this->postJson('/api/tapsi/webhook', ['items' => []], [

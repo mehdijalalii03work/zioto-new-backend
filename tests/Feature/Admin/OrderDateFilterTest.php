@@ -41,6 +41,21 @@ class OrderDateFilterTest extends TestCase
             ->assertTableFilterExists('created_at');
     }
 
+    public function test_tapsi_order_list_displays_customer_name_from_order_notes(): void
+    {
+        $admin = $this->admin();
+        $customer = User::factory()->create(['name' => 'مشتری تپسی']);
+        $order = Order::factory()->for($customer)->create([
+            'platform' => 'tapsi',
+            'notes' => json_encode(['customer_name' => 'سارا احمدی'], JSON_UNESCAPED_UNICODE),
+        ]);
+
+        Livewire::actingAs($admin, 'web')
+            ->test(ListOrders::class)
+            ->assertCanSeeTableRecords([$order])
+            ->assertSee('سارا احمدی');
+    }
+
     public function test_created_at_filter_with_gregorian_range(): void
     {
         $admin = $this->admin();

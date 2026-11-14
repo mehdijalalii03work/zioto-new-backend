@@ -62,6 +62,16 @@ class TapsiWebhookController extends Controller
                 if ((int) $changeType === 1 && ! $order) {
                     $order = $this->createOrder($tapsiOrderId, $orderDetail, $items);
                 }
+                if ((int) $changeType === 1 && $order && ! $order->wasRecentlyCreated) {
+                    $customerName = trim((string) ($orderDetail['customerFullName'] ?? ''));
+                    if ($customerName !== '') {
+                        $notes = json_decode($order->notes ?? '', true);
+                        $notes = is_array($notes) ? $notes : [];
+                        $notes['customer_name'] = $customerName;
+                        $order->notes = json_encode($notes, JSON_UNESCAPED_UNICODE);
+                        $order->save();
+                    }
+                }
                 if ((int) $changeType === 1 && $order->wasRecentlyCreated) {
                     foreach ($items as $item) {
                         $this->recordRequest($tapsiOrderId, $item);
