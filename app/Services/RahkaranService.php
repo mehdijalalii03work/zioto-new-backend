@@ -188,8 +188,8 @@ class RahkaranService
     private function encryptPassword(string $sessionId, string $modulus, string $exponent): string
     {
         $rsaPublicKey = $this->derSequence(
-            $this->derInteger($this->decodeHex($modulus)),
-            $this->derInteger($this->decodeHex($exponent)),
+            $this->derInteger($this->decodeHex($modulus))
+                .$this->derInteger($this->decodeHex($exponent)),
         );
         $rsaAlgorithm = hex2bin('300d06092a864886f70d0101010500');
         $subjectPublicKey = "\x03".$this->derLength(strlen($rsaPublicKey) + 1)."\x00".$rsaPublicKey;
