@@ -72,6 +72,7 @@ class HesabfaSyncLogs extends Page
                     Select::make('days')
                         ->label('حذف لاگ‌های قدیمی‌تر از')
                         ->options([
+                            0 => 'همهٔ لاگ‌ها',
                             30 => '۳۰ روز',
                             60 => '۶۰ روز',
                             90 => '۹۰ روز',
@@ -82,7 +83,7 @@ class HesabfaSyncLogs extends Page
                         ->required(),
                 ])
                 ->modalHeading('حذف لاگ‌های قدیمی حسابداری')
-                ->modalDescription('تمام لاگ‌های قدیمی‌تر از بازهٔ انتخاب‌شده حذف می‌شوند. این عملیات قابل بازگشت نیست.')
+                ->modalDescription('با انتخاب «همهٔ لاگ‌ها»، تمام سوابق حذف می‌شوند؛ در غیر این صورت فقط لاگ‌های قدیمی‌تر از بازهٔ انتخاب‌شده حذف خواهند شد. این عملیات قابل بازگشت نیست.')
                 ->modalSubmitActionLabel('حذف لاگ‌ها')
                 ->requiresConfirmation()
                 ->action(fn (array $data) => $this->deleteOldLogs((int) $data['days'])),
@@ -168,10 +169,14 @@ class HesabfaSyncLogs extends Page
     {
         abort_unless(auth()->user()?->can(Permission::HesabfaSync->value), 403);
 
-        $days = max(30, min($days, 365));
-        $deletedCount = HesabfaSyncLog::query()
-            ->where('created_at', '<', now()->subDays($days))
-            ->delete();
+        $query = HesabfaSyncLog::query();
+
+        if ($days !== 0) {
+            $days = max(30, min($days, 365));
+            $query->where('created_at', '<', now()->subDays($days));
+        }
+
+        $deletedCount = $query->delete();
 
         $this->page = 1;
 
