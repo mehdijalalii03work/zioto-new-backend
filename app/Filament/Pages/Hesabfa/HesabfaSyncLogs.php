@@ -4,6 +4,9 @@ namespace App\Filament\Pages\Hesabfa;
 
 use App\Enums\Permission;
 use App\Models\HesabfaSyncLog;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Livewire\Attributes\Url;
 
@@ -48,6 +51,35 @@ class HesabfaSyncLogs extends Page
     public function getTitle(): string
     {
         return 'لاگ همگام‌سازی حسابداری';
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('deleteOldLogs')
+                ->label('حذف لاگ‌های قدیمی')
+                ->icon('heroicon-o-trash')
+                ->color('danger')
+                ->authorize(Permission::HesabfaSync->value)
+                ->schema([
+                    Select::make('days')
+                        ->label('حذف لاگ‌های قدیمی‌تر از')
+                        ->options([
+                            30 => '۳۰ روز',
+                            60 => '۶۰ روز',
+                            90 => '۹۰ روز',
+                            180 => '۱۸۰ روز',
+                            365 => 'یک سال',
+                        ])
+                        ->default(90)
+                        ->required(),
+                ])
+                ->modalHeading('حذف لاگ‌های قدیمی حسابداری')
+                ->modalDescription('تمام لاگ‌های قدیمی‌تر از بازهٔ انتخاب‌شده حذف می‌شوند. این عملیات قابل بازگشت نیست.')
+                ->modalSubmitActionLabel('حذف لاگ‌ها')
+                ->requiresConfirmation()
+                ->action(fn (array $data) => $this->deleteOldLogs((int) $data['days'])),
+        ];
     }
 
     public function getLogs()
@@ -117,5 +149,28 @@ class HesabfaSyncLogs extends Page
     {
         $this->filterStatus = $status;
         $this->page = 1;
+    }
+
+    public function goToPage(int $page): void
+    {
+        $lastPage = $this->getLogs()->lastPage();
+        $this->page = max(1, min($page, $lastPage));
+    }
+
+    public function deleteOldLogs(int $days): void
+    {
+        abort_unless(auth()->user()?->can(Permission::HesabfaSync->value), 403);
+
+        $days = max(30, min($days, 365));
+        $deletedCount = HesabfaSyncLog::query()
+            ->where('created_at', '<', now()->subDays($days))
+            ->delete();
+
+        $this->page = 1;
+
+        Notification::make()
+            ->title($deletedCount > 0 ? "{$deletedCount} لاگ حذف شد" : 'لاگی برای حذف پیدا نشد')
+            ->success()
+            ->send();
     }
 }

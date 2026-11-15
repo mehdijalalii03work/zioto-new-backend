@@ -1,4 +1,5 @@
 <x-filament-panels::page>
+    @php($logs = $this->getLogs())
     <div class="fi-card fi-w-full rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
         <div class="fi-card-body p-6">
             <div class="mb-4 flex items-center gap-2 flex-wrap">
@@ -40,7 +41,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                        @forelse($this->getLogs() as $log)
+                        @forelse($logs as $log)
                             <tr class="transition hover:bg-gray-50 dark:hover:bg-white/5">
                                 <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ $log->id }}</td>
                                 <td class="px-4 py-3">
@@ -98,8 +99,47 @@
                 </table>
             </div>
 
-            <div class="mt-4">
-                {{ $this->getLogs()->links() }}
+            <div class="mt-4 flex flex-col gap-4 rounded-xl border border-gray-200 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5 sm:flex-row sm:items-center sm:justify-between">
+                <p class="m-0 text-sm text-gray-600 dark:text-gray-300">
+                    @if($logs->total() > 0)
+                        نمایش <span class="font-semibold text-gray-950 dark:text-white">{{ number_format($logs->firstItem()) }} تا {{ number_format($logs->lastItem()) }}</span>
+                        از <span class="font-semibold text-gray-950 dark:text-white">{{ number_format($logs->total()) }}</span> لاگ
+                    @else
+                        هیچ لاگی برای نمایش وجود ندارد
+                    @endif
+                </p>
+
+                @if($logs->lastPage() > 1)
+                    @php
+                        $startPage = max(1, $logs->currentPage() - 2);
+                        $endPage = min($logs->lastPage(), $logs->currentPage() + 2);
+                    @endphp
+                    <nav aria-label="صفحه‌بندی لاگ‌ها" class="flex flex-wrap items-center justify-center gap-1" dir="rtl">
+                        <button type="button" wire:click="goToPage(1)" @disabled($logs->currentPage() === 1) aria-label="صفحه اول" class="inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-gray-300 bg-white px-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                            <x-heroicon-o-chevron-double-right class="h-4 w-4" />
+                        </button>
+                        <button type="button" wire:click="goToPage({{ $logs->currentPage() - 1 }})" @disabled($logs->currentPage() === 1) aria-label="صفحه قبل" class="inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-gray-300 bg-white px-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                            <x-heroicon-o-chevron-right class="h-4 w-4" />
+                        </button>
+
+                        @foreach(range($startPage, $endPage) as $pageNumber)
+                            <button type="button" wire:click="goToPage({{ $pageNumber }})" @class([
+                                'inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-3 text-sm font-semibold transition',
+                                'bg-primary-600 text-white shadow-sm' => $logs->currentPage() === $pageNumber,
+                                'border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-white/10 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700' => $logs->currentPage() !== $pageNumber,
+                            ]) aria-current="{{ $logs->currentPage() === $pageNumber ? 'page' : 'false' }}">
+                                {{ number_format($pageNumber) }}
+                            </button>
+                        @endforeach
+
+                        <button type="button" wire:click="goToPage({{ $logs->currentPage() + 1 }})" @disabled($logs->currentPage() === $logs->lastPage()) aria-label="صفحه بعد" class="inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-gray-300 bg-white px-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                            <x-heroicon-o-chevron-left class="h-4 w-4" />
+                        </button>
+                        <button type="button" wire:click="goToPage({{ $logs->lastPage() }})" @disabled($logs->currentPage() === $logs->lastPage()) aria-label="صفحه آخر" class="inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-gray-300 bg-white px-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                            <x-heroicon-o-chevron-double-left class="h-4 w-4" />
+                        </button>
+                    </nav>
+                @endif
             </div>
         </div>
     </div>
