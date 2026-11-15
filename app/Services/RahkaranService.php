@@ -187,16 +187,40 @@ class RahkaranService
 
     private function encryptPassword(string $sessionId, string $modulus, string $exponent): string
     {
-        $rsaKey = "-----BEGIN RSA PUBLIC KEY-----\n".base64_encode($this->derSequence(
-            $this->derInteger(hex2bin($modulus)),
-            $this->derInteger(hex2bin($exponent)),
-        ))."\n-----END RSA PUBLIC KEY-----";
+        $rsaKey = "-----BEGIN RSA PUBLIC KEY-----\n".chunk_split(base64_encode($this->derSequence(
+            $this->derInteger($this->decodeHex($modulus)),
+            $this->derInteger($this->decodeHex($exponent)),
+        )), 64, "\n")."-----END RSA PUBLIC KEY-----\n";
+        $publicKey = openssl_pkey_get_public($rsaKey);
+        if ($publicKey === false) {
+            throw new RuntimeException('کلید عمومی RSA دریافتی از راهکاران معتبر نیست.');
+        }
 
-        if (! openssl_public_encrypt($sessionId.'**'.$this->settings->get('password'), $encrypted, $rsaKey, OPENSSL_PKCS1_PADDING)) {
+        if (! openssl_public_encrypt($sessionId.'**'.$this->settings->get('password'), $encrypted, $publicKey, OPENSSL_PKCS1_PADDING)) {
             throw new RuntimeException('رمزنگاری گذرواژه راهکاران انجام نشد.');
         }
 
         return strtoupper(bin2hex($encrypted));
+    }
+
+    private function decodeHex(string $value): string
+    {
+        $hex = preg_replace('/\s+/', '', trim($value)) ?? '';
+        $hex = preg_replace('/^0x/i', '', $hex) ?? '';
+        if ($hex === '' || ! ctype_xdigit($hex)) {
+            throw new RuntimeException('پارامترهای کلید عمومی RSA راهکاران قالب هگز معتبر ندارند.');
+        }
+
+        if (strlen($hex) % 2 !== 0) {
+            $hex = '0'.$hex;
+        }
+
+        $bytes = hex2bin($hex);
+        if ($bytes === false) {
+            throw new RuntimeException('تبدیل پارامترهای کلید عمومی RSA راهکاران انجام نشد.');
+        }
+
+        return $bytes;
     }
 
     private function derSequence(string $value): string
