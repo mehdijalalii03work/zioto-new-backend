@@ -187,10 +187,14 @@ class RahkaranService
 
     private function encryptPassword(string $sessionId, string $modulus, string $exponent): string
     {
-        $rsaKey = "-----BEGIN RSA PUBLIC KEY-----\n".chunk_split(base64_encode($this->derSequence(
+        $rsaPublicKey = $this->derSequence(
             $this->derInteger($this->decodeHex($modulus)),
             $this->derInteger($this->decodeHex($exponent)),
-        )), 64, "\n")."-----END RSA PUBLIC KEY-----\n";
+        );
+        $rsaAlgorithm = hex2bin('300d06092a864886f70d0101010500');
+        $subjectPublicKey = "\x03".$this->derLength(strlen($rsaPublicKey) + 1)."\x00".$rsaPublicKey;
+        $subjectPublicKeyInfo = $this->derSequence($rsaAlgorithm.$subjectPublicKey);
+        $rsaKey = "-----BEGIN PUBLIC KEY-----\n".chunk_split(base64_encode($subjectPublicKeyInfo), 64, "\n")."-----END PUBLIC KEY-----\n";
         $publicKey = openssl_pkey_get_public($rsaKey);
         if ($publicKey === false) {
             throw new RuntimeException('کلید عمومی RSA دریافتی از راهکاران معتبر نیست.');
