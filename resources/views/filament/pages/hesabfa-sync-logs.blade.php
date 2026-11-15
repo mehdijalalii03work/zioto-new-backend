@@ -4,26 +4,46 @@
         <div class="fi-card-body p-6">
             <div class="mb-4 flex items-center gap-2 flex-wrap">
                 <span class="text-sm text-gray-500 dark:text-gray-400">فیلتر:</span>
-                @php
-                    $activeClass = 'inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-primary-600 hover:bg-primary-500 transition';
-                    $inactiveClass = 'inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700 transition';
-                @endphp
-                <button wire:click="setFilterType(null)" class="{{ !$this->filterType ? $activeClass : $inactiveClass }}">
+                <button wire:click="setFilterType(null)" @class([
+                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset transition',
+                    'bg-primary-600 text-white ring-primary-600 hover:bg-primary-500' => !$this->filterType,
+                    'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' => $this->filterType,
+                ])>
                     همه
                 </button>
-                <button wire:click="setFilterType('full_sync')" class="{{ $this->filterType === 'full_sync' ? $activeClass : $inactiveClass }}">
+                <button wire:click="setFilterType('full_sync')" @class([
+                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset transition',
+                    'bg-primary-600 text-white ring-primary-600 hover:bg-primary-500' => $this->filterType === 'full_sync',
+                    'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' => $this->filterType !== 'full_sync',
+                ])>
                     همگام‌سازی کامل
                 </button>
-                <button wire:click="setFilterType('contact')" class="{{ $this->filterType === 'contact' ? $activeClass : $inactiveClass }}">
+                <button wire:click="setFilterType('contact')" @class([
+                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset transition',
+                    'bg-primary-600 text-white ring-primary-600 hover:bg-primary-500' => $this->filterType === 'contact',
+                    'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' => $this->filterType !== 'contact',
+                ])>
                     مشتری
                 </button>
-                <button wire:click="setFilterType('invoice')" class="{{ $this->filterType === 'invoice' ? $activeClass : $inactiveClass }}">
+                <button wire:click="setFilterType('invoice')" @class([
+                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset transition',
+                    'bg-primary-600 text-white ring-primary-600 hover:bg-primary-500' => $this->filterType === 'invoice',
+                    'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' => $this->filterType !== 'invoice',
+                ])>
                     فاکتور
                 </button>
-                <button wire:click="setFilterType('rahkaran_invoice')" class="{{ $this->filterType === 'rahkaran_invoice' ? $activeClass : $inactiveClass }}">
+                <button wire:click="setFilterType('rahkaran_invoice')" @class([
+                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset transition',
+                    'bg-primary-600 text-white ring-primary-600 hover:bg-primary-500' => $this->filterType === 'rahkaran_invoice',
+                    'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' => $this->filterType !== 'rahkaran_invoice',
+                ])>
                     فاکتور راهکاران
                 </button>
-                <button wire:click="setFilterType('rahkaran_stock_sync')" class="{{ $this->filterType === 'rahkaran_stock_sync' ? $activeClass : $inactiveClass }}">
+                <button wire:click="setFilterType('rahkaran_stock_sync')" @class([
+                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset transition',
+                    'bg-primary-600 text-white ring-primary-600 hover:bg-primary-500' => $this->filterType === 'rahkaran_stock_sync',
+                    'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' => $this->filterType !== 'rahkaran_stock_sync',
+                ])>
                     موجودی/سریال راهکاران
                 </button>
             </div>
