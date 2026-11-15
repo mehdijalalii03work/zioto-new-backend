@@ -26,12 +26,12 @@ class HesabfaDashboard extends Page
 
     public static function getNavigationLabel(): string
     {
-        return 'نمای کلی';
+        return 'حسابفا';
     }
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'حسابفا';
+        return 'حسابداری';
     }
 
     public static function getNavigationSort(): ?int
