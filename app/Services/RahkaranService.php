@@ -175,7 +175,9 @@ class RahkaranService
                 'username' => $this->settings->get('username'),
                 'password' => $encryptedPassword,
             ])->throw();
-            $cookie = $login->cookies()->getCookieByName('sg-auth')?->getValue();
+            $sessionCookie = collect($login->cookies()->toArray())
+                ->first(fn (array $cookie): bool => str_starts_with((string) ($cookie['Name'] ?? ''), 'sg-auth'));
+            $cookie = $sessionCookie['Value'] ?? null;
 
             if (! $cookie) {
                 throw new RuntimeException('ورود به راهکاران انجام شد اما کوکی نشست دریافت نشد.');
