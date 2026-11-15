@@ -1,49 +1,24 @@
 <x-filament-panels::page>
-    @php($logs = $this->getLogs())
     <div class="fi-card fi-w-full rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
         <div class="fi-card-body p-6">
             <div class="mb-4 flex items-center gap-2 flex-wrap">
                 <span class="text-sm text-gray-500 dark:text-gray-400">فیلتر:</span>
-                <button wire:click="setFilterType(null)" @class([
-                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset transition',
-                    'bg-primary-600 text-white ring-primary-600 hover:bg-primary-500' => !$this->filterType,
-                    'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' => $this->filterType,
-                ])>
+                <button wire:click="setFilterType(null)" class="{{ !$this->filterType ? 'inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-primary-600 transition hover:bg-primary-500' : 'inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 transition hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' }}">
                     همه
                 </button>
-                <button wire:click="setFilterType('full_sync')" @class([
-                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset transition',
-                    'bg-primary-600 text-white ring-primary-600 hover:bg-primary-500' => $this->filterType === 'full_sync',
-                    'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' => $this->filterType !== 'full_sync',
-                ])>
+                <button wire:click="setFilterType('full_sync')" class="{{ $this->filterType === 'full_sync' ? 'inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-primary-600 transition hover:bg-primary-500' : 'inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 transition hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' }}">
                     همگام‌سازی کامل
                 </button>
-                <button wire:click="setFilterType('contact')" @class([
-                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset transition',
-                    'bg-primary-600 text-white ring-primary-600 hover:bg-primary-500' => $this->filterType === 'contact',
-                    'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' => $this->filterType !== 'contact',
-                ])>
+                <button wire:click="setFilterType('contact')" class="{{ $this->filterType === 'contact' ? 'inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-primary-600 transition hover:bg-primary-500' : 'inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 transition hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' }}">
                     مشتری
                 </button>
-                <button wire:click="setFilterType('invoice')" @class([
-                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset transition',
-                    'bg-primary-600 text-white ring-primary-600 hover:bg-primary-500' => $this->filterType === 'invoice',
-                    'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' => $this->filterType !== 'invoice',
-                ])>
+                <button wire:click="setFilterType('invoice')" class="{{ $this->filterType === 'invoice' ? 'inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-primary-600 transition hover:bg-primary-500' : 'inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 transition hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' }}">
                     فاکتور
                 </button>
-                <button wire:click="setFilterType('rahkaran_invoice')" @class([
-                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset transition',
-                    'bg-primary-600 text-white ring-primary-600 hover:bg-primary-500' => $this->filterType === 'rahkaran_invoice',
-                    'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' => $this->filterType !== 'rahkaran_invoice',
-                ])>
+                <button wire:click="setFilterType('rahkaran_invoice')" class="{{ $this->filterType === 'rahkaran_invoice' ? 'inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-primary-600 transition hover:bg-primary-500' : 'inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 transition hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' }}">
                     فاکتور راهکاران
                 </button>
-                <button wire:click="setFilterType('rahkaran_stock_sync')" @class([
-                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-inset transition',
-                    'bg-primary-600 text-white ring-primary-600 hover:bg-primary-500' => $this->filterType === 'rahkaran_stock_sync',
-                    'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' => $this->filterType !== 'rahkaran_stock_sync',
-                ])>
+                <button wire:click="setFilterType('rahkaran_stock_sync')" class="{{ $this->filterType === 'rahkaran_stock_sync' ? 'inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-primary-600 transition hover:bg-primary-500' : 'inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 transition hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' }}">
                     موجودی/سریال راهکاران
                 </button>
             </div>
@@ -143,11 +118,7 @@
                         </button>
 
                         @foreach(range($startPage, $endPage) as $pageNumber)
-                            <button type="button" wire:click="goToPage({{ $pageNumber }})" @class([
-                                'inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-3 text-sm font-semibold transition',
-                                'bg-primary-600 text-white shadow-sm' => $logs->currentPage() === $pageNumber,
-                                'border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-white/10 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700' => $logs->currentPage() !== $pageNumber,
-                            ]) aria-current="{{ $logs->currentPage() === $pageNumber ? 'page' : 'false' }}">
+                            <button type="button" wire:click="goToPage({{ $pageNumber }})" class="{{ $logs->currentPage() === $pageNumber ? 'inline-flex h-9 min-w-9 items-center justify-center rounded-lg bg-primary-600 px-3 text-sm font-semibold text-white shadow-sm transition' : 'inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-white/10 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700' }}" aria-current="{{ $logs->currentPage() === $pageNumber ? 'page' : 'false' }}">
                                 {{ number_format($pageNumber) }}
                             </button>
                         @endforeach

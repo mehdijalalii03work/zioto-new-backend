@@ -53,6 +53,13 @@ class HesabfaSyncLogs extends Page
         return 'لاگ همگام‌سازی حسابداری';
     }
 
+    protected function getViewData(): array
+    {
+        return [
+            'logs' => $this->getLogs(),
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [
