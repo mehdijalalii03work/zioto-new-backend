@@ -48,5 +48,6 @@ class RahkaranSettings
         );
 
         Cache::forget('rahkaran:session-cookie');
+        Cache::forget('rahkaran:last-connection-check');
     }
 }
