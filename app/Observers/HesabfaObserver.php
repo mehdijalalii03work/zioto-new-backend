@@ -20,7 +20,7 @@ class HesabfaObserver
 
     public function updated(Order $order): void
     {
-        if (! config('hesabfa.auto_sync')) {
+        if (! setting('send_invoices_to_hesabfa', config('hesabfa.auto_sync'))) {
             return;
         }
 
@@ -43,6 +43,10 @@ class HesabfaObserver
 
     public function syncOrder(Order $order, bool $force = false): array
     {
+        if (! setting('send_invoices_to_hesabfa', config('hesabfa.auto_sync'))) {
+            return ['success' => false, 'message' => 'ارسال فاکتور به حسابفا غیرفعال است'];
+        }
+
         if (! $this->hesabfa->isConfigured()) {
             return ['success' => false, 'message' => 'تنظیمات حسابفا یافت نشد'];
         }

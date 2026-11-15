@@ -4,6 +4,11 @@ namespace App\Filament\Pages;
 
 use App\Enums\Permission;
 use App\Models\Setting;
+use App\Services\RahkaranInventoryService;
+use App\Services\RahkaranService;
+use App\Services\RahkaranSettings;
+use App\Services\StockSyncService;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -40,6 +45,8 @@ class ManageSettings extends Page
 
     public function mount(): void
     {
+        $rahkaranSettings = app(RahkaranSettings::class);
+
         $this->form->fill([
             'tax_gold' => setting('tax_gold', 0),
             'tax_silver' => setting('tax_silver', 0),
@@ -62,6 +69,29 @@ class ManageSettings extends Page
             'hesabfa_webhook_secret' => config('hesabfa.webhook_secret'),
             'show_price_with_tax' => setting('show_price_with_tax', true),
             'ignore_reserved_stock' => setting('ignore_reserved_stock', true),
+            'inventory_source' => setting('inventory_source', 'hesabfa'),
+            'send_invoices_to_hesabfa' => setting('send_invoices_to_hesabfa', config('hesabfa.auto_sync', true)),
+            'send_invoices_to_rahkaran' => setting('send_invoices_to_rahkaran', false),
+            'rahkaran_serial_tracking_enabled' => setting('rahkaran_serial_tracking_enabled', false),
+            'rahkaran_base_url' => $rahkaranSettings->get('base_url'),
+            'rahkaran_username' => $rahkaranSettings->get('username'),
+            'rahkaran_password' => '',
+            'rahkaran_product_refs' => json_encode($rahkaranSettings->get('product_refs') ?? [], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+            'rahkaran_unit_refs' => json_encode($rahkaranSettings->get('unit_refs') ?? [], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+            'rahkaran_regional_division_refs' => json_encode($rahkaranSettings->get('regional_division_refs') ?? [], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+            'rahkaran_inventory_id' => $rahkaranSettings->get('inventory_id'),
+            'rahkaran_plant_id' => $rahkaranSettings->get('plant_id'),
+            'rahkaran_inventory_voucher_specification_ref' => $rahkaranSettings->get('inventory_voucher_specification_ref'),
+            'rahkaran_fiscal_year_ref' => $rahkaranSettings->get('fiscal_year_ref'),
+            'rahkaran_ledger_ref' => $rahkaranSettings->get('ledger_ref'),
+            'rahkaran_branch_id' => $rahkaranSettings->get('branch_id'),
+            'rahkaran_sales_area_id' => $rahkaranSettings->get('sales_area_id'),
+            'rahkaran_sales_office_id' => $rahkaranSettings->get('sales_office_id'),
+            'rahkaran_sales_type_id' => $rahkaranSettings->get('sales_type_id'),
+            'rahkaran_currency_id' => $rahkaranSettings->get('currency_id'),
+            'rahkaran_invoice_recipient_type' => $rahkaranSettings->get('invoice_recipient_type'),
+            'rahkaran_invoice_payer_type' => $rahkaranSettings->get('invoice_payer_type'),
+            'rahkaran_tracking_factor_ref' => $rahkaranSettings->get('tracking_factor_ref'),
             'tapsi_emergency_status' => setting('tapsi_emergency_status', 'open'),
             'tapsi_auth_token' => config('tapsi.auth_token'),
             'tapsi_auth_name' => config('tapsi.auth_name'),
@@ -106,6 +136,65 @@ class ManageSettings extends Page
                             ->label('حسابفا')
                             ->icon('heroicon-o-arrow-path')
                             ->schema($this->getHesabfaSchema()),
+                        Tabs\Tab::make('accounting')
+                            ->label('حسابداری و موجودی')
+                            ->icon('heroicon-o-building-library')
+                            ->schema([
+                                Section::make('منبع موجودی سایت')
+                                    ->description('در هر لحظه فقط منبع انتخاب‌شده موجودی قابل‌فروش سایت را تعیین می‌کند.')
+                                    ->schema([
+                                        Select::make('inventory_source')
+                                            ->label('منبع موجودی')
+                                            ->options([
+                                                'hesabfa' => 'حسابفا',
+                                                'rahkaran' => 'راهکاران',
+                                            ])
+                                            ->default('hesabfa')
+                                            ->required(),
+                                    ]),
+                                Section::make('ارسال فاکتور فروش')
+                                    ->description('ارسال هر سفارش به هر سامانه مستقل است.')
+                                    ->schema([
+                                        Toggle::make('send_invoices_to_hesabfa')
+                                            ->label('ارسال فاکتور به حسابفا'),
+                                        Toggle::make('send_invoices_to_rahkaran')
+                                            ->label('ارسال فاکتور به راهکاران')
+                                            ->helperText('برای ارسال باید تنظیمات مشتری و کدهای کالا در راهکاران معتبر باشند.'),
+                                    ]),
+                                Section::make('رهگیری سریال')
+                                    ->description('برای هر محصول، رهگیری سریال را در فرم همان محصول روشن کنید. موجودی سایر کالاها فقط از تعداد انبار راهکاران خوانده می‌شود.')
+                                    ->schema([
+                                        Toggle::make('rahkaran_serial_tracking_enabled')
+                                            ->label('فعال‌سازی رهگیری سریال راهکاران'),
+                                    ]),
+                                Section::make('اتصال و نگاشت راهکاران')
+                                    ->description('کد کالا در نگاشت‌ها کلید و شناسه کالای راهکاران مقدار است. ورود سریال کارخانه فقط در انبار راهکاران انجام می‌شود.')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            TextInput::make('rahkaran_base_url')->label('نشانی پایه راهکاران')->url(),
+                                            TextInput::make('rahkaran_username')->label('نام کاربری'),
+                                            TextInput::make('rahkaran_password')->label('گذرواژه')->password()->revealable(),
+                                            TextInput::make('rahkaran_inventory_id')->label('شناسه انبار'),
+                                            TextInput::make('rahkaran_plant_id')->label('شناسه مرکز نگهداری'),
+                                            TextInput::make('rahkaran_inventory_voucher_specification_ref')->label('الگوی سند انبار ورودی'),
+                                            TextInput::make('rahkaran_fiscal_year_ref')->label('شناسه سال مالی'),
+                                            TextInput::make('rahkaran_ledger_ref')->label('شناسه دفترکل'),
+                                            TextInput::make('rahkaran_branch_id')->label('شناسه شعبه'),
+                                            TextInput::make('rahkaran_sales_area_id')->label('شناسه حوزه فروش'),
+                                            TextInput::make('rahkaran_sales_office_id')->label('شناسه مرکز فروش'),
+                                            TextInput::make('rahkaran_sales_type_id')->label('شناسه نحوه فروش'),
+                                            TextInput::make('rahkaran_currency_id')->label('شناسه ارز')->default('1'),
+                                            TextInput::make('rahkaran_invoice_recipient_type')->label('نوع تحویل‌گیرنده فاکتور')->numeric()->default(1),
+                                            TextInput::make('rahkaran_invoice_payer_type')->label('نوع پرداخت‌کننده فاکتور')->numeric()->default(1),
+                                            TextInput::make('rahkaran_tracking_factor_ref')->label('کد موجودیت عامل کنترل سریال در فاکتور'),
+                                        ]),
+                                        Grid::make(2)->schema([
+                                            Textarea::make('rahkaran_product_refs')->label('نگاشت کد کالا به شناسه راهکاران (JSON)')->rows(8)->required()->rules(['json']),
+                                            Textarea::make('rahkaran_unit_refs')->label('نگاشت کد کالا به شناسه واحد (JSON)')->rows(8)->default('{}')->rules(['json']),
+                                            Textarea::make('rahkaran_regional_division_refs')->label('نگاشت شناسه شهر سایت به ناحیه راهکاران (JSON)')->rows(8)->default('{}')->rules(['json']),
+                                        ]),
+                                    ]),
+                            ]),
                         Tabs\Tab::make('display')
                             ->label('نمایش')
                             ->icon('heroicon-o-eye')
@@ -155,6 +244,36 @@ class ManageSettings extends Page
                     ]),
             ])
             ->statePath('data');
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('testRahkaranConnection')
+                ->label('آزمون اتصال راهکاران')
+                ->icon('heroicon-o-signal')
+                ->color('info')
+                ->action(function (): void {
+                    try {
+                        $result = app(RahkaranService::class)->testConnection();
+                        $notification = Notification::make()
+                            ->title($result['success'] ? 'اتصال راهکاران برقرار است' : 'اتصال راهکاران برقرار نشد')
+                            ->body((string) ($result['server_time'] ?? ''));
+                        if ($result['success']) {
+                            $notification->success();
+                        } else {
+                            $notification->danger();
+                        }
+                        $notification->send();
+                    } catch (\Throwable $exception) {
+                        Notification::make()
+                            ->title('آزمون اتصال راهکاران ناموفق بود')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                }),
+        ];
     }
 
     private function getHesabfaSchema(): array
@@ -305,10 +424,56 @@ class ManageSettings extends Page
             'label' => 'نادیده گرفتن رزرو موجودی',
         ]);
 
+        Setting::updateOrCreate(['key' => 'send_invoices_to_hesabfa'], [
+            'value' => ($data['send_invoices_to_hesabfa'] ?? true) ? 'true' : 'false',
+            'type' => 'boolean',
+            'category' => 'accounting',
+            'label' => 'ارسال فاکتور به حسابفا',
+        ]);
+
+        Setting::updateOrCreate(['key' => 'send_invoices_to_rahkaran'], [
+            'value' => ($data['send_invoices_to_rahkaran'] ?? false) ? 'true' : 'false',
+            'type' => 'boolean',
+            'category' => 'accounting',
+            'label' => 'ارسال فاکتور به راهکاران',
+        ]);
+
+        Setting::updateOrCreate(['key' => 'rahkaran_serial_tracking_enabled'], [
+            'value' => ($data['rahkaran_serial_tracking_enabled'] ?? false) ? 'true' : 'false',
+            'type' => 'boolean',
+            'category' => 'inventory',
+            'label' => 'فعال‌سازی رهگیری سریال راهکاران',
+        ]);
+
         $hesabfaData = collect($data)->filter(fn ($v, $k) => str_starts_with($k, 'hesabfa_'));
         $this->saveHesabfaSettings($hesabfaData->toArray());
+        $this->saveRahkaranSettings($data);
 
         $this->saveTapsiSettings($data);
+
+        $inventorySource = $data['inventory_source'] ?? 'hesabfa';
+        $currentInventorySource = setting('inventory_source', 'hesabfa');
+        if ($inventorySource !== $currentInventorySource) {
+            $syncResult = $inventorySource === 'rahkaran'
+                ? app(RahkaranInventoryService::class)->syncAllSerials()
+                : app(StockSyncService::class)->syncAllStock(force: true);
+            if (! $syncResult['success']) {
+                Notification::make()
+                    ->title('منبع موجودی تغییر نکرد')
+                    ->body($syncResult['message'])
+                    ->danger()
+                    ->send();
+
+                return;
+            }
+        }
+
+        Setting::updateOrCreate(['key' => 'inventory_source'], [
+            'value' => $inventorySource,
+            'type' => 'string',
+            'category' => 'inventory',
+            'label' => 'منبع موجودی سایت',
+        ]);
 
         Notification::make()
             ->title('تنظیمات با موفقیت ذخیره شد')
@@ -342,6 +507,44 @@ class ManageSettings extends Page
         }
 
         file_put_contents($envPath, $envContent);
+    }
+
+    private function saveRahkaranSettings(array $data): void
+    {
+        $productRefs = json_decode((string) ($data['rahkaran_product_refs'] ?? '{}'), true);
+        $unitRefs = json_decode((string) ($data['rahkaran_unit_refs'] ?? '{}'), true);
+        $regionRefs = json_decode((string) ($data['rahkaran_regional_division_refs'] ?? '{}'), true);
+        if (! is_array($productRefs) || ! is_array($unitRefs) || ! is_array($regionRefs)) {
+            throw new \InvalidArgumentException('نگاشت کالاها و واحدهای راهکاران باید JSON معتبر باشد.');
+        }
+
+        $settings = app(RahkaranSettings::class);
+        $settings->save('base_url', $data['rahkaran_base_url'] ?? '');
+        $settings->save('username', $data['rahkaran_username'] ?? '');
+        $settings->save('password', $data['rahkaran_password'] ?? '');
+
+        $stringSettings = [
+            'inventory_id' => 'rahkaran_inventory_id',
+            'plant_id' => 'rahkaran_plant_id',
+            'inventory_voucher_specification_ref' => 'rahkaran_inventory_voucher_specification_ref',
+            'fiscal_year_ref' => 'rahkaran_fiscal_year_ref',
+            'ledger_ref' => 'rahkaran_ledger_ref',
+            'branch_id' => 'rahkaran_branch_id',
+            'sales_area_id' => 'rahkaran_sales_area_id',
+            'sales_office_id' => 'rahkaran_sales_office_id',
+            'sales_type_id' => 'rahkaran_sales_type_id',
+            'currency_id' => 'rahkaran_currency_id',
+            'tracking_factor_ref' => 'rahkaran_tracking_factor_ref',
+        ];
+        foreach ($stringSettings as $key => $formKey) {
+            $settings->save($key, $data[$formKey] ?? '');
+        }
+
+        $settings->save('invoice_recipient_type', (int) ($data['rahkaran_invoice_recipient_type'] ?? 1), 'integer');
+        $settings->save('invoice_payer_type', (int) ($data['rahkaran_invoice_payer_type'] ?? 1), 'integer');
+        $settings->save('product_refs', $productRefs, 'json');
+        $settings->save('unit_refs', $unitRefs, 'json');
+        $settings->save('regional_division_refs', $regionRefs, 'json');
     }
 
     private function saveHesabfaSettings(array $data): void

@@ -16,6 +16,7 @@ use App\Observers\OrderSmsNotificationObserver;
 use App\Observers\PricingSettingAuditObserver;
 use App\Observers\ProductImageObserver;
 use App\Observers\ProductPricingAuditObserver;
+use App\Observers\RahkaranInvoiceObserver;
 use App\Observers\RolePermissionAuditObserver;
 use App\Observers\StockReservationObserver;
 use App\Policies\BlogCategoryPolicy;
@@ -84,6 +85,7 @@ class AppServiceProvider extends ServiceProvider
         Order::observe(HesabfaObserver::class);
         Order::observe(DiscountCodeUsageObserver::class);
         Order::observe(StockReservationObserver::class);
+        Order::observe(RahkaranInvoiceObserver::class);
         Order::observe(OrderSmsNotificationObserver::class);
         ProductImage::observe(ProductImageObserver::class);
         Product::observe(ProductPricingAuditObserver::class);
@@ -167,6 +169,9 @@ class AppServiceProvider extends ServiceProvider
 
         $interval = config('hesabfa.sync_interval', 60);
         Schedule::command('hesabfa:sync-stock')->cron("*/{$interval} * * * *")->withoutOverlapping();
+
+        $rahkaranInterval = max(1, config('rahkaran.stock_sync_interval', 5));
+        Schedule::command('rahkaran:sync-stock')->cron("*/{$rahkaranInterval} * * * *")->withoutOverlapping();
         Schedule::command('hesabfa:recalculate-reserved')->dailyAt('03:00')->withoutOverlapping();
 
         RateLimiter::for('otp', function (Request $request) {

@@ -6,6 +6,7 @@ use App\Models\DiscountCode;
 use App\Models\HesabfaSyncLog;
 use App\Models\OrderNote;
 use App\Models\OrderShipping;
+use App\Models\RahkaranSerial;
 use App\Models\User;
 use App\Models\UserAddress;
 use App\Support\HasTenantScope;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
@@ -91,12 +93,18 @@ class Order extends Model
         return [
             'total_amount' => 'decimal:0',
             'hesabfa_synced_at' => 'datetime',
+            'rahkaran_synced_at' => 'datetime',
         ];
     }
 
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function rahkaranSerials(): HasManyThrough
+    {
+        return $this->hasManyThrough(RahkaranSerial::class, OrderItem::class, 'order_id', 'order_item_id', 'id', 'id');
     }
 
     public function user(): BelongsTo

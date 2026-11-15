@@ -1,0 +1,24 @@
+<?php
+
+return [
+    'base_url' => env('RAHKARAN_BASE_URL', ''),
+    'username' => env('RAHKARAN_USERNAME', ''),
+    'password' => env('RAHKARAN_PASSWORD', ''),
+    'inventory_id' => env('RAHKARAN_INVENTORY_ID', ''),
+    'plant_id' => env('RAHKARAN_PLANT_ID', ''),
+    'product_refs' => json_decode(env('RAHKARAN_PRODUCT_REFS', '{}'), true) ?: [],
+    'unit_refs' => json_decode(env('RAHKARAN_UNIT_REFS', '{}'), true) ?: [],
+    'regional_division_refs' => json_decode(env('RAHKARAN_REGIONAL_DIVISION_REFS', '{}'), true) ?: [],
+    'inventory_voucher_specification_ref' => env('RAHKARAN_INVENTORY_VOUCHER_SPECIFICATION_REF', ''),
+    'fiscal_year_ref' => env('RAHKARAN_FISCAL_YEAR_REF', ''),
+    'ledger_ref' => env('RAHKARAN_LEDGER_REF', ''),
+    'branch_id' => env('RAHKARAN_BRANCH_ID', ''),
+    'sales_area_id' => env('RAHKARAN_SALES_AREA_ID', ''),
+    'sales_office_id' => env('RAHKARAN_SALES_OFFICE_ID', ''),
+    'sales_type_id' => env('RAHKARAN_SALES_TYPE_ID', ''),
+    'currency_id' => env('RAHKARAN_CURRENCY_ID', '1'),
+    'invoice_recipient_type' => (int) env('RAHKARAN_INVOICE_RECIPIENT_TYPE', 1),
+    'invoice_payer_type' => (int) env('RAHKARAN_INVOICE_PAYER_TYPE', 1),
+    'tracking_factor_ref' => env('RAHKARAN_TRACKING_FACTOR_REF', ''),
+    'stock_sync_interval' => (int) env('RAHKARAN_STOCK_SYNC_INTERVAL', 1),
+];

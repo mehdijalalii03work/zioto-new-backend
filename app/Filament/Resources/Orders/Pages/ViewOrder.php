@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Orders\Pages;
 use App\Enums\Permission;
 use App\Filament\Resources\Orders\OrderResource;
 use App\Observers\HesabfaObserver;
+use App\Services\RahkaranInvoiceService;
 use App\Support\Platform;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -262,6 +263,12 @@ class ViewOrder extends ViewRecord
                                                             ->label('قیمت کل')
                                                             ->formatStateUsing(fn ($state): string => number_format($state).' ریال'),
                                                     ]),
+                                                RepeatableEntry::make('rahkaranSerials')
+                                                    ->label('سریال‌های تخصیص‌یافته')
+                                                    ->schema([
+                                                        TextEntry::make('serial')->label('سریال'),
+                                                    ])
+                                                    ->columns(1),
                                                 Grid::make(6)
                                                     ->visible(fn ($entry): bool => $entry?->getState() ? filled($entry->getState()['price_board_item'] ?? null) : false)
                                                     ->schema([
@@ -320,6 +327,18 @@ class ViewOrder extends ViewRecord
                                             ])
                                             ->columnSpanFull(),
                                     ]),
+                            ]),
+
+                        Section::make('وضعیت راهکاران')
+                            ->icon('heroicon-o-building-library')
+                            ->columnSpan(3)
+                            ->visible(fn ($record): bool => filled($record->rahkaran_sync_status) || filled($record->rahkaran_invoice_id))
+                            ->schema([
+                                Grid::make(3)->schema([
+                                    TextEntry::make('rahkaran_sync_status')->label('وضعیت ارسال'),
+                                    TextEntry::make('rahkaran_invoice_id')->label('شناسه فاکتور راهکاران'),
+                                    TextEntry::make('rahkaran_sync_error')->label('خطای آخر')->columnSpanFull(),
+                                ]),
                             ]),
 
                         // ==========================================
@@ -472,6 +491,26 @@ class ViewOrder extends ViewRecord
                     }
 
                     $this->refreshFormData(['hesabfa_contact_code', 'hesabfa_invoice_number', 'hesabfa_synced_at']);
+                }),
+
+            Action::make('syncToRahkaran')
+                ->label('ارسال به راهکاران')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->color('info')
+                ->authorize(Permission::HesabfaSync->value)
+                ->visible(fn ($record): bool => (bool) setting('send_invoices_to_rahkaran', false) && $record->rahkaran_sync_status !== 'success')
+                ->action(function ($record): void {
+                    $result = app(RahkaranInvoiceService::class)->syncOrder($record, force: true);
+
+                    $notification = Notification::make()->title($result['message']);
+                    if ($result['success']) {
+                        $notification->success();
+                    } else {
+                        $notification->danger();
+                    }
+                    $notification->send();
+
+                    $this->refreshFormData(['rahkaran_invoice_id', 'rahkaran_synced_at', 'rahkaran_sync_status']);
                 }),
 
             Action::make('edit')

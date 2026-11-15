@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Services\RahkaranInventoryService;
 use App\Services\StockSyncService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -9,10 +10,11 @@ use Modules\Order\Models\Order;
 
 class StockReservationObserver
 {
-    private const RESERVED_STATUSES = ['confirmed'];
+    private const RESERVED_STATUSES = ['confirmed', 'completed'];
 
     public function __construct(
         private StockSyncService $stockSync,
+        private RahkaranInventoryService $rahkaranInventory,
     ) {}
 
     public function created(Order $order): void
@@ -21,8 +23,19 @@ class StockReservationObserver
             return;
         }
 
-        if (in_array($order->status, self::RESERVED_STATUSES)) {
-            $this->reserveStock($order);
+        if ($this->usesRahkaranSerials()) {
+            if ($order->payment_status === 'paid' && in_array($order->status, self::RESERVED_STATUSES, true)) {
+                $this->reserveSelectedSource($order);
+                if ($order->status === 'completed') {
+                    $this->rahkaranInventory->finalizeOrder($order);
+                }
+            }
+
+            return;
+        }
+
+        if (in_array($order->status, self::RESERVED_STATUSES, true)) {
+            $this->reserveSelectedSource($order);
         }
     }
 
@@ -32,14 +45,37 @@ class StockReservationObserver
             return;
         }
 
-        $wasReserved = in_array($order->getOriginal('status'), self::RESERVED_STATUSES);
-        $isReserved = in_array($order->status, self::RESERVED_STATUSES);
+        if ($this->usesRahkaranSerials()) {
+            $wasAssigned = $order->getOriginal('payment_status') === 'paid'
+                && in_array($order->getOriginal('status'), self::RESERVED_STATUSES, true);
+            $isAssigned = $order->payment_status === 'paid'
+                && in_array($order->status, self::RESERVED_STATUSES, true);
+
+            if (! $wasAssigned && $isAssigned) {
+                $this->reserveSelectedSource($order);
+            } elseif ($wasAssigned && ! $isAssigned) {
+                $this->releaseSelectedSource($order);
+            }
+
+            if ($order->wasChanged('status')
+                && $order->status === 'completed'
+                && $isAssigned
+                && filled($order->rahkaran_invoice_id)) {
+                $this->rahkaranInventory->finalizeOrder($order);
+            }
+
+            return;
+        }
+
+        $wasReserved = in_array($order->getOriginal('status'), self::RESERVED_STATUSES, true);
+        $isReserved = in_array($order->status, self::RESERVED_STATUSES, true);
 
         if (! $wasReserved && $isReserved) {
-            $this->reserveStock($order);
+            $this->reserveSelectedSource($order);
         } elseif ($wasReserved && ! $isReserved) {
-            $this->releaseStock($order);
+            $this->releaseSelectedSource($order);
         }
+
     }
 
     public function deleted(Order $order): void
@@ -48,14 +84,56 @@ class StockReservationObserver
             return;
         }
 
-        if (in_array($order->status, self::RESERVED_STATUSES)) {
-            $this->releaseStock($order);
+        if ($this->usesRahkaranSerials() && $order->payment_status !== 'paid') {
+            return;
         }
+
+        if (in_array($order->status, self::RESERVED_STATUSES, true)) {
+            $this->releaseSelectedSource($order);
+        }
+    }
+
+    private function reserveSelectedSource(Order $order): void
+    {
+        if ($this->usesRahkaranSerials()) {
+            try {
+                $this->rahkaranInventory->reserveForOrder($order);
+            } catch (\Throwable $exception) {
+                Log::error('Rahkaran serial reservation failed', ['order_id' => $order->id, 'message' => $exception->getMessage()]);
+            }
+
+            if (setting('inventory_source', 'hesabfa') === 'rahkaran') {
+                return;
+            }
+        }
+
+        $this->reserveStock($order);
+    }
+
+    private function releaseSelectedSource(Order $order): void
+    {
+        if ($this->usesRahkaranSerials()) {
+            $this->rahkaranInventory->releaseOrder($order);
+
+            if (setting('inventory_source', 'hesabfa') === 'rahkaran') {
+                return;
+            }
+        }
+
+        $this->releaseStock($order);
     }
 
     private function isEnabled(): bool
     {
-        return config('hesabfa.enable_reserved_stock', false);
+        return setting('inventory_source', 'hesabfa') === 'rahkaran'
+            || setting('rahkaran_serial_tracking_enabled', false)
+            || config('hesabfa.enable_reserved_stock', false);
+    }
+
+    private function usesRahkaranSerials(): bool
+    {
+        return setting('inventory_source', 'hesabfa') === 'rahkaran'
+            || setting('rahkaran_serial_tracking_enabled', false);
     }
 
     public function reserveStock(Order $order): void

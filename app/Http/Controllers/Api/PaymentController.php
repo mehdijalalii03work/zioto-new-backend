@@ -7,6 +7,7 @@ use App\Http\Requests\CalculateFeeRequest;
 use App\Http\Requests\InitPaymentRequest;
 use App\Http\Resources\PaymentResource;
 use App\Models\Cart;
+use App\Models\RahkaranSerial;
 use App\Models\ShippingMethod;
 use App\Models\ShippingRate;
 use App\Services\DiscountCodeService;
@@ -692,7 +693,10 @@ class PaymentController extends Controller
 
     private function validateOrderStock(Order $order): array
     {
-        $reservedEnabled = config('hesabfa.enable_reserved_stock', false);
+        $serialTrackingEnabled = setting('rahkaran_serial_tracking_enabled', false)
+            || setting('inventory_source', 'hesabfa') === 'rahkaran';
+        $reservedEnabled = $serialTrackingEnabled
+            || config('hesabfa.enable_reserved_stock', false);
         if (! $reservedEnabled) {
             return ['valid' => true];
         }
@@ -717,6 +721,25 @@ class PaymentController extends Controller
                     'requested' => (int) $item->quantity,
                     'available' => $sellable,
                 ];
+            }
+
+            $stockProduct = $product->baseProduct ?? $product;
+            if ($serialTrackingEnabled && $stockProduct->rahkaran_serial_tracked) {
+                $serialsAvailable = RahkaranSerial::query()
+                    ->where('product_id', $stockProduct->id)
+                    ->where('status', 'available')
+                    ->count();
+                $serialsRequired = (int) $item->quantity * $product->pack_size;
+
+                if ($serialsRequired > $serialsAvailable) {
+                    $insufficient[] = "{$product->name}: سریال آزاد {$serialsAvailable}، درخواست {$serialsRequired}";
+                    $items[] = [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'requested' => $serialsRequired,
+                        'available' => $serialsAvailable,
+                    ];
+                }
             }
         }
 

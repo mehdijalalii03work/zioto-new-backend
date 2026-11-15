@@ -13,8 +13,12 @@ class StockSyncService
         private HesabfaService $hesabfa,
     ) {}
 
-    public function syncAllStock(): array
+    public function syncAllStock(bool $force = false): array
     {
+        if (! $force && setting('inventory_source', 'hesabfa') !== 'hesabfa') {
+            return ['success' => false, 'message' => 'منبع موجودی سایت حسابفا نیست؛ همگام‌سازی متوقف شد'];
+        }
+
         if (! $this->hesabfa->isConfigured()) {
             return ['success' => false, 'message' => 'تنظیمات حسابفا یافت نشد'];
         }
@@ -115,6 +119,10 @@ class StockSyncService
 
     public function updateStockByItemCode(string $itemCode, int $quantity): array
     {
+        if (setting('inventory_source', 'hesabfa') !== 'hesabfa') {
+            return ['message' => 'منبع موجودی سایت حسابفا نیست؛ به‌روزرسانی نادیده گرفته شد'];
+        }
+
         $product = Product::where('sku', $itemCode)->first();
 
         if (! $product) {

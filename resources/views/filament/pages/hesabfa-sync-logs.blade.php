@@ -19,6 +19,12 @@
                 <button wire:click="setFilterType('invoice')" class="{{ $this->filterType === 'invoice' ? $activeClass : $inactiveClass }}">
                     فاکتور
                 </button>
+                <button wire:click="setFilterType('rahkaran_invoice')" class="{{ $this->filterType === 'rahkaran_invoice' ? $activeClass : $inactiveClass }}">
+                    فاکتور راهکاران
+                </button>
+                <button wire:click="setFilterType('rahkaran_stock_sync')" class="{{ $this->filterType === 'rahkaran_stock_sync' ? $activeClass : $inactiveClass }}">
+                    موجودی/سریال راهکاران
+                </button>
             </div>
 
             <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-white/10">
@@ -50,6 +56,8 @@
                                             'full_sync' => 'bg-success-50 text-success-700 ring-success-600/20 dark:bg-success-500/10 dark:text-success-500 dark:ring-success-500/30',
                                             'contact' => 'bg-info-50 text-info-700 ring-info-600/20 dark:bg-info-500/10 dark:text-info-500 dark:ring-info-500/30',
                                             'invoice' => 'bg-warning-50 text-warning-700 ring-warning-600/20 dark:bg-warning-500/10 dark:text-warning-500 dark:ring-warning-500/30',
+                                            'rahkaran_invoice' => 'bg-info-50 text-info-700 ring-info-600/20 dark:bg-info-500/10 dark:text-info-500 dark:ring-info-500/30',
+                                            'rahkaran_stock_sync' => 'bg-warning-50 text-warning-700 ring-warning-600/20 dark:bg-warning-500/10 dark:text-warning-500 dark:ring-warning-500/30',
                                         ];
                                         $colorClass = $typeColors[$log->sync_type] ?? 'bg-gray-50 text-gray-700 ring-gray-600/20 dark:bg-gray-500/10 dark:text-gray-400 dark:ring-gray-500/30';
                                     @endphp

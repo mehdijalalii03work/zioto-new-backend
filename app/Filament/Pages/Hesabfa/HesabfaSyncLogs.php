@@ -32,12 +32,12 @@ class HesabfaSyncLogs extends Page
 
     public static function getNavigationLabel(): string
     {
-        return 'لاگ همگام‌سازی';
+        return 'لاگ حسابداری';
     }
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'حسابفا';
+        return 'حسابداری';
     }
 
     public static function getNavigationSort(): ?int
@@ -47,7 +47,7 @@ class HesabfaSyncLogs extends Page
 
     public function getTitle(): string
     {
-        return 'لاگ همگام‌سازی حسابفا';
+        return 'لاگ همگام‌سازی حسابداری';
     }
 
     public function getLogs()
@@ -71,6 +71,8 @@ class HesabfaSyncLogs extends Page
             'full_sync' => 'success',
             'contact' => 'info',
             'invoice' => 'warning',
+            'rahkaran_invoice' => 'info',
+            'rahkaran_stock_sync' => 'warning',
             default => 'gray',
         };
     }
@@ -90,6 +92,8 @@ class HesabfaSyncLogs extends Page
             'full_sync' => 'همگام‌سازی کامل',
             'contact' => 'مشتری',
             'invoice' => 'فاکتور',
+            'rahkaran_invoice' => 'فاکتور راهکاران',
+            'rahkaran_stock_sync' => 'موجودی و سریال راهکاران',
             default => $type,
         };
     }

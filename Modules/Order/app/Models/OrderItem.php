@@ -2,9 +2,11 @@
 
 namespace Modules\Order\Models;
 
+use App\Models\RahkaranSerial;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Product\Models\Product;
 
 class OrderItem extends Model
@@ -26,6 +28,8 @@ class OrderItem extends Model
         'labor_cost',
         'taxes',
         'final_price',
+        'rahkaran_stock_reserved_quantity',
+        'rahkaran_stock_consumed',
     ];
 
     protected function casts(): array
@@ -39,6 +43,8 @@ class OrderItem extends Model
             'labor_cost' => 'decimal:2',
             'taxes' => 'array',
             'final_price' => 'decimal:2',
+            'rahkaran_stock_reserved_quantity' => 'integer',
+            'rahkaran_stock_consumed' => 'boolean',
         ];
     }
 
@@ -50,5 +56,10 @@ class OrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function rahkaranSerials(): HasMany
+    {
+        return $this->hasMany(RahkaranSerial::class);
     }
 }

@@ -6,6 +6,7 @@ use App\Enums\Product\Ayar;
 use App\Enums\Product\MetalType;
 use App\Enums\Product\ProductShape;
 use App\Models\Brand;
+use App\Models\RahkaranSerial;
 use App\Services\Pricing\DynamicPriceService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -55,6 +56,9 @@ class Product extends Model implements HasMedia
         'hesabfa_exclude_from_sync',
         'hesabfa_stock_locked',
         'hesabfa_stock_synced_at',
+        'rahkaran_physical_stock',
+        'rahkaran_reserved_stock',
+        'rahkaran_serial_tracked',
         'is_nopay',
     ];
 
@@ -78,6 +82,9 @@ class Product extends Model implements HasMedia
             'hesabfa_exclude_from_sync' => 'boolean',
             'hesabfa_stock_locked' => 'boolean',
             'hesabfa_stock_synced_at' => 'datetime',
+            'rahkaran_physical_stock' => 'integer',
+            'rahkaran_reserved_stock' => 'integer',
+            'rahkaran_serial_tracked' => 'boolean',
             'contact_only' => 'boolean',
             'is_nopay' => 'boolean',
             'labor_coefficients' => 'array',
@@ -122,6 +129,20 @@ class Product extends Model implements HasMedia
     public function sellableSingles(): int
     {
         $source = $this->baseProduct ?? $this;
+        if (setting('inventory_source', 'hesabfa') === 'rahkaran') {
+            $physical = (int) ($source->rahkaran_physical_stock ?? 0);
+            if (! $source->rahkaran_serial_tracked) {
+                return $source->sellableRahkaranStock($physical);
+            }
+
+            $availableSerials = RahkaranSerial::query()
+                ->where('product_id', $source->id)
+                ->where('status', 'available')
+                ->count();
+
+            return max(0, min($availableSerials, $physical) - (int) $source->hesabfa_manual_reserved);
+        }
+
         $physical = $source->hesabfa_exclude_from_sync
             ? (int) ($source->stock_quantity ?? 0)
             : (int) ($source->hesabfa_physical_stock ?? $source->stock_quantity ?? 0);
@@ -148,7 +169,21 @@ class Product extends Model implements HasMedia
         $reserved = static::ignoresReservedStock() ? 0 : (int) ($this->hesabfa_reserved_stock ?? 0);
         $manualReserved = (int) ($this->hesabfa_manual_reserved ?? 0);
 
-        return max(0, $physicalStock - $reserved - $manualReserved);
+        return $this->sellableFromStockBalances($physicalStock, $reserved, $manualReserved);
+    }
+
+    public function sellableRahkaranStock(?int $physicalStock = null): int
+    {
+        return $this->sellableFromStockBalances(
+            $physicalStock ?? (int) $this->rahkaran_physical_stock,
+            (int) $this->rahkaran_reserved_stock,
+            (int) $this->hesabfa_manual_reserved,
+        );
+    }
+
+    private function sellableFromStockBalances(int $physicalStock, int $reservedStock, int $manualReservedStock): int
+    {
+        return max(0, $physicalStock - $reservedStock - $manualReservedStock);
     }
 
     public static function ignoresReservedStock(): bool

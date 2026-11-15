@@ -194,6 +194,11 @@ class ProductForm
                                     ->default(0)
                                     ->minValue(0)
                                     ->helperText('بر حسب عدد واحد (تکی)، نه بسته'),
+
+                                Toggle::make('rahkaran_serial_tracked')
+                                    ->label('رهگیری موجودی با سریال راهکاران')
+                                    ->helperText('برای کالاهایی که در فایل شارژ، عامل اول سریال دارد روشن کنید. کالاهای بدون سریال فقط با تعداد موجودی انبار راهکاران کنترل می‌شوند.')
+                                    ->inline(false),
                             ]),
 
                         Grid::make(2)

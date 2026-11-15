@@ -27,12 +27,12 @@ class ProductCategoryController extends Controller
             }
         }
         $categories = $records->map(fn (ProductCategory $category): array => [
-                'id' => $category->id,
-                'name' => $category->name,
-                'slug' => $category->slug,
-                'parent_id' => $category->parent_id,
-                'products_count' => $counts[$category->id],
-            ]);
+            'id' => $category->id,
+            'name' => $category->name,
+            'slug' => $category->slug,
+            'parent_id' => $category->parent_id,
+            'products_count' => $counts[$category->id],
+        ]);
 
         return response()->json(['data' => $categories]);
     }
@@ -63,7 +63,7 @@ class ProductCategoryController extends Controller
         $products = Product::query()
             ->publiclyListed()
             ->whereIn('category_id', [$category->id, ...$descendantIds])
-            ->with(['category:id,name,slug', 'brand:id,name,slug', 'images', 'baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved'])
+            ->with(['category:id,name,slug', 'brand:id,name,slug', 'images', 'baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved,rahkaran_physical_stock,rahkaran_reserved_stock,rahkaran_serial_tracked'])
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()

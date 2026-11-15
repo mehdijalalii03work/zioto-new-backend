@@ -29,7 +29,7 @@ class ProductController extends Controller
 
         $products = Cache::remember($cacheKey, 60, function () use ($slugs, $skus) {
             $query = Product::publiclyListed()
-                ->with(['category:id,name,slug', 'brand:id,name,slug', 'images', 'baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved']);
+                ->with(['category:id,name,slug', 'brand:id,name,slug', 'images', 'baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved,rahkaran_physical_stock,rahkaran_reserved_stock,rahkaran_serial_tracked']);
 
             if ($slugs) {
                 $slugList = array_map('trim', explode(',', $slugs));
@@ -101,8 +101,11 @@ class ProductController extends Controller
                 ->pluck('sales_count', 'product_id');
         }
 
-        if ($userId !== null) {
-            $productModels = Product::whereIn('id', array_column($products, 'id'))->get()->keyBy('id');
+        if ($productIds !== []) {
+            $productModels = Product::with('baseProduct')
+                ->whereIn('id', $productIds)
+                ->get()
+                ->keyBy('id');
         }
 
         $products = array_map(function (array $p) use ($wishlistSet, $dynamicPrice, $userId, $productModels, $salesEnabled, $includeSortMetrics, $viewCounts, $salesCounts) {
@@ -121,6 +124,10 @@ class ProductController extends Controller
                         $p['tax_amount'] = $p['price'] - $priceBeforeTax;
                     }
                 }
+            }
+
+            if ($productModels !== null && ($model = $productModels->get($productId))) {
+                $p['stock'] = $model->sellable_stock > 0;
             }
 
             if (! $salesEnabled) {
@@ -149,7 +156,7 @@ class ProductController extends Controller
     public function show(string $slugOrId): JsonResponse
     {
         $product = Product::published()
-            ->with(['category:id,name,slug', 'brand:id,name,slug', 'images', 'baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved'])
+            ->with(['category:id,name,slug', 'brand:id,name,slug', 'images', 'baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved,rahkaran_physical_stock,rahkaran_reserved_stock,rahkaran_serial_tracked'])
             ->where(function ($q) use ($slugOrId) {
                 $q->where('slug', $slugOrId)
                     ->orWhere('id', $slugOrId);

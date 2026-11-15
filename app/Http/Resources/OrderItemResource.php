@@ -23,6 +23,7 @@ class OrderItemResource extends JsonResource
             'labor_cost' => $this->labor_cost,
             'taxes' => $this->taxes,
             'final_price' => $this->final_price,
+            'serials' => $this->whenLoaded('rahkaranSerials', fn () => $this->rahkaranSerials->pluck('serial')),
         ];
     }
 }

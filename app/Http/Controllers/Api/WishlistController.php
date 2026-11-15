@@ -18,7 +18,7 @@ class WishlistController extends Controller
         $user = Auth::user();
 
         $wishlistItems = Wishlist::where('user_id', $user->id)
-            ->with(['product.category:id,name,slug', 'product.brand:id,name,slug', 'product.images', 'product.baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved'])
+            ->with(['product.category:id,name,slug', 'product.brand:id,name,slug', 'product.images', 'product.baseProduct:id,stock_quantity,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved,rahkaran_physical_stock,rahkaran_reserved_stock,rahkaran_serial_tracked'])
             ->get()
             ->map(fn (Wishlist $item) => $item->product ? ProductResource::withoutImages(new ProductResource($item->product)) : null)
             ->filter()

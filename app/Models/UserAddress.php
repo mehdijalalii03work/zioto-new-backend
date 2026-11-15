@@ -28,6 +28,7 @@ class UserAddress extends Model
         'longitude',
         'is_default',
         'is_billing',
+        'rahkaran_address_id',
     ];
 
     protected function casts(): array

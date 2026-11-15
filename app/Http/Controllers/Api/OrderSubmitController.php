@@ -37,7 +37,7 @@ class OrderSubmitController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $orders = Order::with(['shipping', 'items', 'address.province', 'address.city'])
+        $orders = Order::with(['shipping', 'items.rahkaranSerials', 'address.province', 'address.city'])
             ->where('user_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -49,7 +49,7 @@ class OrderSubmitController extends Controller
 
     public function show(Request $request, int $orderId): JsonResponse
     {
-        $order = Order::with(['shipping', 'items', 'address.province', 'address.city', 'orderNotes'])
+        $order = Order::with(['shipping', 'items.rahkaranSerials', 'address.province', 'address.city', 'orderNotes'])
             ->where('id', $orderId)
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
@@ -98,8 +98,8 @@ class OrderSubmitController extends Controller
         $validated = $request->validated();
 
         $cartItems = Cart::where('user_id', $user->id)
-            ->with('product:id,name,price,is_nopay,weight,stock_quantity,pack_size,base_product_id,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved,price_board_item,price_type,labor_coefficients,category_id,metal_type,tokeniko_sku')
-            ->with('product.baseProduct:id,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved,stock_quantity')
+            ->with('product:id,name,price,is_nopay,weight,stock_quantity,pack_size,base_product_id,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved,rahkaran_physical_stock,rahkaran_reserved_stock,rahkaran_serial_tracked,price_board_item,price_type,labor_coefficients,category_id,metal_type,tokeniko_sku')
+            ->with('product.baseProduct:id,hesabfa_physical_stock,hesabfa_reserved_stock,hesabfa_manual_reserved,stock_quantity,rahkaran_physical_stock,rahkaran_reserved_stock,rahkaran_serial_tracked')
             ->get();
 
         if ($cartItems->isEmpty()) {
