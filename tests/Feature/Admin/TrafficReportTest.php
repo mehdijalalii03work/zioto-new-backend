@@ -88,9 +88,9 @@ class TrafficReportTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_the_report_page_is_hidden_from_navigation(): void
+    public function test_the_report_page_is_registered_in_navigation(): void
     {
-        $this->assertFalse(TrafficReport::shouldRegisterNavigation());
+        $this->assertTrue(TrafficReport::shouldRegisterNavigation());
     }
 
     public function test_the_report_page_is_hidden_from_guests(): void
