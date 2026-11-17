@@ -109,6 +109,7 @@ class TotalInvoiceReport extends Page
         [$gregorianFrom, $gregorianTo] = $this->resolveDateRange();
 
         $query = Order::query()
+            ->where('platform', '!=', 'tapsi')
             ->whereIn('status', ['completed', 'confirmed'])
             ->whereDoesntHave('items.product', static fn ($q) => $q->where('slug', 'test'))
             ->with(['items.product']);

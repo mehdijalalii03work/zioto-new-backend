@@ -104,6 +104,22 @@ class ReportGatewayFilterTest extends TestCase
         $this->assertSame(350000, (int) $report[0]['net_amount']);
     }
 
+    public function test_total_invoice_report_excludes_tapsi_shop_orders(): void
+    {
+        $this->completedOrderWithGateway('parsian', 100000);
+        $tapsiOrder = $this->completedOrderWithGateway('parsian', 250000);
+        $tapsiOrder->update(['platform' => 'tapsi']);
+
+        $report = Livewire::actingAs($this->admin(), 'web')
+            ->test(TotalInvoiceReport::class)
+            ->call('loadReport')
+            ->get('report');
+
+        $this->assertCount(1, $report);
+        $this->assertSame(1, $report[0]['invoice_count']);
+        $this->assertSame(100000, (int) $report[0]['net_amount']);
+    }
+
     public function test_total_invoice_report_reconciles_item_value_with_invoice_amount(): void
     {
         $installmentOrder = $this->completedOrderWithGateway('smartis', 1000000);
@@ -183,5 +199,20 @@ class ReportGatewayFilterTest extends TestCase
 
         $this->assertCount(1, $report);
         $this->assertSame(350000, (int) $report[0]['total_rial']);
+    }
+
+    public function test_weight_sales_report_excludes_tapsi_shop_orders(): void
+    {
+        $this->completedOrderWithGateway('parsian', 100000);
+        $tapsiOrder = $this->completedOrderWithGateway('parsian', 250000);
+        $tapsiOrder->update(['platform' => 'tapsi']);
+
+        $report = Livewire::actingAs($this->admin(), 'web')
+            ->test(WeightSalesReport::class)
+            ->call('loadReport')
+            ->get('report');
+
+        $this->assertCount(1, $report);
+        $this->assertSame(100000, (int) $report[0]['total_rial']);
     }
 }
