@@ -31,8 +31,6 @@ class TrafficReport extends Page
 
     protected static ?string $title = 'گزارش ترافیک';
 
-    protected static bool $shouldRegisterNavigation = false;
-
     public static function canAccess(): bool
     {
         return auth()->user()?->can(Permission::AnalyticsReportView->value) ?? false;
