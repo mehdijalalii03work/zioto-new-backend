@@ -54,15 +54,16 @@ class GoldBoardPricingTest extends TestCase
         return app(ApiClientService::class)->getAllPrices(forceRefresh: true)['prices'] ?? [];
     }
 
-    public function test_gold999_sell_is_max_and_buy_is_min_of_the_two_sources(): void
+    public function test_gold999_buy_is_derived_from_sell_with_configured_coefficient(): void
     {
         $this->neutralRatios();
+        $this->setting('zioto_pricing_coef_buy_price', '0.97');
         $this->fakeSources('349828000', 35008886);
 
         $prices = $this->boardPrices();
 
         $this->assertSame(350088860.0, $prices['Gold999_Sell']['value']);
-        $this->assertSame(349828000.0, $prices['Gold999_Buy']['value']);
+        $this->assertSame(339586194.2, $prices['Gold999_Buy']['value']);
     }
 
     public function test_gold999_falls_back_to_a_single_source(): void
@@ -73,7 +74,7 @@ class GoldBoardPricingTest extends TestCase
         $prices = $this->boardPrices();
 
         $this->assertSame(349828000.0, $prices['Gold999_Sell']['value']);
-        $this->assertSame(349828000.0, $prices['Gold999_Buy']['value']);
+        $this->assertEqualsWithDelta(349828000.0 * 0.99, $prices['Gold999_Buy']['value'], 1.0);
     }
 
     public function test_gold999_buy_uses_buy_coefficient_when_sources_agree(): void
@@ -110,9 +111,9 @@ class GoldBoardPricingTest extends TestCase
         $prices = $this->boardPrices();
 
         $this->assertEqualsWithDelta(350088860.0 * 1.005, $prices['Gold9999_Sell']['value'], 1.0);
-        $this->assertEqualsWithDelta(349828000.0 * 1.005 * 0.995, $prices['Gold9999_Buy']['value'], 1.0);
+        $this->assertEqualsWithDelta(350088860.0 * 1.005 * 0.99, $prices['Gold9999_Buy']['value'], 1.0);
         $this->assertEqualsWithDelta(350088860.0 * 0.995996, $prices['Gold995_Sell']['value'], 1.0);
-        $this->assertEqualsWithDelta(349828000.0 * 0.995996 * 0.995, $prices['Gold995_Buy']['value'], 1.0);
+        $this->assertEqualsWithDelta(350088860.0 * 0.995996 * 0.99, $prices['Gold995_Buy']['value'], 1.0);
 
         $this->setting('zioto_pricing_coef_gold999_to_gold9999', '1.01');
         $this->setting('zioto_pricing_coef_gold9999_sell_ratio', '1.002');
@@ -131,7 +132,7 @@ class GoldBoardPricingTest extends TestCase
         $prices = $this->boardPrices();
 
         $this->assertEqualsWithDelta(350088860.0 * 1.002, $prices['Gold999_Sell']['value'], 1.0);
-        $this->assertEqualsWithDelta(349828000.0 * 0.995, $prices['Gold999_Buy']['value'], 1.0);
+        $this->assertEqualsWithDelta(350088860.0 * 1.002 * 0.99, $prices['Gold999_Buy']['value'], 1.0);
     }
 
     public function test_emergency_multiplier_applies_when_enabled_and_ignored_when_off(): void
@@ -216,6 +217,6 @@ class GoldBoardPricingTest extends TestCase
         $prices = $this->boardPrices();
 
         $this->assertSame(244747518.0, $prices['Gold750_Sell']['value']);
-        $this->assertEqualsWithDelta(244160250.0 * 0.995, $prices['Gold750_Buy']['value'], 1.0);
+        $this->assertEqualsWithDelta(244747518.0 * 0.99, $prices['Gold750_Buy']['value'], 1.0);
     }
 }
