@@ -477,7 +477,7 @@
                                         <dd class="font-mono tabular-nums">{{ $toToman($g750['maxApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g750['maxSource'] ?? '—' }})</span></dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">Min(PersianAPI, Tala)</dt>
+                                        <dt class="text-gray-600">کمترین نرخ منبع (صرفاً مرجع)</dt>
                                         <dd class="font-mono tabular-nums">{{ $toToman($g750['minApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g750['minSource'] ?? '—' }})</span></dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
@@ -485,8 +485,8 @@
                                         <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold750_sell_ratio'] ?? 1.001), 4) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">LowValueRatio (ضریب خرید)</dt>
-                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold750_buy_ratio'] ?? 0.997), 4) }}</dd>
+                                        <dt class="text-gray-600">ضریب خرید نسبت به فروش (طلا)</dt>
+                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['buy'] ?? 0.99), 4) }}</dd>
                                     </div>
                                 </dl>
                             </div>
@@ -497,9 +497,9 @@
                                     <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">توکنیکو مستقیم (بدون ضریب و دستی)</code>
                                 @else
                                 <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">فروش = Max(PersianAPI, Tala) × HighValueRatio ({{ number_format((float) ($c['gold750_sell_ratio'] ?? 1.001), 4) }})</code>
-                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = Min(PersianAPI, Tala) × LowValueRatio ({{ number_format((float) ($c['gold750_buy_ratio'] ?? 0.997), 4) }})</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = فروش × ضریب خرید طلا ({{ number_format((float) ($c['buy'] ?? 0.99), 4) }})</code>
                                 <p class="mt-2.5 text-xs leading-6 text-gray-500">
-                                    قیمت فروش با ضرب ماکزیمم API در HighValueRatio و قیمت خرید با ضرب مینیمم API در LowValueRatio محاسبه می‌شود.
+                                    قیمت فروش از بالاترین نرخ منبع (یا قیمت دستی) محاسبه می‌شود و قیمت خرید برابر فروش ضربدر ضریب خرید طلا است.
                                 </p>
                                 @endif
                             </div>
@@ -562,8 +562,8 @@
                                         <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold995_sell_ratio'] ?? 1), 4) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">LowValueRatio (ضریب خرید)</dt>
-                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold995_buy_ratio'] ?? 0.995), 4) }}</dd>
+                                        <dt class="text-gray-600">ضریب خرید نسبت به فروش (طلا)</dt>
+                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['buy'] ?? 0.99), 4) }}</dd>
                                     </div>
                                 </dl>
                             </div>
@@ -574,7 +574,7 @@
                                     <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">توکنیکو مستقیم (بدون ضریب و دستی)</code>
                                 @else
                                 <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ فروش = طلای۹۹۹ فروش × {{ $c['gold999_to_gold995'] ?? '—' }} × HighValueRatio</code>
-                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ خرید = طلای۹۹۹ خرید × {{ $c['gold999_to_gold995'] ?? '—' }} × LowValueRatio</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۵ خرید = طلای۹۹۵ فروش × ضریب خرید طلا</code>
                                 @endif
                             </div>
                         </div>
@@ -633,8 +633,8 @@
                                         <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold9999_sell_ratio'] ?? 1), 4) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">LowValueRatio (ضریب خرید)</dt>
-                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold9999_buy_ratio'] ?? 0.995), 4) }}</dd>
+                                        <dt class="text-gray-600">ضریب خرید نسبت به فروش (طلا)</dt>
+                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['buy'] ?? 0.99), 4) }}</dd>
                                     </div>
                                 </dl>
                             </div>
@@ -645,7 +645,7 @@
                                     <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">توکنیکو مستقیم (بدون ضریب و دستی)</code>
                                 @else
                                 <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ فروش = طلای۹۹۹ فروش × {{ $c['gold999_to_gold9999'] ?? '—' }} × HighValueRatio</code>
-                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ خرید = طلای۹۹۹ خرید × {{ $c['gold999_to_gold9999'] ?? '—' }} × LowValueRatio</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">طلای۹۹۹.۹ خرید = طلای۹۹۹.۹ فروش × ضریب خرید طلا</code>
                                 @endif
                             </div>
                         </div>
@@ -710,7 +710,7 @@
                                         <dd class="font-mono tabular-nums">{{ $toToman($g999['maxApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g999['maxSource'] ?? '—' }})</span></dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">Min(PersianAPI, Tala)</dt>
+                                        <dt class="text-gray-600">کمترین نرخ منبع (صرفاً مرجع)</dt>
                                         <dd class="font-mono tabular-nums">{{ $toToman($g999['minApi'] ?? null) }} <span class="text-xs text-gray-400">({{ $g999['minSource'] ?? '—' }})</span></dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
@@ -718,8 +718,8 @@
                                         <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold999_sell_ratio'] ?? 1.001), 4) }}</dd>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
-                                        <dt class="text-gray-600">LowValueRatio (ضریب خرید)</dt>
-                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['gold999_buy_ratio'] ?? 0.997), 4) }}</dd>
+                                        <dt class="text-gray-600">ضریب خرید نسبت به فروش (طلا)</dt>
+                                        <dd class="font-mono tabular-nums text-purple-600">{{ number_format((float) ($c['buy'] ?? 0.99), 4) }}</dd>
                                     </div>
                                 </dl>
                             </div>
@@ -730,9 +730,9 @@
                                     <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">توکنیکو مستقیم (بدون ضریب و دستی)</code>
                                 @else
                                 <code dir="rtl" class="block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">فروش = Max(PersianAPI, Tala) × HighValueRatio ({{ number_format((float) ($c['gold999_sell_ratio'] ?? 1.001), 4) }})</code>
-                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = Min(PersianAPI, Tala) × LowValueRatio ({{ number_format((float) ($c['gold999_buy_ratio'] ?? 0.997), 4) }})</code>
+                                <code dir="rtl" class="mt-1.5 block rounded bg-gray-50 p-2.5 text-xs leading-6 text-pink-700">خرید = فروش × ضریب خرید طلا ({{ number_format((float) ($c['buy'] ?? 0.99), 4) }})</code>
                                 <p class="mt-2.5 text-xs leading-6 text-gray-500">
-                                    قیمت فروش با ضرب ماکزیمم API در HighValueRatio و قیمت خرید با ضرب مینیمم API در LowValueRatio محاسبه می‌شود.
+                                    قیمت فروش از بالاترین نرخ منبع (یا قیمت دستی) محاسبه می‌شود و قیمت خرید برابر فروش ضربدر ضریب خرید طلا است.
                                 </p>
                                 @endif
                             </div>

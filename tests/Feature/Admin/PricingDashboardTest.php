@@ -94,4 +94,36 @@ class PricingDashboardTest extends TestCase
         $this->assertFalse(! empty($formula['tokenikoMode']));
         $this->assertArrayHasKey('gold750', $formula);
     }
+
+    public function test_dashboard_shows_gold_buy_from_sell_with_configured_coefficient(): void
+    {
+        $this->admin();
+        Setting::create([
+            'key' => 'zioto_pricing_coef_buy_price',
+            'value' => '0.97',
+            'type' => 'number',
+            'category' => 'pricing',
+            'label' => 'coef_buy_price',
+        ]);
+
+        Http::fake([
+            '*persianapi*' => Http::response(['result' => [
+                ['key' => 137120, 'price' => '200000000'],
+                ['key' => 137121, 'price' => '300000000'],
+            ]], 200),
+            '*tala.ir*' => Http::response(['success' => true, 'rates' => [
+                'geram18k' => ['value' => 21000000],
+                'geram24k' => ['value' => 31000000],
+            ]], 200),
+        ]);
+
+        $component = Livewire::test(PricingDashboard::class)->assertSuccessful();
+        $formula = $component->get('formula');
+
+        $this->assertEqualsWithDelta($formula['gold750']['sell'] * 0.97, $formula['gold750']['buy'], 0.01);
+        $this->assertEqualsWithDelta($formula['gold999']['sell'] * 0.97, $formula['gold999']['buy'], 0.01);
+        $this->assertEqualsWithDelta($formula['gold995']['sell'] * 0.97, $formula['gold995']['buy'], 0.01);
+        $this->assertEqualsWithDelta($formula['gold9999']['sell'] * 0.97, $formula['gold9999']['buy'], 0.01);
+        $component->assertSee('ضریب خرید نسبت به فروش (طلا)', false);
+    }
 }
