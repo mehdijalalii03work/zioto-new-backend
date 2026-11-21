@@ -13,7 +13,7 @@
 | نوع محتوا | `application/json` |
 | هدر پاسخ JSON | `Accept: application/json` |
 | هدر احراز هویت | `X-Tokeniko-Secret: your_shared_secret_here` |
-| محدودیت درخواست | ۶۰ درخواست در دقیقه به ازای IP |
+| محدودیت درخواست | ۱۰ درخواست در دقیقه به ازای IP |
 
 ## بدنهٔ درخواست
 
