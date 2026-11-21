@@ -12,12 +12,12 @@
 | مسیر | `/api/tokeniko/pricing/silver9999-manual` |
 | نوع محتوا | `application/json` |
 | هدر پاسخ JSON | `Accept: application/json` |
-| هدر احراز هویت | `X-Tokeniko-Secret: your_shared_secret_here` |
+| هدر احراز هویت | `Authorization: Bearer your_shared_secret_here` |
 | محدودیت درخواست | ۱۰ درخواست در دقیقه به ازای IP |
 
 ## بدنهٔ درخواست
 
-فیلد `price_rial` قیمت **فروش یک گرم نقرهٔ ۹۹۹.۹ به ریال** است. آن را به‌صورت عدد صحیح مثبت، حداکثر `999999999999999`، ارسال کنید. فیلد خرید یا قیمت محصول ارسال نمی‌شود.
+فیلد `price_rial` قیمت **فروش یک گرم نقرهٔ ۹۹۹.۹ به ریال** است. آن را به‌صورت عدد صحیح بین `1000000` و `999999999999999` ارسال کنید. عددهای شش‌رقمی و کوچک‌تر با پاسخ `422` رد می‌شوند تا ارسال اشتباهی قیمت به تومان پذیرفته نشود. فیلد خرید یا قیمت محصول ارسال نمی‌شود.
 
 ```json
 {
@@ -56,7 +56,7 @@
 curl --request POST 'https://api.example.com/api/tokeniko/pricing/silver9999-manual' \
   --header 'Content-Type: application/json' \
   --header 'Accept: application/json' \
-  --header 'X-Tokeniko-Secret: your_shared_secret_here' \
+  --header 'Authorization: Bearer your_shared_secret_here' \
   --data '{"price_rial":5130000}'
 ```
 

@@ -26,7 +26,7 @@ class TokenikoSilverManualPriceTest extends TestCase
 
     private function sendPrice(mixed $price, string $secret = 'test-tokeniko-secret'): TestResponse
     {
-        return $this->withHeaders(['X-Tokeniko-Secret' => $secret])
+        return $this->withHeaders(['Authorization' => 'Bearer '.$secret])
             ->postJson(self::ENDPOINT, ['price_rial' => $price]);
     }
 
@@ -101,7 +101,11 @@ class TokenikoSilverManualPriceTest extends TestCase
     public function test_invalid_or_missing_secret_cannot_change_the_price(): void
     {
         $this->sendPrice(5130000, 'wrong-secret')->assertUnauthorized();
+        $this->flushHeaders();
         $this->postJson(self::ENDPOINT, ['price_rial' => 5130000])->assertUnauthorized();
+        $this->withHeaders(['X-Tokeniko-Secret' => 'test-tokeniko-secret'])
+            ->postJson(self::ENDPOINT, ['price_rial' => 5130000])
+            ->assertUnauthorized();
 
         $this->assertSame(0, Setting::query()->count());
         $this->assertSame(0, PriceAuditLog::query()->count());
@@ -118,12 +122,22 @@ class TokenikoSilverManualPriceTest extends TestCase
 
     public function test_invalid_prices_are_rejected_without_changes(): void
     {
-        foreach ([0, -1, 1.5, 'abc', null] as $invalidPrice) {
+        foreach ([0, -1, 1.5, 'abc', null, 999999] as $invalidPrice) {
             $this->sendPrice($invalidPrice)->assertUnprocessable()->assertJsonValidationErrors('price_rial');
         }
 
         $this->assertSame(0, Setting::query()->count());
         $this->assertSame(0, PriceAuditLog::query()->count());
+    }
+
+    public function test_one_million_rials_is_the_lowest_accepted_price(): void
+    {
+        $this->sendPrice(1000000)->assertOk()->assertJsonPath('updated', true);
+
+        $this->assertDatabaseHas('settings', [
+            'key' => 'zioto_pricing_manual_silver9999_sell',
+            'value' => '100000',
+        ]);
     }
 
     public function test_eleventh_price_update_request_within_a_minute_is_rate_limited(): void

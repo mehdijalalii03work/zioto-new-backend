@@ -18,14 +18,14 @@ class TokenikoSilverManualPriceController extends Controller
             return response()->json(['message' => 'Tokeniko pricing API is not configured'], 503);
         }
 
-        $providedSecret = $request->header('X-Tokeniko-Secret');
+        $providedSecret = $request->bearerToken();
 
         if (! is_string($providedSecret) || ! hash_equals($secret, $providedSecret)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
         $validated = $request->validate([
-            'price_rial' => ['required', 'integer', 'min:1', 'max:999999999999999'],
+            'price_rial' => ['required', 'integer', 'min:1000000', 'max:999999999999999'],
         ]);
         $priceRial = (string) $validated['price_rial'];
         $priceToman = bcdiv($priceRial, '10', 1);
