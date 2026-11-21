@@ -41,4 +41,8 @@ return [
         'base_url' => env('SHAHKAR_BASE_URL', 'https://napi.jibit.ir/ide'),
     ],
 
+    'tokeniko' => [
+        'silver_price_secret' => env('TOKENIKO_SILVER_PRICE_SECRET', ''),
+    ],
+
 ];

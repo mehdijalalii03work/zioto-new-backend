@@ -381,6 +381,7 @@ class PricingSettings
 
     public static function invalidateBoardCache(): void
     {
+        Cache::forget('zioto:payload');
         Cache::forget('priceboard:prices');
         Cache::forget('priceboard:last_sync_at');
         Cache::forget('zioto:prices');

@@ -35,7 +35,7 @@ class PricingSettingAuditObserver
             'actor_ip' => request()->ip(),
             'actor_name' => auth()->user()?->first_name
                 ? trim(auth()->user()->first_name.' '.auth()->user()->last_name)
-                : auth()->user()?->name,
+                : (auth()->user()?->name ?? request()->attributes->get('pricing_audit_actor_name')),
             'subject_type' => 'setting',
             'subject_id' => $setting->getKey(),
             'subject_label' => $setting->label ?: $setting->key,

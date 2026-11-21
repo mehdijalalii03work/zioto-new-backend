@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RigeController;
 use App\Http\Controllers\Api\ShippingController;
 use App\Http\Controllers\Api\TapsiWebhookController;
+use App\Http\Controllers\Api\TokenikoSilverManualPriceController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Auth\OtpController;
 use App\Models\Setting;
@@ -89,6 +90,9 @@ Route::prefix('tapsi')->group(function () {
 
 Route::get('/price-board', [PriceBoardController::class, 'index']);
 Route::post('/price-board/refresh', [PriceBoardController::class, 'refresh'])->middleware('throttle:10,1');
+Route::post('/tokeniko/pricing/silver9999-manual', TokenikoSilverManualPriceController::class)
+    ->name('tokeniko.pricing.silver9999-manual')
+    ->middleware('throttle:60,1');
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
