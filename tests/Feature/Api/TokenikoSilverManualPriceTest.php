@@ -126,6 +126,17 @@ class TokenikoSilverManualPriceTest extends TestCase
         $this->assertSame(0, PriceAuditLog::query()->count());
     }
 
+    public function test_eleventh_price_update_request_within_a_minute_is_rate_limited(): void
+    {
+        for ($attempt = 1; $attempt <= 10; $attempt++) {
+            $this->sendPrice(5130000 + $attempt)->assertOk();
+        }
+
+        $this->sendPrice(5130011)->assertTooManyRequests();
+
+        $this->assertSame(10, PriceAuditLog::query()->count());
+    }
+
     public function test_direct_tokeniko_board_keeps_its_own_silver_price(): void
     {
         Setting::create([
