@@ -32,6 +32,8 @@ return [
     'shipping_item_code' => env('HESABFA_SHIPPING_ITEM_CODE', ''),
     'installment_fee_item_code' => env('HESABFA_INSTALLMENT_FEE_ITEM_CODE', ''),
     'discount_item_code' => env('HESABFA_DISCOUNT_ITEM_CODE', '1212'),
+    'black_friday_half_gram_gift_item_code' => env('HESABFA_BF_HALF_GRAM_GIFT_ITEM_CODE', ''),
+    'black_friday_one_gram_gift_item_code' => env('HESABFA_BF_ONE_GRAM_GIFT_ITEM_CODE', ''),
 
     /*
     |--------------------------------------------------------------------------

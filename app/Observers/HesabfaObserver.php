@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Enums\Product\MetalType;
 use App\Models\HesabfaSyncLog;
 use App\Models\Setting;
+use App\Services\BlackFridayGiftService;
 use App\Services\HesabfaService;
 use App\Services\InstallmentService;
 use App\Support\Platform;
@@ -16,6 +17,7 @@ class HesabfaObserver
 {
     public function __construct(
         private HesabfaService $hesabfa,
+        private ?BlackFridayGiftService $blackFridayGifts = null,
     ) {}
 
     public function updated(Order $order): void
@@ -270,6 +272,21 @@ class HesabfaObserver
             }
         }
 
+        $giftQuantities = $this->giftQuantities($order);
+        foreach (['half_gram' => 'black_friday_half_gram_gift_item_code', 'one_gram' => 'black_friday_one_gram_gift_item_code'] as $gift => $configKey) {
+            if ($giftQuantities[$gift] < 1) {
+                continue;
+            }
+            $giftCode = config("hesabfa.{$configKey}");
+            if (empty($giftCode)) {
+                return ['success' => false, 'message' => "کد کالای شمش هدیهٔ {$gift} بلک‌فرایدی در تنظیمات حسابفا وارد نشده است"];
+            }
+            $giftItem = $this->hesabfa->getItemByCode($giftCode);
+            if (! $giftItem || isset($giftItem['error'])) {
+                return ['success' => false, 'message' => "کد کالای شمش هدیهٔ {$gift} '{$giftCode}' در حسابفا یافت نشد"];
+            }
+        }
+
         return ['success' => true];
     }
 
@@ -315,9 +332,46 @@ class HesabfaObserver
         $installmentItem = $this->buildInstallmentFeeItem($order, $rowNumber);
         if ($installmentItem) {
             $items[] = $installmentItem;
+            $rowNumber++;
+        }
+
+        foreach ($this->buildBlackFridayGiftItems($order, $rowNumber) as $giftItem) {
+            $items[] = $giftItem;
         }
 
         return $items;
+    }
+
+    private function buildBlackFridayGiftItems(Order $order, int $rowNumber): array
+    {
+        $quantities = $this->giftQuantities($order);
+        $items = [];
+
+        foreach ([
+            'half_gram' => ['code' => config('hesabfa.black_friday_half_gram_gift_item_code'), 'label' => 'نیم‌گرمی'],
+            'one_gram' => ['code' => config('hesabfa.black_friday_one_gram_gift_item_code'), 'label' => 'یک‌گرمی'],
+        ] as $gift => $details) {
+            if ($quantities[$gift] < 1) {
+                continue;
+            }
+            $items[] = [
+                'rowNumber' => $rowNumber++,
+                'description' => "شمش نقره {$details['label']} - هدیهٔ بلک‌فرایدی",
+                'itemCode' => $details['code'],
+                'unit' => config('hesabfa.default_unit', 'عدد'),
+                'quantity' => $quantities[$gift],
+                'unitPrice' => 0,
+                'discount' => 0,
+                'tax' => 0,
+            ];
+        }
+
+        return $items;
+    }
+
+    private function giftQuantities(Order $order): array
+    {
+        return ($this->blackFridayGifts ?? new BlackFridayGiftService)->quantitiesForOrder($order);
     }
 
     private function buildDiscountItem(Order $order, int $rowNumber): ?array
