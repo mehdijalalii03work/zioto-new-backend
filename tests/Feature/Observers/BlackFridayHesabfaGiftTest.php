@@ -15,7 +15,7 @@ class BlackFridayHesabfaGiftTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function orderWithProductAmount(int $amountInToman, string $createdAt): Order
+    private function orderWithProductAmount(int $amountInToman, string $createdAt, bool $paidViaParsian = true): Order
     {
         $product = Product::create([
             'name' => 'محصول تست',
@@ -37,7 +37,25 @@ class BlackFridayHesabfaGiftTest extends TestCase
             'subtotal' => $amountInToman * 10,
         ]);
 
+        if ($paidViaParsian) {
+            $this->recordPayment($order, 'parsian', 'paid');
+        }
+
         return $order->load('items.product');
+    }
+
+    private function recordPayment(Order $order, string $gateway, string $status): void
+    {
+        $order->payments()->create([
+            'user_id' => $order->user_id,
+            'platform' => $order->platform,
+            'transaction_id' => fake()->uuid(),
+            'amount' => $order->total_amount,
+            'payment_method' => $order->payment_method,
+            'gateway' => $gateway,
+            'status' => $status,
+            'paid_at' => $status === 'paid' ? now() : null,
+        ]);
     }
 
     public function test_gift_quantities_match_cart_tiers_and_boundaries(): void
@@ -85,7 +103,9 @@ class BlackFridayHesabfaGiftTest extends TestCase
         ]);
         $order = $this->orderWithProductAmount(40_000_000, '2026-11-25 12:00:00');
         $hesabfa = $this->createMock(HesabfaService::class);
-        $hesabfa->method('findItemBySku')->willReturn(['Code' => 'PRODUCT']);
+        $hesabfa->method('findItemBySku')->willReturnCallback(
+            static fn (string $sku): array => ['Code' => in_array($sku, ['HALF', 'ONE'], true) ? $sku : 'PRODUCT']
+        );
         $observer = new HesabfaObserver($hesabfa);
         $items = (new \ReflectionMethod(HesabfaObserver::class, 'buildInvoiceItems'))->invoke($observer, $order);
 
@@ -101,6 +121,31 @@ class BlackFridayHesabfaGiftTest extends TestCase
             static fn (array $item): int => $item['quantity'] * $item['unitPrice'] + $item['tax'] - $item['discount'],
             $items
         )));
+    }
+
+    public function test_invoice_skips_gift_rows_and_validation_without_a_paid_parsian_payment(): void
+    {
+        config([
+            'hesabfa.black_friday_half_gram_gift_item_code' => null,
+            'hesabfa.black_friday_one_gram_gift_item_code' => null,
+            'hesabfa.discount_item_code' => 'DISCOUNT',
+        ]);
+        $order = $this->orderWithProductAmount(40_000_000, '2026-11-25 12:00:00', paidViaParsian: false);
+        $hesabfa = $this->createMock(HesabfaService::class);
+        $hesabfa->method('findItemBySku')->willReturn(['Code' => 'PRODUCT']);
+        $hesabfa->method('getItemByCode')->with('DISCOUNT')->willReturn(['Code' => 'DISCOUNT']);
+        $observer = new HesabfaObserver($hesabfa);
+        $validate = new \ReflectionMethod(HesabfaObserver::class, 'preValidateInvoiceItems');
+        $build = new \ReflectionMethod(HesabfaObserver::class, 'buildInvoiceItems');
+
+        foreach ([null, ['parsian', 'pending'], ['parsian', 'failed'], ['smartis', 'paid']] as $payment) {
+            if ($payment !== null) {
+                $this->recordPayment($order, ...$payment);
+            }
+
+            $this->assertTrue($validate->invoke($observer, $order)['success']);
+            $this->assertSame(['PRODUCT', 'DISCOUNT'], array_column($build->invoke($observer, $order), 'itemCode'));
+        }
     }
 
     public function test_missing_or_unknown_gift_code_blocks_invoice_sync(): void

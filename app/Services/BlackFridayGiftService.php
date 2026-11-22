@@ -26,6 +26,10 @@ class BlackFridayGiftService
             return $empty;
         }
 
+        if (! $order->payments()->where('gateway', 'parsian')->where('status', 'paid')->exists()) {
+            return $empty;
+        }
+
         // Order item subtotals are in Rials; the cart campaign thresholds are in Tomans.
         $amountInRials = (int) $order->items->sum('subtotal');
         $amountInToman = intdiv($amountInRials, self::TOMAN);
