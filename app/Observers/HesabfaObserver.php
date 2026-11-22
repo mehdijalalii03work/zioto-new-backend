@@ -359,7 +359,7 @@ class HesabfaObserver
             $itemCode = $hesabfaItem['Code'] ?? $hesabfaItem['ItemCode'] ?? $details['sku'];
             $items[] = [
                 'rowNumber' => $rowNumber++,
-                'description' => "شمش نقره {$details['label']} - هدیهٔ بلک‌فرایدی",
+                'description' => "شمش نقره {$details['label']} - هدیه بلک‌فرایدی",
                 'itemCode' => $itemCode,
                 'unit' => config('hesabfa.default_unit', 'عدد'),
                 'quantity' => $quantities[$gift],
