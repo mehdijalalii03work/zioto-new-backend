@@ -281,7 +281,8 @@ class HesabfaObserver
             if (empty($giftCode)) {
                 return ['success' => false, 'message' => "کد کالای شمش هدیهٔ {$gift} بلک‌فرایدی در تنظیمات حسابفا وارد نشده است"];
             }
-            $giftItem = $this->hesabfa->getItemByCode($giftCode);
+            // Gift settings contain Hesabfa ProductCode/SKU values, not internal item codes.
+            $giftItem = $this->hesabfa->findItemBySku($giftCode);
             if (! $giftItem || isset($giftItem['error'])) {
                 return ['success' => false, 'message' => "کد کالای شمش هدیهٔ {$gift} '{$giftCode}' در حسابفا یافت نشد"];
             }
@@ -348,16 +349,18 @@ class HesabfaObserver
         $items = [];
 
         foreach ([
-            'half_gram' => ['code' => config('hesabfa.black_friday_half_gram_gift_item_code'), 'label' => 'نیم‌گرمی'],
-            'one_gram' => ['code' => config('hesabfa.black_friday_one_gram_gift_item_code'), 'label' => 'یک‌گرمی'],
+            'half_gram' => ['sku' => config('hesabfa.black_friday_half_gram_gift_item_code'), 'label' => 'نیم‌گرمی'],
+            'one_gram' => ['sku' => config('hesabfa.black_friday_one_gram_gift_item_code'), 'label' => 'یک‌گرمی'],
         ] as $gift => $details) {
             if ($quantities[$gift] < 1) {
                 continue;
             }
+            $hesabfaItem = $this->hesabfa->findItemBySku((string) $details['sku']);
+            $itemCode = $hesabfaItem['Code'] ?? $hesabfaItem['ItemCode'] ?? $details['sku'];
             $items[] = [
                 'rowNumber' => $rowNumber++,
                 'description' => "شمش نقره {$details['label']} - هدیهٔ بلک‌فرایدی",
-                'itemCode' => $details['code'],
+                'itemCode' => $itemCode,
                 'unit' => config('hesabfa.default_unit', 'عدد'),
                 'quantity' => $quantities[$gift],
                 'unitPrice' => 0,
