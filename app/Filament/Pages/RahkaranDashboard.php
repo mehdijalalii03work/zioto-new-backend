@@ -80,16 +80,10 @@ class RahkaranDashboard extends Page
     protected function getViewData(): array
     {
         $settings = app(RahkaranSettings::class);
-        $productRefs = $settings->get('product_refs');
-        $productRefs = is_array($productRefs) ? $productRefs : [];
         $eligibleProducts = Product::query()->publiclyListed()->whereNotNull('sku');
         $totalProductCount = (clone $eligibleProducts)->count();
-        $mappedProductCount = $productRefs === []
-            ? 0
-            : (clone $eligibleProducts)->whereIn('sku', array_keys($productRefs))->count();
-        $productsWithoutMapping = $productRefs === []
-            ? (clone $eligibleProducts)->orderBy('name')->limit(6)->get(['id', 'name', 'sku'])
-            : (clone $eligibleProducts)->whereNotIn('sku', array_keys($productRefs))->orderBy('name')->limit(6)->get(['id', 'name', 'sku']);
+        $mappedProductCount = (clone $eligibleProducts)->whereNotNull('rahkaran_part_ref')->count();
+        $productsWithoutMapping = (clone $eligibleProducts)->whereNull('rahkaran_part_ref')->orderBy('name')->limit(6)->get(['id', 'name', 'sku']);
         $serialCounts = RahkaranSerial::query()
             ->select('status')
             ->selectRaw('COUNT(*) AS total')

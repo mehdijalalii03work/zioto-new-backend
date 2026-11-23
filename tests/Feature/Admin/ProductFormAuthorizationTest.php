@@ -165,4 +165,29 @@ class ProductFormAuthorizationTest extends TestCase
 
         $this->assertSame('عدد - شناسه: 6', $component->getOptions()[6]);
     }
+
+    public function test_product_rahkaran_part_ref_can_be_selected_and_saved(): void
+    {
+        $admin = User::factory()->create()->assignRole(Role::Admin->value);
+        $product = $this->product();
+
+        Livewire::actingAs($admin, 'web')
+            ->test(EditProduct::class, ['record' => $product->getKey()])
+            ->assertFormFieldExists('rahkaran_part_ref')
+            ->set('data.rahkaran_part_ref', 1062)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(1062, (int) $product->fresh()->rahkaran_part_ref);
+    }
+
+    public function test_product_form_has_a_dedicated_rahkaran_section(): void
+    {
+        $admin = User::factory()->create()->assignRole(Role::Admin->value);
+        $product = $this->product();
+
+        Livewire::actingAs($admin, 'web')
+            ->test(EditProduct::class, ['record' => $product->getKey()])
+            ->assertSee('تنظیمات راهکاران');
+    }
 }

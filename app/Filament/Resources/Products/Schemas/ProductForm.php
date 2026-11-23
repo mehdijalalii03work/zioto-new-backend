@@ -45,13 +45,6 @@ class ProductForm
                                     ->label('کد اختصاصی محصول')
                                     ->unique(ignoreRecord: true),
 
-                                Select::make('rahkaran_unit_ref')
-                                    ->label('واحد کالا در راهکاران')
-                                    ->options(config('rahkaran.units'))
-                                    ->searchable()
-                                    ->placeholder('انتخاب واحد راهکاران')
-                                    ->helperText('واحدی که هنگام صدور فاکتور برای این محصول به راهکاران ارسال می‌شود.'),
-
                                 Select::make('status')
                                     ->label('وضعیت انتشار')
                                     ->options([
@@ -147,6 +140,34 @@ class ProductForm
                     ])
                     ->columnSpanFull(),
 
+                Section::make('تنظیمات راهکاران')
+                    ->description('شناسه کالا، واحد و روش رهگیری موجودی این محصول در راهکاران')
+                    ->icon('heroicon-o-building-office-2')
+                    ->collapsible()
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('rahkaran_part_ref')
+                                    ->label('شناسه کالا در راهکاران')
+                                    ->numeric()
+                                    ->minValue(1)
+                                    ->helperText('برای همگام‌سازی موجودی و صدور فاکتور.'),
+
+                                Select::make('rahkaran_unit_ref')
+                                    ->label('واحد کالا در راهکاران')
+                                    ->options(config('rahkaran.units'))
+                                    ->searchable()
+                                    ->placeholder('انتخاب واحد راهکاران')
+                                    ->helperText('واحدی که برای این محصول به راهکاران ارسال می‌شود.'),
+
+                                Toggle::make('rahkaran_serial_tracked')
+                                    ->label('رهگیری موجودی با سریال راهکاران')
+                                    ->helperText('برای کالاهایی که در فایل شارژ، عامل اول سریال دارد روشن کنید. کالاهای بدون سریال فقط با تعداد موجودی انبار راهکاران کنترل می‌شوند.')
+                                    ->inline(false),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
+
                 Section::make('قیمت و موجودی')
                     ->description('قیمت، وزن و موجودی انبار')
                     ->icon('heroicon-o-currency-dollar')
@@ -202,10 +223,6 @@ class ProductForm
                                     ->minValue(0)
                                     ->helperText('بر حسب عدد واحد (تکی)، نه بسته'),
 
-                                Toggle::make('rahkaran_serial_tracked')
-                                    ->label('رهگیری موجودی با سریال راهکاران')
-                                    ->helperText('برای کالاهایی که در فایل شارژ، عامل اول سریال دارد روشن کنید. کالاهای بدون سریال فقط با تعداد موجودی انبار راهکاران کنترل می‌شوند.')
-                                    ->inline(false),
                             ]),
 
                         Grid::make(2)

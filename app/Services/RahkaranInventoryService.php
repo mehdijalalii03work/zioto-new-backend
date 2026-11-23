@@ -24,10 +24,6 @@ class RahkaranInventoryService
             return ['success' => false, 'message' => 'تنظیمات راهکاران کامل نیست', 'updated' => 0];
         }
 
-        $refs = $this->settings->get('product_refs') ?? [];
-        if ($refs === []) {
-            return ['success' => false, 'message' => 'نگاشت کالاهای راهکاران تنظیم نشده است', 'updated' => 0];
-        }
         if (! is_numeric($this->settings->get('inventory_id')) || ! is_numeric($this->settings->get('plant_id'))) {
             return ['success' => false, 'message' => 'شناسه انبار و مرکز نگهداری راهکاران باید تنظیم شوند', 'updated' => 0];
         }
@@ -36,7 +32,7 @@ class RahkaranInventoryService
         $errors = [];
 
         foreach (Product::query()->publiclyListed()->whereNotNull('sku')->get() as $product) {
-            $partRef = $refs[$product->sku] ?? null;
+            $partRef = $product->rahkaran_part_ref;
             if (! $partRef) {
                 $errors[$product->sku] = 'نگاشت کالای راهکاران تنظیم نشده است';
 
@@ -83,7 +79,7 @@ class RahkaranInventoryService
         HesabfaSyncLog::query()->create([
             'sync_type' => 'rahkaran_stock_sync',
             'status' => $errors === [] ? 'success' : 'failed',
-            'request_data' => ['mapped_products' => count($refs)],
+            'request_data' => ['mapped_products' => Product::query()->whereNotNull('rahkaran_part_ref')->count()],
             'response_data' => ['synced_serial_count' => $updated, 'updated_product_count' => $updatedProducts, 'errors' => $errors],
             'error_message' => $errors === [] ? null : implode('; ', array_map(static fn ($sku, $error) => "{$sku}: {$error}", array_keys($errors), $errors)),
         ]);

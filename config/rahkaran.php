@@ -18,7 +18,6 @@ return [
     'password' => env('RAHKARAN_PASSWORD', ''),
     'inventory_id' => env('RAHKARAN_INVENTORY_ID', ''),
     'plant_id' => env('RAHKARAN_PLANT_ID', ''),
-    'product_refs' => json_decode(env('RAHKARAN_PRODUCT_REFS', '{}'), true) ?: [],
     'unit_refs' => json_decode(env('RAHKARAN_UNIT_REFS', '{}'), true) ?: [],
     'regional_division_refs' => json_decode(env('RAHKARAN_REGIONAL_DIVISION_REFS', '{}'), true) ?: [],
     'inventory_voucher_specification_ref' => env('RAHKARAN_INVENTORY_VOUCHER_SPECIFICATION_REF', ''),

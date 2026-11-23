@@ -78,7 +78,6 @@ class ManageSettings extends Page
             'rahkaran_base_url' => $rahkaranSettings->get('base_url'),
             'rahkaran_username' => $rahkaranSettings->get('username'),
             'rahkaran_password' => '',
-            'rahkaran_product_refs' => json_encode($rahkaranSettings->get('product_refs') ?? [], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
             'rahkaran_unit_refs' => json_encode($rahkaranSettings->get('unit_refs') ?? [], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
             'rahkaran_regional_division_refs' => json_encode($rahkaranSettings->get('regional_division_refs') ?? [], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
             'rahkaran_inventory_id' => $rahkaranSettings->get('inventory_id'),
@@ -191,7 +190,6 @@ class ManageSettings extends Page
                                             TextInput::make('rahkaran_tracking_factor_ref')->label('کد موجودیت عامل کنترل سریال در فاکتور'),
                                         ]),
                                         Grid::make(2)->schema([
-                                            Textarea::make('rahkaran_product_refs')->label('نگاشت کد کالا به شناسه راهکاران (JSON)')->rows(8)->required()->rules(['json']),
                                             Textarea::make('rahkaran_unit_refs')->label('نگاشت کد کالا به شناسه واحد (JSON)')->rows(8)->default('{}')->rules(['json']),
                                             Textarea::make('rahkaran_regional_division_refs')->label('نگاشت شناسه شهر سایت به ناحیه راهکاران (JSON)')->rows(8)->default('{}')->rules(['json']),
                                         ]),
@@ -519,11 +517,10 @@ class ManageSettings extends Page
 
     private function saveRahkaranSettings(array $data): void
     {
-        $productRefs = json_decode((string) ($data['rahkaran_product_refs'] ?? '{}'), true);
         $unitRefs = json_decode((string) ($data['rahkaran_unit_refs'] ?? '{}'), true);
         $regionRefs = json_decode((string) ($data['rahkaran_regional_division_refs'] ?? '{}'), true);
-        if (! is_array($productRefs) || ! is_array($unitRefs) || ! is_array($regionRefs)) {
-            throw new \InvalidArgumentException('نگاشت کالاها و واحدهای راهکاران باید JSON معتبر باشد.');
+        if (! is_array($unitRefs) || ! is_array($regionRefs)) {
+            throw new \InvalidArgumentException('نگاشت واحدها و مناطق راهکاران باید JSON معتبر باشد.');
         }
 
         $settings = app(RahkaranSettings::class);
@@ -550,7 +547,6 @@ class ManageSettings extends Page
 
         $settings->save('invoice_recipient_type', (int) ($data['rahkaran_invoice_recipient_type'] ?? 1), 'integer');
         $settings->save('invoice_payer_type', (int) ($data['rahkaran_invoice_payer_type'] ?? 1), 'integer');
-        $settings->save('product_refs', $productRefs, 'json');
         $settings->save('unit_refs', $unitRefs, 'json');
         $settings->save('regional_division_refs', $regionRefs, 'json');
     }

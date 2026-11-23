@@ -59,6 +59,7 @@ class Product extends Model implements HasMedia
         'rahkaran_physical_stock',
         'rahkaran_reserved_stock',
         'rahkaran_serial_tracked',
+        'rahkaran_part_ref',
         'rahkaran_unit_ref',
         'is_nopay',
     ];
@@ -86,6 +87,7 @@ class Product extends Model implements HasMedia
             'rahkaran_physical_stock' => 'integer',
             'rahkaran_reserved_stock' => 'integer',
             'rahkaran_serial_tracked' => 'boolean',
+            'rahkaran_part_ref' => 'integer',
             'rahkaran_unit_ref' => 'integer',
             'contact_only' => 'boolean',
             'is_nopay' => 'boolean',

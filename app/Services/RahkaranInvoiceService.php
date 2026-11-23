@@ -142,7 +142,6 @@ class RahkaranInvoiceService
 
     private function buildInvoice(Order $order, int $customerId, ?int $addressId): array
     {
-        $productRefs = $this->settings->get('product_refs') ?? [];
         $unitRefs = $this->settings->get('unit_refs') ?? [];
         $items = [];
 
@@ -152,7 +151,7 @@ class RahkaranInvoiceService
             }
 
             $product = $item->product->baseProduct ?? $item->product;
-            $partRef = $productRefs[$item->product->sku] ?? $productRefs[$product->sku] ?? null;
+            $partRef = $item->product->rahkaran_part_ref ?? $product->rahkaran_part_ref;
             $unitRef = $item->product->rahkaran_unit_ref
                 ?? $product->rahkaran_unit_ref
                 ?? $unitRefs[$item->product->sku]
@@ -225,7 +224,6 @@ class RahkaranInvoiceService
             return [];
         }
 
-        $productRefs = $this->settings->get('product_refs') ?? [];
         $unitRefs = $this->settings->get('unit_refs') ?? [];
         $factors = [];
 
@@ -244,7 +242,7 @@ class RahkaranInvoiceService
             if ($serials->isEmpty()) {
                 continue;
             }
-            $partRef = $productRefs[$item->product?->sku] ?? $productRefs[$stockProduct?->sku] ?? null;
+            $partRef = $item->product?->rahkaran_part_ref ?? $stockProduct?->rahkaran_part_ref;
             $unitRef = $item->product?->rahkaran_unit_ref
                 ?? $stockProduct?->rahkaran_unit_ref
                 ?? $unitRefs[$item->product?->sku]
