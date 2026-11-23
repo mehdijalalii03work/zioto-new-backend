@@ -27,6 +27,7 @@ return [
     'sales_areas' => [
         'online' => ['gold' => 6, 'silver' => 5, 'services' => 22],
         'digipay' => ['gold' => 29, 'silver' => 30],
+        'smartis' => ['gold' => 39, 'silver' => 38],
         'tapsi' => ['gold' => 31, 'silver' => 32],
     ],
     'sales_office_id' => env('RAHKARAN_SALES_OFFICE_ID', ''),

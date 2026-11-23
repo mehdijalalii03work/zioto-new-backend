@@ -90,7 +90,10 @@ class RahkaranInvoiceService
         }
 
         $gateway = $isTapsi ? null : $order->payments()->where('status', 'paid')->latest('id')->first()?->gateway;
-        $channel = $isTapsi ? 'tapsi' : ($gateway === 'digipay' ? 'digipay' : 'online');
+        $channel = $isTapsi ? 'tapsi' : match ($gateway) {
+            'digipay', 'smartis' => $gateway,
+            default => 'online',
+        };
         $salesTypeId = (string) $this->settings->get($gateway === 'wallet' ? 'sales_types.wallet' : 'sales_types.cash');
 
         if ($order->items->isEmpty()) {

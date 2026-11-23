@@ -44,6 +44,8 @@ class RahkaranInvoiceTest extends TestCase
         return [
             'ordinary gold' => [[], 'digipay', 'failed', ['gold'], [6], '1'],
             'paid Digipay' => [[], 'digipay', 'paid', ['gold', 'silver'], [29, 30], '1'],
+            'paid Smartis' => [[], 'smartis', 'paid', ['gold', 'silver'], [38, 39], '1'],
+            'failed Smartis' => [[], 'smartis', 'failed', ['gold'], [6], '1'],
             'paid wallet' => [[], 'wallet', 'paid', ['gold', 'silver'], [5, 6], '2'],
             'failed wallet' => [[], 'wallet', 'failed', ['gold'], [6], '1'],
             'Tapsi takes precedence' => [['tapsi_order_id' => 'T-1', 'status' => 'completed', 'discount_amount' => 10], 'wallet', 'paid', ['gold', 'silver'], [31, 32], '1'],
@@ -60,6 +62,7 @@ class RahkaranInvoiceTest extends TestCase
         $gateway->shouldReceive('isConfigured')->andReturnTrue();
         foreach ($areas as $area) {
             $gateway->shouldReceive('placeInvoice')->once()->withArgs(fn (array $invoice): bool => $invoice['salesAreaId'] === (string) $area
+                && $invoice['items'][0]['description'] === (in_array($area, [5, 30, 32, 38], true) ? 'silver' : 'gold')
                 && count($invoice['items']) === 1 && $invoice['items'][0]['salesAreaId'] === (string) $area
                 && $invoice['netPrice'] === '100' && $invoice['salesTypeId'] === $salesType)->andReturn(1000 + $area);
         }
