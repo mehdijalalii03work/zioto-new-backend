@@ -45,6 +45,13 @@ class ProductForm
                                     ->label('کد اختصاصی محصول')
                                     ->unique(ignoreRecord: true),
 
+                                Select::make('rahkaran_unit_ref')
+                                    ->label('واحد کالا در راهکاران')
+                                    ->options(config('rahkaran.units'))
+                                    ->searchable()
+                                    ->placeholder('انتخاب واحد راهکاران')
+                                    ->helperText('واحدی که هنگام صدور فاکتور برای این محصول به راهکاران ارسال می‌شود.'),
+
                                 Select::make('status')
                                     ->label('وضعیت انتشار')
                                     ->options([

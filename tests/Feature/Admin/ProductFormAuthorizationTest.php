@@ -136,4 +136,19 @@ class ProductFormAuthorizationTest extends TestCase
         $this->assertInstanceOf(Select::class, $component);
         $this->assertArrayHasKey($product->getKey(), $component->getOptions());
     }
+
+    public function test_product_rahkaran_unit_can_be_selected_and_saved(): void
+    {
+        $admin = User::factory()->create()->assignRole(Role::Admin->value);
+        $product = $this->product();
+
+        Livewire::actingAs($admin, 'web')
+            ->test(EditProduct::class, ['record' => $product->getKey()])
+            ->assertFormFieldExists('rahkaran_unit_ref')
+            ->set('data.rahkaran_unit_ref', 6)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(6, (int) $product->fresh()->rahkaran_unit_ref);
+    }
 }

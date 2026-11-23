@@ -153,7 +153,11 @@ class RahkaranInvoiceService
 
             $product = $item->product->baseProduct ?? $item->product;
             $partRef = $productRefs[$item->product->sku] ?? $productRefs[$product->sku] ?? null;
-            $unitRef = $unitRefs[$item->product->sku] ?? $unitRefs[$product->sku] ?? null;
+            $unitRef = $item->product->rahkaran_unit_ref
+                ?? $product->rahkaran_unit_ref
+                ?? $unitRefs[$item->product->sku]
+                ?? $unitRefs[$product->sku]
+                ?? null;
             if (! $partRef || ! $unitRef) {
                 throw new RuntimeException("نگاشت کالا یا واحد راهکاران برای SKU {$item->product->sku} تنظیم نشده است.");
             }
@@ -241,7 +245,11 @@ class RahkaranInvoiceService
                 continue;
             }
             $partRef = $productRefs[$item->product?->sku] ?? $productRefs[$stockProduct?->sku] ?? null;
-            $unitRef = $unitRefs[$item->product?->sku] ?? $unitRefs[$stockProduct?->sku] ?? null;
+            $unitRef = $item->product?->rahkaran_unit_ref
+                ?? $stockProduct?->rahkaran_unit_ref
+                ?? $unitRefs[$item->product?->sku]
+                ?? $unitRefs[$stockProduct?->sku]
+                ?? null;
 
             foreach ($serials as $serialIndex => $serial) {
                 $factors[] = [
