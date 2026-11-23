@@ -145,7 +145,7 @@ class ManageSettings extends Page
                                     ->description('در هر لحظه فقط منبع انتخاب‌شده موجودی قابل‌فروش سایت را تعیین می‌کند.')
                                     ->schema([
                                         Select::make('inventory_source')
-                                            ->label('منبع موجودی (inventory_source)')
+                                            ->label('منبع موجودی')
                                             ->options([
                                                 'hesabfa' => 'حسابفا',
                                                 'rahkaran' => 'راهکاران',
@@ -157,16 +157,16 @@ class ManageSettings extends Page
                                     ->description('ارسال هر سفارش به هر سامانه مستقل است.')
                                     ->schema([
                                         Toggle::make('send_invoices_to_hesabfa')
-                                            ->label('ارسال فاکتور به حسابفا (send_invoices_to_hesabfa)'),
+                                            ->label('ارسال فاکتور به حسابفا'),
                                         Toggle::make('send_invoices_to_rahkaran')
-                                            ->label('ارسال فاکتور به راهکاران (send_invoices_to_rahkaran)')
+                                            ->label('ارسال فاکتور به راهکاران')
                                             ->helperText('برای ارسال باید تنظیمات مشتری و کدهای کالا در راهکاران معتبر باشند.'),
                                     ]),
                                 Section::make('رهگیری سریال')
                                     ->description('برای هر محصول، رهگیری سریال را در فرم همان محصول روشن کنید. موجودی سایر کالاها فقط از تعداد انبار راهکاران خوانده می‌شود.')
                                     ->schema([
                                         Toggle::make('rahkaran_serial_tracking_enabled')
-                                            ->label('فعال‌سازی رهگیری سریال راهکاران (rahkaran_serial_tracking_enabled)'),
+                                            ->label('فعال‌سازی رهگیری سریال راهکاران'),
                                     ]),
                                 Section::make('اتصال و نگاشت راهکاران')
                                     ->description('کد کالا در نگاشت‌ها کلید و شناسه کالای راهکاران مقدار است. ورود سریال کارخانه فقط در انبار راهکاران انجام می‌شود.')
