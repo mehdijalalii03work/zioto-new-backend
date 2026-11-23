@@ -145,7 +145,7 @@ class ManageSettings extends Page
                                     ->description('در هر لحظه فقط منبع انتخاب‌شده موجودی قابل‌فروش سایت را تعیین می‌کند.')
                                     ->schema([
                                         Select::make('inventory_source')
-                                            ->label('منبع موجودی')
+                                            ->label('منبع موجودی (inventory_source)')
                                             ->options([
                                                 'hesabfa' => 'حسابفا',
                                                 'rahkaran' => 'راهکاران',
@@ -157,41 +157,41 @@ class ManageSettings extends Page
                                     ->description('ارسال هر سفارش به هر سامانه مستقل است.')
                                     ->schema([
                                         Toggle::make('send_invoices_to_hesabfa')
-                                            ->label('ارسال فاکتور به حسابفا'),
+                                            ->label('ارسال فاکتور به حسابفا (send_invoices_to_hesabfa)'),
                                         Toggle::make('send_invoices_to_rahkaran')
-                                            ->label('ارسال فاکتور به راهکاران')
+                                            ->label('ارسال فاکتور به راهکاران (send_invoices_to_rahkaran)')
                                             ->helperText('برای ارسال باید تنظیمات مشتری و کدهای کالا در راهکاران معتبر باشند.'),
                                     ]),
                                 Section::make('رهگیری سریال')
                                     ->description('برای هر محصول، رهگیری سریال را در فرم همان محصول روشن کنید. موجودی سایر کالاها فقط از تعداد انبار راهکاران خوانده می‌شود.')
                                     ->schema([
                                         Toggle::make('rahkaran_serial_tracking_enabled')
-                                            ->label('فعال‌سازی رهگیری سریال راهکاران'),
+                                            ->label('فعال‌سازی رهگیری سریال راهکاران (rahkaran_serial_tracking_enabled)'),
                                     ]),
                                 Section::make('اتصال و نگاشت راهکاران')
                                     ->description('کد کالا در نگاشت‌ها کلید و شناسه کالای راهکاران مقدار است. ورود سریال کارخانه فقط در انبار راهکاران انجام می‌شود.')
                                     ->schema([
                                         Grid::make(2)->schema([
-                                            TextInput::make('rahkaran_base_url')->label('نشانی پایه راهکاران')->url(),
-                                            TextInput::make('rahkaran_username')->label('نام کاربری'),
-                                            TextInput::make('rahkaran_password')->label('گذرواژه')->password()->revealable(),
-                                            TextInput::make('rahkaran_inventory_id')->label('شناسه انبار'),
-                                            TextInput::make('rahkaran_plant_id')->label('شناسه مرکز نگهداری'),
-                                            TextInput::make('rahkaran_inventory_voucher_specification_ref')->label('الگوی سند انبار ورودی'),
-                                            TextInput::make('rahkaran_fiscal_year_ref')->label('شناسه سال مالی'),
-                                            TextInput::make('rahkaran_ledger_ref')->label('شناسه دفترکل'),
-                                            TextInput::make('rahkaran_branch_id')->label('شناسه شعبه'),
-                                            TextInput::make('rahkaran_sales_area_id')->label('شناسه حوزه فروش'),
-                                            TextInput::make('rahkaran_sales_office_id')->label('شناسه مرکز فروش'),
-                                            TextInput::make('rahkaran_sales_type_id')->label('شناسه نحوه فروش'),
-                                            TextInput::make('rahkaran_currency_id')->label('شناسه ارز')->default('1'),
-                                            TextInput::make('rahkaran_invoice_recipient_type')->label('نوع تحویل‌گیرنده فاکتور')->numeric()->default(1),
-                                            TextInput::make('rahkaran_invoice_payer_type')->label('نوع پرداخت‌کننده فاکتور')->numeric()->default(1),
-                                            TextInput::make('rahkaran_tracking_factor_ref')->label('کد موجودیت عامل کنترل سریال در فاکتور'),
+                                            TextInput::make('rahkaran_base_url')->label('نشانی پایه راهکاران (base_url)')->url(),
+                                            TextInput::make('rahkaran_username')->label('نام کاربری (username)'),
+                                            TextInput::make('rahkaran_password')->label('گذرواژه (password)')->password()->revealable(),
+                                            TextInput::make('rahkaran_inventory_id')->label('شناسه انبار (InventoryID)'),
+                                            TextInput::make('rahkaran_plant_id')->label('شناسه مرکز نگهداری (PlantID)'),
+                                            TextInput::make('rahkaran_inventory_voucher_specification_ref')->label('الگوی سند انبار ورودی (inventory_voucher_specification_ref)'),
+                                            TextInput::make('rahkaran_fiscal_year_ref')->label('شناسه سال مالی (fiscal_year_ref)'),
+                                            TextInput::make('rahkaran_ledger_ref')->label('شناسه دفترکل (ledger_ref)'),
+                                            TextInput::make('rahkaran_branch_id')->label('شناسه شعبه (branch_id)'),
+                                            TextInput::make('rahkaran_sales_area_id')->label('شناسه حوزه فروش (salesAreaId)'),
+                                            TextInput::make('rahkaran_sales_office_id')->label('شناسه مرکز فروش (salesOfficeId)'),
+                                            TextInput::make('rahkaran_sales_type_id')->label('شناسه نحوه فروش (salesTypeId)'),
+                                            TextInput::make('rahkaran_currency_id')->label('شناسه ارز (currencyId)')->default('1'),
+                                            TextInput::make('rahkaran_invoice_recipient_type')->label('نوع تحویل‌گیرنده فاکتور (recipientType)')->numeric()->default(1),
+                                            TextInput::make('rahkaran_invoice_payer_type')->label('نوع پرداخت‌کننده فاکتور (payerType)')->numeric()->default(1),
+                                            TextInput::make('rahkaran_tracking_factor_ref')->label('کد موجودیت عامل کنترل سریال در فاکتور (sys__entityCode)'),
                                         ]),
                                         Grid::make(2)->schema([
-                                            Textarea::make('rahkaran_unit_refs')->label('نگاشت کد کالا به شناسه واحد (JSON)')->rows(8)->default('{}')->rules(['json']),
-                                            Textarea::make('rahkaran_regional_division_refs')->label('نگاشت شناسه شهر سایت به ناحیه راهکاران (JSON)')->rows(8)->default('{}')->rules(['json']),
+                                            Textarea::make('rahkaran_unit_refs')->label('نگاشت کد کالا به شناسه واحد (JSON) (unitId)')->rows(8)->default('{}')->rules(['json']),
+                                            Textarea::make('rahkaran_regional_division_refs')->label('نگاشت شناسه شهر سایت به ناحیه راهکاران (JSON) (RegionalDivisionRef)')->rows(8)->default('{}')->rules(['json']),
                                         ]),
                                     ]),
                             ]),
