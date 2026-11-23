@@ -163,6 +163,6 @@ class ProductFormAuthorizationTest extends TestCase
             ->getSchema('form')
             ->getComponentByStatePath('rahkaran_unit_ref', withHidden: true);
 
-        $this->assertSame('عدد - 6', $component->getOptions()[6]);
+        $this->assertSame('عدد - شناسه: 6', $component->getOptions()[6]);
     }
 }
