@@ -42,24 +42,26 @@ class RahkaranInvoiceTest extends TestCase
     public static function routes(): array
     {
         return [
-            'ordinary gold' => [[], 'failed', ['gold'], [6]],
-            'paid Digipay' => [[], 'paid', ['gold', 'silver'], [29, 30]],
-            'Tapsi takes precedence' => [['tapsi_order_id' => 'T-1', 'status' => 'completed', 'discount_amount' => 10], 'paid', ['gold', 'silver'], [31, 32]],
+            'ordinary gold' => [[], 'digipay', 'failed', ['gold'], [6], '1'],
+            'paid Digipay' => [[], 'digipay', 'paid', ['gold', 'silver'], [29, 30], '1'],
+            'paid wallet' => [[], 'wallet', 'paid', ['gold', 'silver'], [5, 6], '2'],
+            'failed wallet' => [[], 'wallet', 'failed', ['gold'], [6], '1'],
+            'Tapsi takes precedence' => [['tapsi_order_id' => 'T-1', 'status' => 'completed', 'discount_amount' => 10], 'wallet', 'paid', ['gold', 'silver'], [31, 32], '1'],
         ];
     }
 
     #[DataProvider('routes')]
-    public function test_order_is_split_by_sales_channel_and_metal(array $attributes, string $paymentStatus, array $metals, array $areas): void
+    public function test_order_is_split_by_sales_channel_and_metal(array $attributes, string $gatewayName, string $paymentStatus, array $metals, array $areas, string $salesType): void
     {
         $this->enableInvoicing();
         $order = $this->order($attributes, $metals);
-        $order->payments()->create(['transaction_id' => 'test-digipay', 'gateway' => 'digipay', 'status' => $paymentStatus, 'amount' => 200]);
+        $order->payments()->create(['transaction_id' => 'test-digipay', 'gateway' => $gatewayName, 'status' => $paymentStatus, 'amount' => 200]);
         $gateway = $this->mock(RahkaranService::class);
         $gateway->shouldReceive('isConfigured')->andReturnTrue();
         foreach ($areas as $area) {
             $gateway->shouldReceive('placeInvoice')->once()->withArgs(fn (array $invoice): bool => $invoice['salesAreaId'] === (string) $area
                 && count($invoice['items']) === 1 && $invoice['items'][0]['salesAreaId'] === (string) $area
-                && $invoice['netPrice'] === '100')->andReturn(1000 + $area);
+                && $invoice['netPrice'] === '100' && $invoice['salesTypeId'] === $salesType)->andReturn(1000 + $area);
         }
 
         $result = app(RahkaranInvoiceService::class)->syncOrder($order);

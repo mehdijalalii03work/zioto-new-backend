@@ -89,10 +89,9 @@ class RahkaranInvoiceService
             throw new RuntimeException('ثبت سند حوزه آنلاین - خدمات برای هزینه ارسال، کارمزد یا تخفیف هنوز آماده نیست.');
         }
 
-        $channel = $isTapsi ? 'tapsi' : 'online';
-        if (! $isTapsi && $order->payments()->where('status', 'paid')->latest('id')->first()?->gateway === 'digipay') {
-            $channel = 'digipay';
-        }
+        $gateway = $isTapsi ? null : $order->payments()->where('status', 'paid')->latest('id')->first()?->gateway;
+        $channel = $isTapsi ? 'tapsi' : ($gateway === 'digipay' ? 'digipay' : 'online');
+        $salesTypeId = (string) $this->settings->get($gateway === 'wallet' ? 'sales_types.wallet' : 'sales_types.cash');
 
         if ($order->items->isEmpty()) {
             throw new RuntimeException('سفارش قلمی برای ثبت فاکتور ندارد.');
@@ -110,7 +109,7 @@ class RahkaranInvoiceService
 
         $plans = [];
         foreach ($groups as $area => $items) {
-            $plans[$area]['payload'] = $this->buildInvoice($order, $items, $area);
+            $plans[$area]['payload'] = $this->buildInvoice($order, $items, $area, $salesTypeId);
         }
 
         if (setting('rahkaran_serial_tracking_enabled', false) || setting('inventory_source', 'hesabfa') === 'rahkaran') {
@@ -226,7 +225,7 @@ class RahkaranInvoiceService
         return $addressId;
     }
 
-    private function buildInvoice(Order $order, Collection $group, int $area): array
+    private function buildInvoice(Order $order, Collection $group, int $area, string $salesTypeId): array
     {
         $unitRefs = $this->settings->get('unit_refs') ?? [];
         $items = [];
@@ -276,7 +275,7 @@ class RahkaranInvoiceService
             'oneTimeCustomerId' => '',
             'salesAreaId' => (string) $area,
             'salesOfficeId' => (string) $this->settings->get('sales_office_id'),
-            'salesTypeId' => (string) $this->settings->get('sales_type_id'),
+            'salesTypeId' => $salesTypeId,
             'date' => '/Date('.now()->getTimestampMs().now()->format('O').')/',
             'addressId' => '',
             'currencyId' => (string) $this->settings->get('currency_id'),

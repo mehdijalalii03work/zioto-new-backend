@@ -30,7 +30,7 @@ return [
         'tapsi' => ['gold' => 31, 'silver' => 32],
     ],
     'sales_office_id' => env('RAHKARAN_SALES_OFFICE_ID', ''),
-    'sales_type_id' => env('RAHKARAN_SALES_TYPE_ID', ''),
+    'sales_types' => ['cash' => 1, 'wallet' => 2],
     'currency_id' => env('RAHKARAN_CURRENCY_ID', '1'),
     'invoice_recipient_type' => (int) env('RAHKARAN_INVOICE_RECIPIENT_TYPE', 1),
     'invoice_payer_type' => (int) env('RAHKARAN_INVOICE_PAYER_TYPE', 1),
