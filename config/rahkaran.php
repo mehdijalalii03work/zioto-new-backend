@@ -24,7 +24,11 @@ return [
     'fiscal_year_ref' => env('RAHKARAN_FISCAL_YEAR_REF', ''),
     'ledger_ref' => env('RAHKARAN_LEDGER_REF', ''),
     'branch_id' => env('RAHKARAN_BRANCH_ID', ''),
-    'sales_area_id' => env('RAHKARAN_SALES_AREA_ID', ''),
+    'sales_areas' => [
+        'online' => ['gold' => 6, 'silver' => 5, 'services' => 22],
+        'digipay' => ['gold' => 29, 'silver' => 30],
+        'tapsi' => ['gold' => 31, 'silver' => 32],
+    ],
     'sales_office_id' => env('RAHKARAN_SALES_OFFICE_ID', ''),
     'sales_type_id' => env('RAHKARAN_SALES_TYPE_ID', ''),
     'currency_id' => env('RAHKARAN_CURRENCY_ID', '1'),

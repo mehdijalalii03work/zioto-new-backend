@@ -336,9 +336,20 @@ class ViewOrder extends ViewRecord
                             ->schema([
                                 Grid::make(3)->schema([
                                     TextEntry::make('rahkaran_sync_status')->label('وضعیت ارسال'),
-                                    TextEntry::make('rahkaran_invoice_id')->label('شناسه فاکتور راهکاران'),
+                                    TextEntry::make('rahkaran_invoice_id')->label('شناسه فاکتور قبلی راهکاران')
+                                        ->visible(fn ($record): bool => filled($record->rahkaran_invoice_id)),
                                     TextEntry::make('rahkaran_sync_error')->label('خطای آخر')->columnSpanFull(),
                                 ]),
+                                RepeatableEntry::make('rahkaranInvoices')
+                                    ->label('فاکتورهای راهکاران')
+                                    ->columns(4)
+                                    ->schema([
+                                        TextEntry::make('sales_area_id')->label('شناسه حوزه فروش'),
+                                        TextEntry::make('remote_id')->label('شناسه فاکتور')->placeholder('در انتظار ثبت'),
+                                        TextEntry::make('status')->label('وضعیت ثبت'),
+                                        TextEntry::make('serial_status')->label('وضعیت سریال‌ها'),
+                                        TextEntry::make('last_error')->label('خطای آخر')->columnSpanFull(),
+                                    ]),
                             ]),
 
                         // ==========================================
@@ -510,7 +521,7 @@ class ViewOrder extends ViewRecord
                     }
                     $notification->send();
 
-                    $this->refreshFormData(['rahkaran_invoice_id', 'rahkaran_synced_at', 'rahkaran_sync_status']);
+                    $record->refresh();
                 }),
 
             Action::make('edit')

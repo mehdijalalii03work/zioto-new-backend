@@ -3,6 +3,11 @@
 namespace App\Services;
 
 use App\Models\HesabfaSyncLog;
+use App\Models\RahkaranInvoice;
+use Closure;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Modules\Order\Models\Order;
 use RuntimeException;
@@ -17,67 +22,42 @@ class RahkaranInvoiceService
 
     public function syncOrder(Order $order, bool $force = false): array
     {
-        $serialTrackingEnabled = setting('rahkaran_serial_tracking_enabled', false)
-            || setting('inventory_source', 'hesabfa') === 'rahkaran';
-
-        if ($order->payment_status !== 'paid' || ! in_array($order->status, ['confirmed', 'completed'], true)) {
-            return ['success' => false, 'message' => 'فقط سفارش پرداخت‌شده و تأییدشده یا تکمیل‌شده به راهکاران ارسال می‌شود'];
+        $lock = Cache::lock("rahkaran:invoice:{$order->id}", 900);
+        if (! $lock->get()) {
+            return ['success' => false, 'message' => 'ارسال این سفارش به راهکاران در حال انجام است'];
         }
-
-        if (! setting('send_invoices_to_rahkaran', false)) {
-            return ['success' => false, 'message' => 'ارسال فاکتور به راهکاران غیرفعال است'];
-        }
-
-        if (! $this->rahkaran->isConfigured()) {
-            return $this->fail($order, 'تنظیمات اتصال راهکاران کامل نیست');
-        }
-
-        $claim = DB::transaction(function () use ($order): array {
-            $lockedOrder = Order::query()->lockForUpdate()->find($order->id);
-            if (! $lockedOrder) {
-                return ['order' => null, 'message' => 'سفارش یافت نشد'];
-            }
-
-            if ($lockedOrder->rahkaran_invoice_id && $lockedOrder->rahkaran_sync_status === 'success') {
-                return ['order' => null, 'message' => 'سفارش قبلاً به راهکاران ارسال شده'];
-            }
-
-            if ($lockedOrder->rahkaran_sync_status === 'processing') {
-                return ['order' => null, 'message' => 'ارسال این سفارش به راهکاران در حال انجام است'];
-            }
-
-            $lockedOrder->forceFill(['rahkaran_sync_status' => 'processing', 'rahkaran_sync_error' => null])->saveQuietly();
-
-            return ['order' => $lockedOrder, 'message' => null];
-        });
-        if (! $claim['order']) {
-            return ['success' => false, 'message' => $claim['message']];
-        }
-        $order = $claim['order'];
 
         try {
+            $order->refresh();
+            if ($order->payment_status !== 'paid' || ! in_array($order->status, ['confirmed', 'completed'], true)) {
+                return ['success' => false, 'message' => 'فقط سفارش پرداخت‌شده و تأییدشده یا تکمیل‌شده به راهکاران ارسال می‌شود'];
+            }
+            if (! setting('send_invoices_to_rahkaran', false)) {
+                return ['success' => false, 'message' => 'ارسال فاکتور به راهکاران غیرفعال است'];
+            }
+
+            $invoices = $order->rahkaranInvoices()->orderBy('sales_area_id')->get();
+            if ($order->rahkaran_sync_status === 'success' || ($order->rahkaran_invoice_id && $invoices->isEmpty())) {
+                return ['success' => true, 'message' => 'سفارش قبلاً به راهکاران ارسال شده'];
+            }
+            if (! $this->rahkaran->isConfigured()) {
+                throw new RuntimeException('تنظیمات اتصال راهکاران کامل نیست');
+            }
+            $order->forceFill(['rahkaran_sync_status' => 'processing', 'rahkaran_sync_error' => null])->saveQuietly();
             $order->load(['items.product.baseProduct', 'items.rahkaranSerials', 'user', 'address', 'shipping']);
-            if ($serialTrackingEnabled) {
-                $this->inventory->reserveForOrder($order);
-                $order->load('items.rahkaranSerials');
+
+            if ($invoices->isEmpty()) {
+                $this->prepareInvoices($order);
+                $invoices = $order->rahkaranInvoices()->orderBy('sales_area_id')->get();
             }
 
-            $customerId = $order->rahkaran_customer_id ?: $this->findCustomerId($order);
-            $addressId = $this->ensureCustomerAddress($order, $customerId);
-            $invoiceId = (int) $order->rahkaran_invoice_id;
-            if ($invoiceId === 0) {
-                $invoiceId = $this->rahkaran->placeInvoice($this->buildInvoice($order, $customerId, $addressId));
-                $order->forceFill(['rahkaran_customer_id' => $customerId, 'rahkaran_invoice_id' => $invoiceId])->saveQuietly();
+            foreach ($invoices as $invoice) {
+                $this->sendInvoice($invoice);
             }
+
             $this->inventory->finalizeOrder($order);
-            $trackingFactors = $this->buildTrackingFactors($order, $invoiceId);
-            if ($trackingFactors !== []) {
-                $this->rahkaran->addInvoiceTrackingFactors($invoiceId, $trackingFactors);
-            }
-
+            $invoiceIds = $invoices->pluck('remote_id')->all();
             $order->forceFill([
-                'rahkaran_customer_id' => $customerId,
-                'rahkaran_invoice_id' => $invoiceId,
                 'rahkaran_synced_at' => now(),
                 'rahkaran_sync_status' => 'success',
                 'rahkaran_sync_error' => null,
@@ -88,12 +68,118 @@ class RahkaranInvoiceService
                 'sync_type' => 'rahkaran_invoice',
                 'status' => 'success',
                 'request_data' => ['order_number' => $order->order_number],
-                'response_data' => ['invoice_id' => $invoiceId, 'customer_id' => $customerId],
+                'response_data' => ['invoice_ids' => $invoiceIds, 'customer_id' => $order->rahkaran_customer_id],
             ]);
 
-            return ['success' => true, 'message' => 'فاکتور به راهکاران ارسال شد', 'invoice_id' => $invoiceId];
+            return ['success' => true, 'message' => 'فاکتورهای راهکاران ثبت شدند', 'invoice_ids' => $invoiceIds];
         } catch (\Throwable $exception) {
             return $this->fail($order, $exception->getMessage());
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function prepareInvoices(Order $order): void
+    {
+        $isTapsi = filled($order->tapsi_order_id);
+        $notes = json_decode((string) $order->notes, true) ?: [];
+        if (! $isTapsi && ((int) $order->discount_amount !== 0
+            || (int) ($order->shipping?->shipping_cost ?? 0) !== 0
+            || (int) ($notes['installment_fee'] ?? 0) !== 0)) {
+            throw new RuntimeException('ثبت سند حوزه آنلاین - خدمات برای هزینه ارسال، کارمزد یا تخفیف هنوز آماده نیست.');
+        }
+
+        $channel = $isTapsi ? 'tapsi' : 'online';
+        if (! $isTapsi && $order->payments()->where('status', 'paid')->latest('id')->first()?->gateway === 'digipay') {
+            $channel = 'digipay';
+        }
+
+        if ($order->items->isEmpty()) {
+            throw new RuntimeException('سفارش قلمی برای ثبت فاکتور ندارد.');
+        }
+
+        $groups = $order->items->groupBy(function ($item) use ($channel): int {
+            $metal = $item->product?->metal_type?->value;
+            $area = (int) config("rahkaran.sales_areas.{$channel}.{$metal}");
+            if ($area <= 0) {
+                throw new RuntimeException("حوزه فروش راهکاران برای {$item->product_name} مشخص نیست.");
+            }
+
+            return $area;
+        });
+
+        $plans = [];
+        foreach ($groups as $area => $items) {
+            $plans[$area]['payload'] = $this->buildInvoice($order, $items, $area);
+        }
+
+        if (setting('rahkaran_serial_tracking_enabled', false) || setting('inventory_source', 'hesabfa') === 'rahkaran') {
+            $this->inventory->reserveForOrder($order);
+            $order->items->load('rahkaranSerials');
+        }
+        foreach ($groups as $area => $items) {
+            $plans[$area]['tracking_factors'] = $this->buildTrackingFactors($items, $plans[$area]['payload']['items']);
+        }
+
+        $customerId = $order->rahkaran_customer_id ?: $this->findCustomerId($order);
+        $addressId = $this->ensureCustomerAddress($order, $customerId);
+
+        DB::transaction(function () use ($order, $plans, $customerId, $addressId): void {
+            foreach ($plans as $area => $plan) {
+                $plan['payload']['customerId'] = (string) $customerId;
+                $plan['payload']['addressId'] = (string) ($addressId ?? '');
+                $order->rahkaranInvoices()->create(['sales_area_id' => $area, ...$plan]);
+            }
+            $order->forceFill(['rahkaran_customer_id' => $customerId])->saveQuietly();
+        });
+    }
+
+    private function sendInvoice(RahkaranInvoice $invoice): void
+    {
+        foreach (['status', 'serial_status'] as $stage) {
+            if (in_array($invoice->{$stage}, ['submitting', 'reconciliation'], true)) {
+                $message = "نتیجه ثبت حوزه {$invoice->sales_area_id} باید در راهکاران تطبیق داده شود.";
+                $invoice->update([$stage => 'reconciliation', 'last_error' => $message]);
+
+                throw new RuntimeException($message);
+            }
+        }
+
+        if (! $invoice->remote_id) {
+            $this->submit($invoice, 'status', function () use ($invoice): array {
+                return ['remote_id' => $this->rahkaran->placeInvoice($invoice->payload)];
+            });
+        }
+        if ($invoice->serial_status !== 'success') {
+            if ($invoice->tracking_factors === []) {
+                $invoice->update(['serial_status' => 'success', 'last_error' => null]);
+
+                return;
+            }
+
+            $this->submit($invoice, 'serial_status', function () use ($invoice): array {
+                $factors = array_map(fn (array $factor): array => [...$factor, '_MasterRef' => $invoice->remote_id], $invoice->tracking_factors);
+                $this->rahkaran->addInvoiceTrackingFactors($invoice->remote_id, $factors);
+
+                return [];
+            });
+        }
+    }
+
+    private function submit(RahkaranInvoice $invoice, string $stage, Closure $request): void
+    {
+        $invoice->update([$stage => 'submitting']);
+        try {
+            $invoice->update([...$request(), $stage => 'success', 'last_error' => null]);
+        } catch (\Throwable $exception) {
+            $rejected = $exception instanceof RequestException
+                && in_array($exception->response->status(), [400, 401, 403, 404, 422, 429], true);
+            $message = $rejected
+                ? "ثبت حوزه {$invoice->sales_area_id} توسط راهکاران رد شد (HTTP {$exception->response->status()})."
+                : "نتیجه ثبت حوزه {$invoice->sales_area_id} باید در راهکاران تطبیق داده شود.";
+            $invoice->update([$stage => $rejected ? 'failed' : 'reconciliation', 'last_error' => $message]);
+
+            throw new RuntimeException($message, previous: $exception);
         }
     }
 
@@ -140,12 +226,12 @@ class RahkaranInvoiceService
         return $addressId;
     }
 
-    private function buildInvoice(Order $order, int $customerId, ?int $addressId): array
+    private function buildInvoice(Order $order, Collection $group, int $area): array
     {
         $unitRefs = $this->settings->get('unit_refs') ?? [];
         $items = [];
 
-        foreach ($order->items as $index => $item) {
+        foreach ($group->values() as $index => $item) {
             if (! $item->product) {
                 throw new RuntimeException("محصول سفارش {$item->product_name} حذف شده است.");
             }
@@ -166,7 +252,7 @@ class RahkaranInvoiceService
                 'index' => $index + 1,
                 'productId' => (string) $partRef,
                 'quantity' => (string) (int) $item->quantity,
-                'salesAreaId' => (string) $this->settings->get('sales_area_id'),
+                'salesAreaId' => (string) $area,
                 'type' => 1,
                 'fee' => (string) $item->product_price,
                 'price' => (string) $item->subtotal,
@@ -181,53 +267,42 @@ class RahkaranInvoiceService
             ];
         }
 
-        if ($items === []) {
-            throw new RuntimeException('سفارش قلمی برای ثبت فاکتور ندارد.');
-        }
-
-        $notes = json_decode((string) $order->notes, true) ?: [];
-        $additions = (int) ($order->shipping?->shipping_cost ?? 0) + (int) ($notes['installment_fee'] ?? 0);
-        $itemsTotal = array_sum(array_map(static fn ($item): int => (int) $item->subtotal, $order->items->all()));
+        $itemsTotal = $group->sum(fn ($item): int => (int) $item->subtotal);
 
         return [
             'id' => '-1',
             'recipientType' => (int) $this->settings->get('invoice_recipient_type'),
-            'customerId' => (string) $customerId,
+            'customerId' => '',
             'oneTimeCustomerId' => '',
-            'salesAreaId' => (string) $this->settings->get('sales_area_id'),
+            'salesAreaId' => (string) $area,
             'salesOfficeId' => (string) $this->settings->get('sales_office_id'),
             'salesTypeId' => (string) $this->settings->get('sales_type_id'),
             'date' => '/Date('.now()->getTimestampMs().now()->format('O').')/',
-            'addressId' => (string) ($addressId ?? ''),
+            'addressId' => '',
             'currencyId' => (string) $this->settings->get('currency_id'),
             'payerType' => (int) $this->settings->get('invoice_payer_type'),
             'plantId' => (string) $this->settings->get('plant_id'),
             'inventoryId' => (string) $this->settings->get('inventory_id'),
-            'price' => (string) ($itemsTotal + $additions),
-            'netPrice' => (string) $order->total_amount,
-            'additionAmount' => (string) $additions,
-            'reductionAmount' => (string) $order->discount_amount,
-            'description' => 'سفارش سایت زیوتو '.$order->order_number,
+            'price' => (string) $itemsTotal,
+            'netPrice' => (string) $itemsTotal,
+            'additionAmount' => '0',
+            'reductionAmount' => '0',
+            'description' => 'سفارش زیوتو '.$order->order_number.' / '.$area,
             'items' => $items,
         ];
     }
 
-    private function buildTrackingFactors(Order $order, int $invoiceId): array
+    private function buildTrackingFactors(Collection $group, array $invoiceItems): array
     {
         $factorRef = (int) $this->settings->get('tracking_factor_ref');
-        $hasAssignedSerials = $order->items->contains(fn ($item) => $item->rahkaranSerials->isNotEmpty());
+        $hasAssignedSerials = $group->contains(fn ($item) => $item->rahkaranSerials->isNotEmpty());
         if ($factorRef <= 0 && $hasAssignedSerials) {
             throw new RuntimeException('شناسه عامل کنترل موجودی سریال در تنظیمات راهکاران وارد نشده است.');
         }
 
-        if ($factorRef <= 0) {
-            return [];
-        }
-
-        $unitRefs = $this->settings->get('unit_refs') ?? [];
         $factors = [];
 
-        foreach ($order->items as $rowIndex => $item) {
+        foreach ($group->values() as $rowIndex => $item) {
             $serials = $item->rahkaranSerials->pluck('serial')->values();
             $stockProduct = $item->product?->baseProduct ?? $item->product;
             $serialAllocationEnabled = setting('rahkaran_serial_tracking_enabled', false)
@@ -242,20 +317,14 @@ class RahkaranInvoiceService
             if ($serials->isEmpty()) {
                 continue;
             }
-            $partRef = $item->product?->rahkaran_part_ref ?? $stockProduct?->rahkaran_part_ref;
-            $unitRef = $item->product?->rahkaran_unit_ref
-                ?? $stockProduct?->rahkaran_unit_ref
-                ?? $unitRefs[$item->product?->sku]
-                ?? $unitRefs[$stockProduct?->sku]
-                ?? null;
+            $line = $invoiceItems[$rowIndex];
 
-            foreach ($serials as $serialIndex => $serial) {
+            foreach ($serials as $serial) {
                 $factors[] = [
                     'ID' => 0,
-                    '_MasterRef' => $invoiceId,
                     'Radif' => $rowIndex + 1,
-                    'MahsolRef' => (int) $partRef,
-                    'VahedRef' => (int) $unitRef,
+                    'MahsolRef' => (int) $line['productId'],
+                    'VahedRef' => (int) $line['unitId'],
                     'AmelKontrolMojodi' => (string) $serial,
                     'Meghdar' => 1,
                     'Sys__EntityModificationState' => 'New',

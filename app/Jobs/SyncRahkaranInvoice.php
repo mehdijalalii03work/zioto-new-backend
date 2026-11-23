@@ -16,17 +16,18 @@ class SyncRahkaranInvoice implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public bool $afterCommit = true;
-
     public int $tries = 3;
 
     public array $backoff = [30, 120];
 
-    public function __construct(public int $orderId) {}
+    public function __construct(public int $orderId)
+    {
+        $this->afterCommit();
+    }
 
     public function handle(RahkaranInvoiceService $invoices): void
     {
-        $order = Order::query()->find($this->orderId);
+        $order = Order::withoutTenantScope()->find($this->orderId);
         if (! $order) {
             return;
         }

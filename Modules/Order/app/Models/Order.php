@@ -6,6 +6,7 @@ use App\Models\DiscountCode;
 use App\Models\HesabfaSyncLog;
 use App\Models\OrderNote;
 use App\Models\OrderShipping;
+use App\Models\RahkaranInvoice;
 use App\Models\RahkaranSerial;
 use App\Models\User;
 use App\Models\UserAddress;
@@ -95,6 +96,11 @@ class Order extends Model
             'hesabfa_synced_at' => 'datetime',
             'rahkaran_synced_at' => 'datetime',
         ];
+    }
+
+    public function rahkaranInvoices(): HasMany
+    {
+        return $this->hasMany(RahkaranInvoice::class);
     }
 
     public function items(): HasMany

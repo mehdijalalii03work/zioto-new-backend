@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SyncRahkaranInvoice;
 use App\Models\User;
 use App\Support\Platform;
 use Illuminate\Support\Carbon;
@@ -98,6 +99,14 @@ class TapsiOrderProjector
                     'shipping_cost' => 0,
                     'tracking_number' => $shipment['number'] ?? null,
                 ]);
+            }
+
+            if (in_array($order->status, ['confirmed', 'completed'], true)
+                && $seenItemIds !== []
+                && ! $order->rahkaran_invoice_id
+                && $order->rahkaran_sync_status !== 'success'
+                && setting('send_invoices_to_rahkaran', false)) {
+                SyncRahkaranInvoice::dispatch($order->id)->afterCommit();
             }
 
             return $order->refresh();
