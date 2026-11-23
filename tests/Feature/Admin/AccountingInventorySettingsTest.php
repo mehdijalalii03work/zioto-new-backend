@@ -7,6 +7,7 @@ use App\Filament\Pages\ManageSettings;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\HesabfaService;
+use App\Services\RahkaranSettings;
 use App\Services\StockSyncService;
 use Database\Seeders\RolePermissionSeeder;
 use Filament\Facades\Filament;
@@ -55,6 +56,27 @@ class AccountingInventorySettingsTest extends TestCase
         $this->assertSame('rahkaran', Setting::where('key', 'inventory_source')->value('value'));
         $this->assertSame('false', Setting::where('key', 'send_invoices_to_hesabfa')->value('value'));
         $this->assertSame('inventory', Setting::where('key', 'inventory_source')->value('category'));
+    }
+
+    public function test_rahkaran_connection_uses_config_instead_of_legacy_database_settings(): void
+    {
+        $admin = User::factory()->create()->assignRole(Role::Admin->value);
+        config(['rahkaran.inventory_id' => '181']);
+        Setting::create([
+            'key' => 'rahkaran_config_inventory_id',
+            'value' => '999',
+            'label' => 'Legacy Rahkaran inventory ID',
+            'type' => 'string',
+            'category' => 'accounting',
+        ]);
+
+        $this->assertSame('181', app(RahkaranSettings::class)->get('inventory_id'));
+
+        Livewire::actingAs($admin, 'web')
+            ->test(ManageSettings::class)
+            ->assertFormFieldDoesNotExist('rahkaran_password')
+            ->assertFormFieldDoesNotExist('rahkaran_inventory_id')
+            ->assertFormFieldExists('inventory_source');
     }
 
     public function test_hesabfa_stock_sync_is_skipped_when_rahkaran_is_selected(): void

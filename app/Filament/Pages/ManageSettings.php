@@ -6,7 +6,6 @@ use App\Enums\Permission;
 use App\Models\Setting;
 use App\Services\RahkaranInventoryService;
 use App\Services\RahkaranService;
-use App\Services\RahkaranSettings;
 use App\Services\StockSyncService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -45,8 +44,6 @@ class ManageSettings extends Page
 
     public function mount(): void
     {
-        $rahkaranSettings = app(RahkaranSettings::class);
-
         $this->form->fill([
             'tax_gold' => setting('tax_gold', 0),
             'tax_silver' => setting('tax_silver', 0),
@@ -75,24 +72,6 @@ class ManageSettings extends Page
             'send_invoices_to_hesabfa' => setting('send_invoices_to_hesabfa', config('hesabfa.auto_sync', true)),
             'send_invoices_to_rahkaran' => setting('send_invoices_to_rahkaran', false),
             'rahkaran_serial_tracking_enabled' => setting('rahkaran_serial_tracking_enabled', false),
-            'rahkaran_base_url' => $rahkaranSettings->get('base_url'),
-            'rahkaran_username' => $rahkaranSettings->get('username'),
-            'rahkaran_password' => '',
-            'rahkaran_unit_refs' => json_encode($rahkaranSettings->get('unit_refs') ?? [], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
-            'rahkaran_regional_division_refs' => json_encode($rahkaranSettings->get('regional_division_refs') ?? [], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
-            'rahkaran_inventory_id' => $rahkaranSettings->get('inventory_id'),
-            'rahkaran_plant_id' => $rahkaranSettings->get('plant_id'),
-            'rahkaran_inventory_voucher_specification_ref' => $rahkaranSettings->get('inventory_voucher_specification_ref'),
-            'rahkaran_fiscal_year_ref' => $rahkaranSettings->get('fiscal_year_ref'),
-            'rahkaran_ledger_ref' => $rahkaranSettings->get('ledger_ref'),
-            'rahkaran_branch_id' => $rahkaranSettings->get('branch_id'),
-            'rahkaran_sales_area_id' => $rahkaranSettings->get('sales_area_id'),
-            'rahkaran_sales_office_id' => $rahkaranSettings->get('sales_office_id'),
-            'rahkaran_sales_type_id' => $rahkaranSettings->get('sales_type_id'),
-            'rahkaran_currency_id' => $rahkaranSettings->get('currency_id'),
-            'rahkaran_invoice_recipient_type' => $rahkaranSettings->get('invoice_recipient_type'),
-            'rahkaran_invoice_payer_type' => $rahkaranSettings->get('invoice_payer_type'),
-            'rahkaran_tracking_factor_ref' => $rahkaranSettings->get('tracking_factor_ref'),
             'tapsi_emergency_status' => setting('tapsi_emergency_status', 'open'),
             'tapsi_auth_token' => config('tapsi.auth_token'),
             'tapsi_auth_name' => config('tapsi.auth_name'),
@@ -167,32 +146,6 @@ class ManageSettings extends Page
                                     ->schema([
                                         Toggle::make('rahkaran_serial_tracking_enabled')
                                             ->label('فعال‌سازی رهگیری سریال راهکاران'),
-                                    ]),
-                                Section::make('اتصال و نگاشت راهکاران')
-                                    ->description('کد کالا در نگاشت‌ها کلید و شناسه کالای راهکاران مقدار است. ورود سریال کارخانه فقط در انبار راهکاران انجام می‌شود.')
-                                    ->schema([
-                                        Grid::make(2)->schema([
-                                            TextInput::make('rahkaran_base_url')->label('نشانی پایه راهکاران (base_url)')->url(),
-                                            TextInput::make('rahkaran_username')->label('نام کاربری (username)'),
-                                            TextInput::make('rahkaran_password')->label('گذرواژه (password)')->password()->revealable(),
-                                            TextInput::make('rahkaran_inventory_id')->label('شناسه انبار (InventoryID)'),
-                                            TextInput::make('rahkaran_plant_id')->label('شناسه مرکز نگهداری (PlantID)'),
-                                            TextInput::make('rahkaran_inventory_voucher_specification_ref')->label('الگوی سند انبار ورودی (inventory_voucher_specification_ref)'),
-                                            TextInput::make('rahkaran_fiscal_year_ref')->label('شناسه سال مالی (fiscal_year_ref)'),
-                                            TextInput::make('rahkaran_ledger_ref')->label('شناسه دفترکل (ledger_ref)'),
-                                            TextInput::make('rahkaran_branch_id')->label('شناسه شعبه (branch_id)'),
-                                            TextInput::make('rahkaran_sales_area_id')->label('شناسه حوزه فروش (salesAreaId)'),
-                                            TextInput::make('rahkaran_sales_office_id')->label('شناسه مرکز فروش (salesOfficeId)'),
-                                            TextInput::make('rahkaran_sales_type_id')->label('شناسه نحوه فروش (salesTypeId)'),
-                                            TextInput::make('rahkaran_currency_id')->label('شناسه ارز (currencyId)')->default('1'),
-                                            TextInput::make('rahkaran_invoice_recipient_type')->label('نوع تحویل‌گیرنده فاکتور (recipientType)')->numeric()->default(1),
-                                            TextInput::make('rahkaran_invoice_payer_type')->label('نوع پرداخت‌کننده فاکتور (payerType)')->numeric()->default(1),
-                                            TextInput::make('rahkaran_tracking_factor_ref')->label('کد موجودیت عامل کنترل سریال در فاکتور (sys__entityCode)'),
-                                        ]),
-                                        Grid::make(2)->schema([
-                                            Textarea::make('rahkaran_unit_refs')->label('نگاشت کد کالا به شناسه واحد (JSON) (unitId)')->rows(8)->default('{}')->rules(['json']),
-                                            Textarea::make('rahkaran_regional_division_refs')->label('نگاشت شناسه شهر سایت به ناحیه راهکاران (JSON) (RegionalDivisionRef)')->rows(8)->default('{}')->rules(['json']),
-                                        ]),
                                     ]),
                             ]),
                         Tabs\Tab::make('display')
@@ -453,7 +406,6 @@ class ManageSettings extends Page
 
         $hesabfaData = collect($data)->filter(fn ($v, $k) => str_starts_with($k, 'hesabfa_'));
         $this->saveHesabfaSettings($hesabfaData->toArray());
-        $this->saveRahkaranSettings($data);
 
         $this->saveTapsiSettings($data);
 
@@ -513,42 +465,6 @@ class ManageSettings extends Page
         }
 
         file_put_contents($envPath, $envContent);
-    }
-
-    private function saveRahkaranSettings(array $data): void
-    {
-        $unitRefs = json_decode((string) ($data['rahkaran_unit_refs'] ?? '{}'), true);
-        $regionRefs = json_decode((string) ($data['rahkaran_regional_division_refs'] ?? '{}'), true);
-        if (! is_array($unitRefs) || ! is_array($regionRefs)) {
-            throw new \InvalidArgumentException('نگاشت واحدها و مناطق راهکاران باید JSON معتبر باشد.');
-        }
-
-        $settings = app(RahkaranSettings::class);
-        $settings->save('base_url', $data['rahkaran_base_url'] ?? '');
-        $settings->save('username', $data['rahkaran_username'] ?? '');
-        $settings->save('password', $data['rahkaran_password'] ?? '');
-
-        $stringSettings = [
-            'inventory_id' => 'rahkaran_inventory_id',
-            'plant_id' => 'rahkaran_plant_id',
-            'inventory_voucher_specification_ref' => 'rahkaran_inventory_voucher_specification_ref',
-            'fiscal_year_ref' => 'rahkaran_fiscal_year_ref',
-            'ledger_ref' => 'rahkaran_ledger_ref',
-            'branch_id' => 'rahkaran_branch_id',
-            'sales_area_id' => 'rahkaran_sales_area_id',
-            'sales_office_id' => 'rahkaran_sales_office_id',
-            'sales_type_id' => 'rahkaran_sales_type_id',
-            'currency_id' => 'rahkaran_currency_id',
-            'tracking_factor_ref' => 'rahkaran_tracking_factor_ref',
-        ];
-        foreach ($stringSettings as $key => $formKey) {
-            $settings->save($key, $data[$formKey] ?? '');
-        }
-
-        $settings->save('invoice_recipient_type', (int) ($data['rahkaran_invoice_recipient_type'] ?? 1), 'integer');
-        $settings->save('invoice_payer_type', (int) ($data['rahkaran_invoice_payer_type'] ?? 1), 'integer');
-        $settings->save('unit_refs', $unitRefs, 'json');
-        $settings->save('regional_division_refs', $regionRefs, 'json');
     }
 
     private function saveHesabfaSettings(array $data): void
