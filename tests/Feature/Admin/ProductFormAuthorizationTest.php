@@ -151,4 +151,18 @@ class ProductFormAuthorizationTest extends TestCase
 
         $this->assertSame(6, (int) $product->fresh()->rahkaran_unit_ref);
     }
+
+    public function test_rahkaran_unit_options_show_their_ids(): void
+    {
+        $admin = User::factory()->create()->assignRole(Role::Admin->value);
+        $product = $this->product();
+
+        $component = Livewire::actingAs($admin, 'web')
+            ->test(EditProduct::class, ['record' => $product->getKey()])
+            ->instance()
+            ->getSchema('form')
+            ->getComponentByStatePath('rahkaran_unit_ref', withHidden: true);
+
+        $this->assertSame('عدد - 6', $component->getOptions()[6]);
+    }
 }
