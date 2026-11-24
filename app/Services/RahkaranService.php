@@ -21,6 +21,19 @@ class RahkaranService
             && filled($this->settings->get('password'));
     }
 
+    public function getProductCatalogPage(int $page, int $pageSize): array
+    {
+        $products = $this->post($this->url('/Sales/ProductManagement/Services/ProductManagementService.svc/GetProducts'), [
+            'filter' => ['PageIndex' => $page, 'PageSize' => $pageSize, 'TrackingFactorFilter' => 'All'],
+        ])->throw()->json();
+
+        if (! is_array($products) || ! array_is_list($products)) {
+            throw new RuntimeException('پاسخ فهرست کالاهای راهکاران معتبر نیست.');
+        }
+
+        return $products;
+    }
+
     public function getSerialsForPart(int $partRef): array
     {
         return $this->getSerialsForParts([$partRef])[$partRef]
