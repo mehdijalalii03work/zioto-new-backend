@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\Products\Tables;
 
+use App\Filament\Resources\Products\ProductSerialsTable;
 use App\Services\Pricing\DynamicPriceService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Schemas\Components\Livewire;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -180,57 +183,71 @@ class ProductsTable
             ->defaultPaginationPageOption(25)
             ->reorderable('sort_order')
             ->recordActions([
-                ViewAction::make()
-                    ->label('مشاهده در سایت')
-                    ->url(fn ($record): string => config('app.frontend_url').'/product/'.$record->slug)
-                    ->openUrlInNewTab(),
+                ActionGroup::make([
+                    Action::make('serials')
+                        ->label('سریال‌ها')
+                        ->icon('heroicon-o-qr-code')
+                        ->authorize(fn (Product $record): bool => auth()->user()?->can('view', $record) ?? false)
+                        ->modalHeading(fn (Product $record): string => 'سریال‌های '.$record->name)
+                        ->modal()
+                        ->modalWidth('5xl')
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('بستن')
+                        ->schema(fn (Product $record): array => [
+                            Livewire::make(ProductSerialsTable::class, ['product' => $record])->key('product-serials-'.$record->id),
+                        ]),
+                    ViewAction::make()
+                        ->label('مشاهده در سایت')
+                        ->url(fn ($record): string => config('app.frontend_url').'/product/'.$record->slug)
+                        ->openUrlInNewTab(),
 
-                EditAction::make()
-                    ->label('ویرایش'),
+                    EditAction::make()
+                        ->label('ویرایش'),
 
-                Action::make('copy')
-                    ->label('کپی')
-                    ->icon('heroicon-o-square-2-stack')
-                    ->authorize(fn (): bool => auth()->user()?->can('create', Product::class) ?? false)
-                    ->requiresConfirmation()
-                    ->successNotificationTitle('کپی محصول ایجاد شد.')
-                    ->action(function (Product $record): void {
-                        $copy = $record->replicate();
-                        $copy->name = $record->name.' (کپی)';
-                        $copy->slug = Str::limit($record->slug, 200, '').'-copy-'.Str::uuid();
-                        $copy->sku = null;
-                        $copy->tapsi_product_id = null;
-                        $copy->status = 'draft';
-                        $copy->visibility = 'private';
-                        $copy->stock_quantity = 0;
-                        $copy->hesabfa_physical_stock = 0;
-                        $copy->hesabfa_reserved_stock = 0;
-                        $copy->hesabfa_manual_reserved = 0;
-                        $copy->hesabfa_stock_locked = false;
-                        $copy->hesabfa_stock_synced_at = null;
-                        $copy->views_count = 0;
-                        $copy->save();
+                    Action::make('copy')
+                        ->label('کپی')
+                        ->icon('heroicon-o-square-2-stack')
+                        ->authorize(fn (): bool => auth()->user()?->can('create', Product::class) ?? false)
+                        ->requiresConfirmation()
+                        ->successNotificationTitle('کپی محصول ایجاد شد.')
+                        ->action(function (Product $record): void {
+                            $copy = $record->replicate();
+                            $copy->name = $record->name.' (کپی)';
+                            $copy->slug = Str::limit($record->slug, 200, '').'-copy-'.Str::uuid();
+                            $copy->sku = null;
+                            $copy->tapsi_product_id = null;
+                            $copy->status = 'draft';
+                            $copy->visibility = 'private';
+                            $copy->stock_quantity = 0;
+                            $copy->hesabfa_physical_stock = 0;
+                            $copy->hesabfa_reserved_stock = 0;
+                            $copy->hesabfa_manual_reserved = 0;
+                            $copy->hesabfa_stock_locked = false;
+                            $copy->hesabfa_stock_synced_at = null;
+                            $copy->views_count = 0;
+                            $copy->save();
 
-                        foreach ($record->getMedia('product-images') as $media) {
-                            $media->copy($copy, 'product-images', 'public');
-                        }
-
-                        foreach ($record->images as $image) {
-                            if (! Storage::disk('public')->exists($image->image_path)) {
-                                continue;
+                            foreach ($record->getMedia('product-images') as $media) {
+                                $media->copy($copy, 'product-images', 'public');
                             }
 
-                            $path = 'product-images/'.Str::uuid().'.'.pathinfo($image->image_path, PATHINFO_EXTENSION);
-                            Storage::disk('public')->copy($image->image_path, $path);
+                            foreach ($record->images as $image) {
+                                if (! Storage::disk('public')->exists($image->image_path)) {
+                                    continue;
+                                }
 
-                            $copy->images()->create([
-                                'image_path' => $path,
-                                'alt' => $image->alt,
-                                'is_primary' => $image->is_primary,
-                                'sort_order' => $image->sort_order,
-                            ]);
-                        }
-                    }),
+                                $path = 'product-images/'.Str::uuid().'.'.pathinfo($image->image_path, PATHINFO_EXTENSION);
+                                Storage::disk('public')->copy($image->image_path, $path);
+
+                                $copy->images()->create([
+                                    'image_path' => $path,
+                                    'alt' => $image->alt,
+                                    'is_primary' => $image->is_primary,
+                                    'sort_order' => $image->sort_order,
+                                ]);
+                            }
+                        }),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
