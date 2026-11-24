@@ -44,6 +44,58 @@ class RahkaranInventoryServiceTest extends TestCase
         $this->assertNull($draftProduct->rahkaran_physical_stock);
     }
 
+    public function test_bulk_serial_sync_reconciles_serials_and_checks_omitted_products_for_zero_stock(): void
+    {
+        config(['rahkaran.inventory_id' => 21, 'rahkaran.plant_id' => 1]);
+        $present = $this->product('SERIAL', 'published', 'public', 101);
+        $zero = $this->product('ZERO', 'published', 'public', 102);
+        $unknown = $this->product('UNKNOWN', 'published', 'public', 103);
+        foreach ([$present, $zero, $unknown] as $product) {
+            $product->update(['rahkaran_serial_tracked' => true, 'rahkaran_physical_stock' => 4]);
+            RahkaranSerial::create(['product_id' => $product->id, 'serial' => 'OLD-'.$product->id, 'status' => 'available']);
+        }
+
+        $order = Order::factory()->create();
+        $item = $order->items()->create(['product_id' => $present->id, 'product_name' => $present->name, 'product_price' => 100, 'quantity' => 1, 'subtotal' => 100]);
+        $reserved = RahkaranSerial::create(['product_id' => $present->id, 'serial' => 'HELD', 'status' => 'reserved', 'order_item_id' => $item->id]);
+        $rahkaran = $this->mock(RahkaranService::class);
+        $rahkaran->shouldReceive('isConfigured')->once()->andReturnTrue();
+        $rahkaran->shouldReceive('getSerialsForParts')->once()->with([101, 102, 103])->andReturn([101 => [['Serial' => 'NEW']]]);
+        $rahkaran->shouldReceive('getStock')->once()->with(101, 21, 1)->andReturn(1.0);
+        $rahkaran->shouldReceive('getStock')->once()->with(102, 21, 1)->andReturn(0.0);
+        $rahkaran->shouldReceive('getStock')->once()->with(103, 21, 1)->andReturn(2.0);
+
+        $inventory = app(RahkaranInventoryService::class);
+        $result = $inventory->syncAllSerials();
+
+        $this->assertSame(2, $result['updated_products']);
+        $this->assertSame(['UNKNOWN'], array_keys($result['errors']));
+        $this->assertSame(0, $zero->refresh()->rahkaran_physical_stock);
+        $this->assertDatabaseHas('rahkaran_serials', ['product_id' => $present->id, 'serial' => 'NEW', 'status' => 'available']);
+        $this->assertDatabaseHas('rahkaran_serials', ['product_id' => $present->id, 'serial' => 'OLD-'.$present->id, 'status' => 'unavailable']);
+        $this->assertDatabaseHas('rahkaran_serials', ['product_id' => $unknown->id, 'serial' => 'OLD-'.$unknown->id, 'status' => 'available']);
+        $this->assertSame('reserved', $reserved->refresh()->status);
+        $inventory->releaseOrder($order);
+        $this->assertSame('unavailable', $reserved->refresh()->status);
+    }
+
+    public function test_experimental_quantity_source_counts_fresh_serials(): void
+    {
+        Setting::create(['key' => 'rahkaran_stock_quantity_source', 'value' => 'live_serials', 'type' => 'string', 'category' => 'inventory', 'label' => 'Quantity source']);
+        config(['rahkaran.inventory_id' => 21, 'rahkaran.plant_id' => 1]);
+        $product = $this->product('SERIAL', 'published', 'public', 101);
+        $product->update(['rahkaran_serial_tracked' => true]);
+        $rahkaran = $this->mock(RahkaranService::class);
+        $rahkaran->shouldReceive('isConfigured')->once()->andReturnTrue();
+        $rahkaran->shouldReceive('getSerialsForParts')->once()->with([101])->andReturn([101 => [['Serial' => '001'], ['Serial' => '002']]]);
+        $rahkaran->shouldReceive('getStock')->never();
+
+        $result = app(RahkaranInventoryService::class)->syncAllSerials();
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(2, $product->refresh()->rahkaran_physical_stock);
+    }
+
     public static function reservationTypes(): array
     {
         return [

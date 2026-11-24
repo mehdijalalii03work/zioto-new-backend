@@ -5,11 +5,14 @@ namespace App\Services;
 use App\Models\HesabfaSyncLog;
 use App\Models\RahkaranSerial;
 use DomainException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Order\Models\Order;
 use Modules\Order\Models\OrderItem;
 use Modules\Product\Models\Product;
+use RuntimeException;
+use Throwable;
 
 class RahkaranInventoryService
 {
@@ -19,6 +22,12 @@ class RahkaranInventoryService
     ) {}
 
     public function syncAllSerials(): array
+    {
+        return Cache::lock('rahkaran:inventory-sync', 3600)->get(fn (): array => $this->syncInventory())
+            ?: ['success' => false, 'message' => 'همگام‌سازی موجودی راهکاران در حال اجراست.', 'updated' => 0];
+    }
+
+    private function syncInventory(): array
     {
         if (! $this->rahkaran->isConfigured()) {
             return ['success' => false, 'message' => 'تنظیمات راهکاران کامل نیست', 'updated' => 0];
@@ -31,46 +40,45 @@ class RahkaranInventoryService
         $updatedProducts = 0;
         $errors = [];
 
-        foreach (Product::query()->published()->whereNotNull('sku')->get() as $product) {
-            $partRef = $product->rahkaran_part_ref;
-            if (! $partRef) {
+        $products = Product::query()->published()->whereNotNull('sku')->get();
+        $serialProductIds = $products->filter(fn (Product $product): bool => $product->rahkaran_serial_tracked && $product->rahkaran_part_ref)
+            ->map(fn (Product $product): int => (int) $product->rahkaran_part_ref)->values()->all();
+        $quantitySource = setting('rahkaran_stock_quantity_source', 'stock_api');
+        $serialsByProduct = [];
+        $batchError = null;
+
+        if ($serialProductIds !== []) {
+            try {
+                $serialsByProduct = $this->rahkaran->getSerialsForParts($serialProductIds);
+            } catch (Throwable $exception) {
+                $batchError = $exception->getMessage();
+                Log::warning('Rahkaran bulk serial lookup failed', ['message' => $batchError]);
+            }
+        }
+
+        foreach ($products as $product) {
+            $partRef = (int) $product->rahkaran_part_ref;
+            if ($partRef <= 0) {
                 $errors[$product->sku] = 'نگاشت کالای راهکاران تنظیم نشده است';
 
                 continue;
             }
 
             try {
-                if ($product->rahkaran_serial_tracked) {
-                    foreach ($this->rahkaran->getSerialsForPart((int) $partRef) as $serialRecord) {
-                        $serial = (string) ($serialRecord['Serial'] ?? '');
-                        if ($serial === '') {
-                            continue;
-                        }
+                $records = $product->rahkaran_serial_tracked ? ($serialsByProduct[$partRef] ?? null) : null;
+                $serials = $records === null ? [] : array_column($records, 'Serial');
+                $physicalStock = $quantitySource === 'live_serials' && $serials !== []
+                    ? count($serials)
+                    : $this->rahkaran->getStock($partRef, (int) $this->settings->get('inventory_id'), (int) $this->settings->get('plant_id'));
 
-                        RahkaranSerial::query()->firstOrCreate(
-                            ['serial' => $serial],
-                            ['product_id' => $product->id, 'status' => 'available', 'synced_at' => now()],
-                        );
-                        RahkaranSerial::query()->where('serial', $serial)->update(['synced_at' => now()]);
-                        $updated++;
-                    }
+                if ($product->rahkaran_serial_tracked && $physicalStock > 0 && $serials === []) {
+                    throw new RuntimeException($batchError ?? 'موجودی مثبت است اما سریال معتبر کالا در پاسخ راهکاران پیدا نشد.');
                 }
 
-                $physicalStock = $this->rahkaran->getStock(
-                    (int) $partRef,
-                    (int) $this->settings->get('inventory_id'),
-                    (int) $this->settings->get('plant_id'),
-                );
-                $product->rahkaran_physical_stock = max(0, (int) floor($physicalStock));
-                $product->stock_quantity = $product->rahkaran_serial_tracked
-                    ? max(0, min(
-                        RahkaranSerial::query()->where('product_id', $product->id)->where('status', 'available')->count(),
-                        $product->rahkaran_physical_stock,
-                    ) - (int) $product->hesabfa_manual_reserved)
-                    : $product->sellableRahkaranStock($product->rahkaran_physical_stock);
-                $product->save();
+                $this->applyInventorySnapshot($product, max(0, (int) floor($physicalStock)), $serials);
+                $updated += count($serials);
                 $updatedProducts++;
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 $errors[$product->sku] = $exception->getMessage();
                 Log::error('Rahkaran serial sync failed', ['sku' => $product->sku, 'message' => $exception->getMessage()]);
             }
@@ -79,7 +87,7 @@ class RahkaranInventoryService
         HesabfaSyncLog::query()->create([
             'sync_type' => 'rahkaran_stock_sync',
             'status' => $errors === [] ? 'success' : 'failed',
-            'request_data' => ['mapped_products' => Product::query()->whereNotNull('rahkaran_part_ref')->count()],
+            'request_data' => ['mapped_products' => Product::query()->whereNotNull('rahkaran_part_ref')->count(), 'quantity_source' => $quantitySource],
             'response_data' => ['synced_serial_count' => $updated, 'updated_product_count' => $updatedProducts, 'errors' => $errors],
             'error_message' => $errors === [] ? null : implode('; ', array_map(static fn ($sku, $error) => "{$sku}: {$error}", array_keys($errors), $errors)),
         ]);
@@ -91,6 +99,52 @@ class RahkaranInventoryService
             'updated_products' => $updatedProducts,
             'errors' => $errors,
         ];
+    }
+
+    /**
+     * @param  list<string>  $serials
+     */
+    private function applyInventorySnapshot(Product $product, int $physicalStock, array $serials): void
+    {
+        DB::transaction(function () use ($product, $physicalStock, $serials): void {
+            $product = Product::query()->lockForUpdate()->findOrFail($product->id);
+            $product->rahkaran_physical_stock = $physicalStock;
+
+            if ($product->rahkaran_serial_tracked) {
+                $present = $physicalStock > 0 ? $serials : [];
+                $productSerials = RahkaranSerial::query()->where('product_id', $product->id);
+                $absent = (clone $productSerials)->whereNotIn('serial', $present);
+                (clone $absent)->where('status', 'available')->update(['status' => 'unavailable']);
+                $absent->where('status', 'reserved')->update(['missing_from_warehouse' => true]);
+
+                foreach ($present as $number) {
+                    $serial = RahkaranSerial::query()->firstOrCreate(
+                        ['serial' => $number],
+                        ['product_id' => $product->id, 'status' => 'available'],
+                    );
+
+                    if ((int) $serial->product_id !== $product->id) {
+                        throw new RuntimeException('سریال راهکاران قبلاً برای کالای دیگری ثبت شده است.');
+                    }
+
+                    $serial->synced_at = now();
+                    $serial->missing_from_warehouse = false;
+                    if ($serial->status === 'unavailable') {
+                        $serial->status = 'available';
+                    }
+                    $serial->save();
+                }
+
+                $product->stock_quantity = max(0, min(
+                    $productSerials->where('status', 'available')->count(),
+                    $physicalStock,
+                ) - (int) $product->hesabfa_manual_reserved);
+            } else {
+                $product->stock_quantity = $product->sellableRahkaranStock($physicalStock);
+            }
+
+            $product->save();
+        }, attempts: 3);
     }
 
     public function reserveForOrder(Order $order): bool
@@ -191,7 +245,10 @@ class RahkaranInventoryService
             $releasedSerials = RahkaranSerial::query()
                 ->whereIn('order_item_id', $order->items->pluck('id'))
                 ->where('status', 'reserved')
-                ->update(['status' => 'available', 'order_item_id' => null]);
+                ->update([
+                    'status' => DB::raw("CASE WHEN missing_from_warehouse THEN 'unavailable' ELSE 'available' END"),
+                    'order_item_id' => null,
+                ]);
 
             if ($releasedSerials === 0 && ! $order->items->contains(fn ($item) => $item->rahkaran_stock_reserved_quantity > 0)) {
                 return;

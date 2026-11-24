@@ -70,6 +70,7 @@ class ManageSettings extends Page
             'show_price_with_tax' => setting('show_price_with_tax', true),
             'ignore_reserved_stock' => setting('ignore_reserved_stock', true),
             'inventory_source' => setting('inventory_source', 'hesabfa'),
+            'rahkaran_stock_quantity_source' => setting('rahkaran_stock_quantity_source', 'stock_api'),
             'send_invoices_to_hesabfa' => setting('send_invoices_to_hesabfa', config('hesabfa.auto_sync', true)),
             'send_invoices_to_rahkaran' => setting('send_invoices_to_rahkaran', false),
             'rahkaran_serial_tracking_enabled' => setting('rahkaran_serial_tracking_enabled', false),
@@ -131,6 +132,15 @@ class ManageSettings extends Page
                                                 'rahkaran' => 'راهکاران',
                                             ])
                                             ->default('hesabfa')
+                                            ->required(),
+                                        Select::make('rahkaran_stock_quantity_source')
+                                            ->label('مبنای تعداد موجودی کالاهای سریالی راهکاران')
+                                            ->options([
+                                                'stock_api' => 'تعداد از API موجودی راهکاران (پیش‌فرض)',
+                                                'live_serials' => 'تعداد سریال‌های فعلی راهکاران (آزمایشی)',
+                                            ])
+                                            ->default('stock_api')
+                                            ->helperText('در همگام‌سازی بعدی اعمال می‌شود. تعداد کالاهای غیرسریالی از API موجودی خوانده می‌شود.')
                                             ->required(),
                                     ]),
                                 Section::make('ارسال فاکتور فروش')
@@ -403,6 +413,13 @@ class ManageSettings extends Page
             'type' => 'boolean',
             'category' => 'inventory',
             'label' => 'فعال‌سازی رهگیری سریال راهکاران',
+        ]);
+
+        Setting::updateOrCreate(['key' => 'rahkaran_stock_quantity_source'], [
+            'value' => $data['rahkaran_stock_quantity_source'] ?? 'stock_api',
+            'type' => 'string',
+            'category' => 'inventory',
+            'label' => 'مبنای تعداد موجودی کالاهای سریالی راهکاران',
         ]);
 
         $hesabfaData = collect($data)->filter(fn ($v, $k) => str_starts_with($k, 'hesabfa_'));

@@ -23,21 +23,56 @@ class RahkaranService
 
     public function getSerialsForPart(int $partRef): array
     {
-        $response = $this->post($this->url('/Sales/SalesDocument/Services/SalesDocumentService.svc/products'), [
-            'ProductIDs' => [$partRef],
-            'InventoryID' => (int) $this->settings->get('inventory_id'),
-            'CalculateRemaining' => true,
-            'IncludeTrackingFactors' => true,
-            'PageIndex' => 0,
-            'PageSize' => 1,
-        ]);
-        $data = $this->decode($response->throw()->json());
-        $product = collect($data)->first(fn (array $product): bool => (int) ($product['id'] ?? 0) === $partRef);
-        if ($product === null) {
-            throw new RuntimeException('کالای راهکاران در پاسخ دریافت سریال پیدا نشد.');
+        return $this->getSerialsForParts([$partRef])[$partRef]
+            ?? throw new RuntimeException('کالای راهکاران در پاسخ دریافت سریال پیدا نشد.');
+    }
+
+    /**
+     * @param  list<int>  $partRefs
+     * @return array<int, list<array{Serial: string}>>
+     */
+    public function getSerialsForParts(array $partRefs): array
+    {
+        $result = [];
+        foreach (array_chunk(array_values(array_unique($partRefs)), 100) as $chunk) {
+            $response = $this->post($this->url('/Sales/SalesDocument/Services/SalesDocumentService.svc/products'), [
+                'ProductIDs' => $chunk,
+                'InventoryID' => (int) $this->settings->get('inventory_id'),
+                'CalculateRemaining' => true,
+                'IncludeTrackingFactors' => true,
+                'PageIndex' => 0,
+                'PageSize' => count($chunk),
+            ]);
+            $products = $this->decode($response->throw()->json());
+            if (! is_array($products) || ! array_is_list($products)) {
+                throw new RuntimeException('پاسخ دریافت گروهی سریال راهکاران معتبر نیست.');
+            }
+
+            foreach ($products as $product) {
+                $id = (int) ($product['id'] ?? 0);
+                if (! in_array($id, $chunk, true)) {
+                    continue;
+                }
+
+                $trackingFactors = $product['trackingFactors'] ?? null;
+                if (! is_array($trackingFactors)
+                    || ! is_array($trackingFactors['structure'] ?? null)
+                    || ! is_array($trackingFactors['values'] ?? null)) {
+                    continue;
+                }
+
+                $result[$id] = $this->serialsFromTrackingFactors($trackingFactors);
+            }
         }
 
-        $trackingFactors = $product['trackingFactors'] ?? [];
+        return $result;
+    }
+
+    /**
+     * @return list<array{Serial: string}>
+     */
+    private function serialsFromTrackingFactors(array $trackingFactors): array
+    {
         $serialIndex = collect($trackingFactors['structure'] ?? [])
             ->search(fn (array $factor): bool => trim((string) ($factor['title'] ?? '')) === 'سریال');
         if ($serialIndex === false) {
@@ -76,11 +111,12 @@ class RahkaranService
         ]);
         $data = $this->decode($response->throw()->json());
 
-        if (! is_array($data)) {
-            return 0;
+        $quantity = $data['ActualRemainingValue'] ?? $data['actualRemainingValue'] ?? $data[0]['ActualRemainingValue'] ?? $data[0]['actualRemainingValue'] ?? null;
+        if (! is_numeric($quantity)) {
+            throw new RuntimeException('پاسخ تعداد موجودی راهکاران معتبر نیست.');
         }
 
-        return (float) ($data['ActualRemainingValue'] ?? $data['actualRemainingValue'] ?? $data[0]['ActualRemainingValue'] ?? $data[0]['actualRemainingValue'] ?? 0);
+        return (float) $quantity;
     }
 
     public function findCustomerIdByNationalId(string $nationalId): ?int

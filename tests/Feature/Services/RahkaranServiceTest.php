@@ -111,6 +111,28 @@ class RahkaranServiceTest extends TestCase
             && $request['IncludeTrackingFactors'] === true);
     }
 
+    public function test_serials_for_multiple_products_are_read_in_one_request(): void
+    {
+        config(['rahkaran.inventory_id' => 21]);
+        Http::preventStrayRequests();
+        Cache::put('rahkaran:session-cookies', ['sg-auth-sg' => 'test-session']);
+        $url = self::BASE_URL.'/Sales/SalesDocument/Services/SalesDocumentService.svc/products';
+        Http::fake([$url => Http::response([
+            ['id' => 580, 'trackingFactors' => [
+                'structure' => [['title' => 'سریال']],
+                'values' => [['values' => ['00123'], 'remaining' => ['physical' => 1]]],
+            ]],
+            ['id' => 581, 'trackingFactors' => ['structure' => [['title' => 'سریال']], 'values' => []]],
+        ])]);
+
+        $result = app(RahkaranService::class)->getSerialsForParts([580, 581, 582]);
+
+        $this->assertSame([580 => [['Serial' => '00123']], 581 => []], $result);
+        Http::assertSentCount(1);
+        Http::assertSent(fn (Request $request): bool => $request['ProductIDs'] === [580, 581, 582]
+            && $request['PageSize'] === 3);
+    }
+
     public function test_a_missing_product_in_the_serial_response_raises_an_error(): void
     {
         Http::preventStrayRequests();

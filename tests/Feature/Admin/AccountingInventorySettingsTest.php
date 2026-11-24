@@ -50,12 +50,14 @@ class AccountingInventorySettingsTest extends TestCase
             ->assertFormFieldExists('send_invoices_to_rahkaran')
             ->fillForm([
                 'inventory_source' => 'rahkaran',
+                'rahkaran_stock_quantity_source' => 'live_serials',
                 'send_invoices_to_hesabfa' => false,
             ])
             ->call('save')
             ->assertHasNoFormErrors();
 
         $this->assertSame('rahkaran', Setting::where('key', 'inventory_source')->value('value'));
+        $this->assertSame('live_serials', setting('rahkaran_stock_quantity_source'));
         $this->assertSame('false', Setting::where('key', 'send_invoices_to_hesabfa')->value('value'));
         $this->assertSame('inventory', Setting::where('key', 'inventory_source')->value('category'));
     }
