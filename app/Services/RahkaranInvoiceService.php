@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\HesabfaSyncLog;
 use App\Models\RahkaranInvoice;
+use App\Support\InventorySource;
 use Closure;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
@@ -115,7 +116,7 @@ class RahkaranInvoiceService
             $plans[$area]['payload'] = $this->buildInvoice($order, $items, $area, $salesTypeId);
         }
 
-        if (setting('rahkaran_serial_tracking_enabled', false) || setting('inventory_source', 'hesabfa') === 'rahkaran') {
+        if (setting('rahkaran_serial_tracking_enabled', false) || InventorySource::usesRahkaranInventory()) {
             $this->inventory->reserveForOrder($order);
             $order->items->load('rahkaranSerials');
         }
@@ -310,7 +311,7 @@ class RahkaranInvoiceService
             $serials = $item->rahkaranSerials->pluck('serial')->values();
             $stockProduct = $item->product?->baseProduct ?? $item->product;
             $serialAllocationEnabled = setting('rahkaran_serial_tracking_enabled', false)
-                || setting('inventory_source', 'hesabfa') === 'rahkaran';
+                || InventorySource::usesRahkaranInventory();
             if ($serialAllocationEnabled && $stockProduct?->rahkaran_serial_tracked) {
                 $required = (int) $item->quantity * ($item->product?->pack_size ?? 1);
                 if ($serials->count() < $required) {

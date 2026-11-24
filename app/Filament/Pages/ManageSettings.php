@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Services\RahkaranInventoryService;
 use App\Services\RahkaranService;
 use App\Services\StockSyncService;
+use App\Support\InventorySource;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -18,6 +19,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 class ManageSettings extends Page
@@ -70,6 +72,7 @@ class ManageSettings extends Page
             'show_price_with_tax' => setting('show_price_with_tax', true),
             'ignore_reserved_stock' => setting('ignore_reserved_stock', true),
             'inventory_source' => setting('inventory_source', 'hesabfa'),
+            'offline_serial_origin' => setting('offline_serial_origin', 'combined'),
             'rahkaran_stock_quantity_source' => setting('rahkaran_stock_quantity_source', 'stock_api'),
             'send_invoices_to_hesabfa' => setting('send_invoices_to_hesabfa', config('hesabfa.auto_sync', true)),
             'send_invoices_to_rahkaran' => setting('send_invoices_to_rahkaran', false),
@@ -130,17 +133,26 @@ class ManageSettings extends Page
                                             ->options([
                                                 'hesabfa' => 'حسابفا',
                                                 'rahkaran' => 'راهکاران',
+                                                'offline' => 'آفلاین (ثبت ورود با اکسل)',
                                             ])
                                             ->default('hesabfa')
+                                            ->live()
+                                            ->required(),
+                                        Select::make('offline_serial_origin')
+                                            ->label('منشأ سریال‌های قابل فروش')
+                                            ->options(['combined' => 'ترکیبی', 'api' => 'فقط API', 'excel' => 'فقط فایل اکسل'])
+                                            ->default('combined')
+                                            ->visible(fn ($get): bool => $get('inventory_source') === 'offline')
                                             ->required(),
                                         Select::make('rahkaran_stock_quantity_source')
                                             ->label('مبنای تعداد موجودی کالاهای سریالی راهکاران')
                                             ->options([
-                                                'stock_api' => 'تعداد از API موجودی راهکاران (پیش‌فرض)',
-                                                'live_serials' => 'تعداد سریال‌های فعلی راهکاران (آزمایشی)',
+                                                'stock_api' => 'تعداد از API موجودی راهکاران (پیش‌فرض، بیشترین درخواست)',
+                                                'live_serials' => 'تعداد سریال‌های فعلی راهکاران (آزمایشی، درخواست کمتر)',
+                                                'stored_serials' => 'تعداد سریال‌های ذخیره‌شده در سایت (کمترین درخواست)',
                                             ])
                                             ->default('stock_api')
-                                            ->helperText('در همگام‌سازی بعدی اعمال می‌شود. تعداد کالاهای غیرسریالی از API موجودی خوانده می‌شود.')
+                                            ->helperText('در همگام‌سازی بعدی اعمال می‌شود. حالت سریال‌های ذخیره‌شده فقط از آخرین داده‌های سایت استفاده می‌کند. تعداد کالاهای غیرسریالی از API موجودی خوانده می‌شود.')
                                             ->required(),
                                     ]),
                                 Section::make('ارسال فاکتور فروش')
@@ -430,7 +442,29 @@ class ManageSettings extends Page
         $inventorySource = $data['inventory_source'] ?? 'hesabfa';
         $currentInventorySource = setting('inventory_source', 'hesabfa');
         $inventorySyncFailure = null;
-        if ($inventorySource !== $currentInventorySource) {
+        if ($inventorySource === 'offline' || $currentInventorySource === 'offline') {
+            $saved = Cache::lock(InventorySource::SYNC_LOCK, 3600)->get(function () use ($data, $inventorySource): bool {
+                if ($inventorySource === 'offline') {
+                    Setting::updateOrCreate(['key' => 'offline_serial_origin'], [
+                        'value' => $data['offline_serial_origin'] ?? 'combined',
+                        'type' => 'string',
+                        'category' => 'inventory',
+                        'label' => 'منشأ سریال‌های قابل فروش آفلاین',
+                    ]);
+                }
+
+                $this->saveInventorySource($inventorySource);
+
+                return true;
+            });
+            if (! $saved) {
+                Notification::make()->title('همگام‌سازی یا ثبت ورود موجودی در حال اجراست. دوباره تلاش کنید.')->warning()->send();
+
+                return;
+            }
+        }
+
+        if ($inventorySource !== 'offline' && $inventorySource !== $currentInventorySource) {
             try {
                 $syncResult = $inventorySource === 'rahkaran'
                     ? app(RahkaranInventoryService::class)->syncAllSerials()
@@ -454,12 +488,9 @@ class ManageSettings extends Page
             }
         }
 
-        Setting::updateOrCreate(['key' => 'inventory_source'], [
-            'value' => $inventorySource,
-            'type' => 'string',
-            'category' => 'inventory',
-            'label' => 'منبع موجودی سایت',
-        ]);
+        if ($inventorySource !== 'offline' && $currentInventorySource !== 'offline') {
+            $this->saveInventorySource($inventorySource);
+        }
 
         if ($inventorySyncFailure !== null) {
             Notification::make()
@@ -475,6 +506,16 @@ class ManageSettings extends Page
             ->title('تنظیمات با موفقیت ذخیره شد')
             ->success()
             ->send();
+    }
+
+    private function saveInventorySource(string $inventorySource): void
+    {
+        Setting::updateOrCreate(['key' => 'inventory_source'], [
+            'value' => $inventorySource,
+            'type' => 'string',
+            'category' => 'inventory',
+            'label' => 'منبع موجودی سایت',
+        ]);
     }
 
     private function saveTapsiSettings(array $data): void

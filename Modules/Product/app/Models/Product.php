@@ -8,6 +8,7 @@ use App\Enums\Product\ProductShape;
 use App\Models\Brand;
 use App\Models\RahkaranSerial;
 use App\Services\Pricing\DynamicPriceService;
+use App\Support\InventorySource;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -60,6 +61,7 @@ class Product extends Model implements HasMedia
         'rahkaran_reserved_stock',
         'rahkaran_serial_tracked',
         'rahkaran_part_ref',
+        'rahkaran_item_code',
         'rahkaran_unit_ref',
         'is_nopay',
     ];
@@ -133,7 +135,7 @@ class Product extends Model implements HasMedia
     public function sellableSingles(): int
     {
         $source = $this->baseProduct ?? $this;
-        if (setting('inventory_source', 'hesabfa') === 'rahkaran') {
+        if (InventorySource::usesRahkaranInventory()) {
             $physical = (int) ($source->rahkaran_physical_stock ?? 0);
             if (! $source->rahkaran_serial_tracked) {
                 return $source->sellableRahkaranStock($physical);
@@ -142,9 +144,10 @@ class Product extends Model implements HasMedia
             $availableSerials = RahkaranSerial::query()
                 ->where('product_id', $source->id)
                 ->where('status', 'available')
+                ->forCurrentInventory()
                 ->count();
 
-            return max(0, min($availableSerials, $physical) - (int) $source->hesabfa_manual_reserved);
+            return max(0, (InventorySource::isOffline() ? $availableSerials : min($availableSerials, $physical)) - (int) $source->hesabfa_manual_reserved);
         }
 
         $physical = $source->hesabfa_exclude_from_sync

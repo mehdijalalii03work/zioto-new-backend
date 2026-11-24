@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Services\RahkaranInventoryService;
 use App\Services\StockSyncService;
+use App\Support\InventorySource;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Order\Models\Order;
@@ -66,7 +67,7 @@ class StockReservationObserver
             if ($order->wasChanged('status')
                 && $order->status === 'completed'
                 && $isAssigned
-                && filled($order->rahkaran_invoice_id)) {
+                && (InventorySource::isOffline() || filled($order->rahkaran_invoice_id))) {
                 $this->rahkaranInventory->finalizeOrder($order);
             }
 
@@ -114,7 +115,7 @@ class StockReservationObserver
                 Log::error('Rahkaran serial reservation failed', ['order_id' => $order->id, 'message' => $exception->getMessage()]);
             }
 
-            if (setting('inventory_source', 'hesabfa') === 'rahkaran') {
+            if (InventorySource::usesRahkaranInventory()) {
                 return;
             }
         }
@@ -127,7 +128,7 @@ class StockReservationObserver
         if ($this->usesRahkaranSerials()) {
             $this->rahkaranInventory->releaseOrder($order);
 
-            if (setting('inventory_source', 'hesabfa') === 'rahkaran') {
+            if (InventorySource::usesRahkaranInventory()) {
                 return;
             }
         }
@@ -137,14 +138,14 @@ class StockReservationObserver
 
     private function isEnabled(): bool
     {
-        return setting('inventory_source', 'hesabfa') === 'rahkaran'
+        return InventorySource::usesRahkaranInventory()
             || setting('rahkaran_serial_tracking_enabled', false)
             || config('hesabfa.enable_reserved_stock', false);
     }
 
     private function usesRahkaranSerials(): bool
     {
-        return setting('inventory_source', 'hesabfa') === 'rahkaran'
+        return InventorySource::usesRahkaranInventory()
             || setting('rahkaran_serial_tracking_enabled', false);
     }
 

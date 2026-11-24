@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\InventorySource;
 use App\Support\TenantScope;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +39,7 @@ class CancelUnpaidOrders extends Command
 
                 $processing = $lockedOrder->payments()->withoutGlobalScope(TenantScope::class)
                     ->where('status', 'processing')->latest('updated_at')->first();
-                if ($processing && (setting('inventory_source', 'hesabfa') !== 'rahkaran'
+                if ($processing && (! InventorySource::usesRahkaranInventory()
                     || $processing->updated_at->gt(now()->subMinutes(5)))) {
                     return 0;
                 }

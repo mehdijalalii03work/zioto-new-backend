@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\HesabfaSyncLog;
 use App\Models\RahkaranSerial;
+use App\Support\InventorySource;
 use DomainException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -23,27 +24,37 @@ class RahkaranInventoryService
 
     public function syncAllSerials(): array
     {
-        return Cache::lock('rahkaran:inventory-sync', 3600)->get(fn (): array => $this->syncInventory())
+        return Cache::lock(InventorySource::SYNC_LOCK, 3600)->get(fn (): array => $this->syncInventory())
             ?: ['success' => false, 'message' => 'همگام‌سازی موجودی راهکاران در حال اجراست.', 'updated' => 0];
     }
 
     private function syncInventory(): array
     {
-        if (! $this->rahkaran->isConfigured()) {
+        if (InventorySource::isOffline()) {
+            return ['success' => false, 'message' => 'منبع موجودی آفلاین است.', 'updated' => 0];
+        }
+
+        $products = Product::query()->published()->whereNotNull('sku')->get();
+        $quantitySource = setting('rahkaran_stock_quantity_source', 'stock_api');
+        $useStoredSerials = $quantitySource === 'stored_serials';
+        $requiresApi = ! $useStoredSerials || $products->contains(
+            fn (Product $product): bool => ! $product->rahkaran_serial_tracked && (int) $product->rahkaran_part_ref > 0,
+        );
+        if ($requiresApi && ! $this->rahkaran->isConfigured()) {
             return ['success' => false, 'message' => 'تنظیمات راهکاران کامل نیست', 'updated' => 0];
         }
 
-        if (! is_numeric($this->settings->get('inventory_id')) || ! is_numeric($this->settings->get('plant_id'))) {
+        if ($requiresApi && (! is_numeric($this->settings->get('inventory_id')) || ! is_numeric($this->settings->get('plant_id')))) {
             return ['success' => false, 'message' => 'شناسه انبار و مرکز نگهداری راهکاران باید تنظیم شوند', 'updated' => 0];
         }
+
         $updated = 0;
         $updatedProducts = 0;
         $errors = [];
 
-        $products = Product::query()->published()->whereNotNull('sku')->get();
-        $serialProductIds = $products->filter(fn (Product $product): bool => $product->rahkaran_serial_tracked && $product->rahkaran_part_ref)
+        $serialProductIds = $useStoredSerials ? [] : $products
+            ->filter(fn (Product $product): bool => $product->rahkaran_serial_tracked && $product->rahkaran_part_ref)
             ->map(fn (Product $product): int => (int) $product->rahkaran_part_ref)->values()->all();
-        $quantitySource = setting('rahkaran_stock_quantity_source', 'stock_api');
         $serialsByProduct = [];
         $batchError = null;
 
@@ -65,6 +76,13 @@ class RahkaranInventoryService
             }
 
             try {
+                if ($useStoredSerials && $product->rahkaran_serial_tracked) {
+                    $this->updateStockFromStoredSerials($product);
+                    $updatedProducts++;
+
+                    continue;
+                }
+
                 $records = $product->rahkaran_serial_tracked ? ($serialsByProduct[$partRef] ?? null) : null;
                 $serials = $records === null ? [] : array_column($records, 'Serial');
                 $physicalStock = $quantitySource === 'live_serials' && $serials !== []
@@ -99,6 +117,38 @@ class RahkaranInventoryService
             'updated_products' => $updatedProducts,
             'errors' => $errors,
         ];
+    }
+
+    public function refreshOfflineSerialStock(Product $product): void
+    {
+        $serials = RahkaranSerial::query()->where('product_id', $product->id);
+        $physical = (clone $serials)->whereIn('status', ['available', 'reserved'])
+            ->where('missing_from_warehouse', false)->count();
+        $available = $serials->where('status', 'available')->forCurrentInventory()->count();
+        $product->forceFill([
+            'rahkaran_physical_stock' => $physical,
+            'stock_quantity' => max(0, $available - (int) $product->hesabfa_manual_reserved),
+        ])->save();
+    }
+
+    private function updateStockFromStoredSerials(Product $product): void
+    {
+        DB::transaction(function () use ($product): void {
+            $product = Product::query()->lockForUpdate()->findOrFail($product->id);
+            $counts = RahkaranSerial::query()
+                ->where('product_id', $product->id)
+                ->where(function ($query): void {
+                    $query->where('status', 'available')
+                        ->orWhere(fn ($reserved) => $reserved->where('status', 'reserved')->where('missing_from_warehouse', false));
+                })
+                ->selectRaw('status, COUNT(*) AS total')
+                ->groupBy('status')
+                ->pluck('total', 'status');
+            $available = (int) ($counts['available'] ?? 0);
+            $product->rahkaran_physical_stock = $available + (int) ($counts['reserved'] ?? 0);
+            $product->stock_quantity = max(0, $available - (int) $product->hesabfa_manual_reserved);
+            $product->save();
+        }, attempts: 3);
     }
 
     /**
@@ -176,10 +226,12 @@ class RahkaranInventoryService
                     $availableSerialCount = RahkaranSerial::query()
                         ->where('product_id', $stockProduct->id)
                         ->where('status', 'available')
+                        ->forCurrentInventory()
                         ->lockForUpdate()->get(['id'])->count();
                     $reservedSerialCount = RahkaranSerial::query()
                         ->where('product_id', $stockProduct->id)
                         ->where('status', 'reserved')
+                        ->when(setting('rahkaran_stock_quantity_source', 'stock_api') === 'stored_serials', fn ($query) => $query->where('missing_from_warehouse', false))
                         ->lockForUpdate()->get(['id'])->count();
                     $remainingPhysicalStock = max(
                         0,
@@ -187,13 +239,17 @@ class RahkaranInventoryService
                             - $reservedSerialCount
                             - (int) $stockProduct->hesabfa_manual_reserved,
                     );
-                    if ($needed > min($availableSerialCount, $remainingPhysicalStock)) {
+                    $sellable = InventorySource::isOffline()
+                        ? max(0, $availableSerialCount - (int) $stockProduct->hesabfa_manual_reserved)
+                        : min($availableSerialCount, $remainingPhysicalStock);
+                    if ($needed > $sellable) {
                         throw new DomainException("موجودی سریالی محصول {$item->product->sku} کافی نیست.");
                     }
 
                     $serials = RahkaranSerial::query()
                         ->where('product_id', $stockProduct->id)
                         ->where('status', 'available')
+                        ->forCurrentInventory()
                         ->orderBy('id')
                         ->limit($needed)
                         ->lockForUpdate()
@@ -207,16 +263,16 @@ class RahkaranInventoryService
                         $serial->update(['status' => 'reserved', 'order_item_id' => $item->id]);
                     }
 
-                    $stockProduct->stock_quantity = min(
-                        RahkaranSerial::query()->where('product_id', $stockProduct->id)->where('status', 'available')->count(),
-                        (int) ($stockProduct->rahkaran_physical_stock ?? 0),
-                    );
+                    $stockProduct->stock_quantity = max(0, min(
+                        $availableSerialCount - $needed,
+                        InventorySource::isOffline() ? $availableSerialCount : (int) ($stockProduct->rahkaran_physical_stock ?? 0),
+                    ) - (int) $stockProduct->hesabfa_manual_reserved);
                     $stockProduct->save();
 
                     continue;
                 }
 
-                if (setting('inventory_source', 'hesabfa') !== 'rahkaran'
+                if (! InventorySource::usesRahkaranInventory()
                     || $orderItem->rahkaran_stock_consumed
                     || $orderItem->rahkaran_stock_reserved_quantity > 0) {
                     continue;
@@ -291,6 +347,18 @@ class RahkaranInventoryService
         foreach ($productIds as $productId) {
             $product = Product::query()->find($productId);
             if (! $product) {
+                continue;
+            }
+
+            if ($product->rahkaran_serial_tracked && InventorySource::isOffline()) {
+                $this->refreshOfflineSerialStock($product);
+
+                continue;
+            }
+
+            if ($product->rahkaran_serial_tracked && setting('rahkaran_stock_quantity_source', 'stock_api') === 'stored_serials') {
+                $this->updateStockFromStoredSerials($product);
+
                 continue;
             }
 

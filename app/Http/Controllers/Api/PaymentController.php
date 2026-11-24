@@ -16,6 +16,7 @@ use App\Services\OrderSmsNotificationService;
 use App\Services\Pricing\DynamicPriceService;
 use App\Services\Pricing\SalesRestrictionService;
 use App\Services\RahkaranInventoryService;
+use App\Support\InventorySource;
 use App\Support\Platform;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -168,7 +169,7 @@ class PaymentController extends Controller
             }
         }
 
-        if (setting('inventory_source', 'hesabfa') === 'rahkaran') {
+        if (InventorySource::usesRahkaranInventory()) {
             try {
                 $active = DB::transaction(function () use ($order): bool {
                     $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
@@ -359,7 +360,7 @@ class PaymentController extends Controller
         try {
             $payment = DB::transaction(function () use ($order, $gateway, $resolvedPayment, &$verificationWithinDeadline) {
                 $lockedOrder = Order::withoutTenantScope()->lockForUpdate()->findOrFail($order->id);
-                if (setting('inventory_source', 'hesabfa') === 'rahkaran') {
+                if (InventorySource::usesRahkaranInventory()) {
                     $verificationWithinDeadline = $lockedOrder->created_at->copy()->addMinutes(20)->isFuture();
                 }
 
@@ -536,7 +537,7 @@ class PaymentController extends Controller
             return redirect($frontendUrl.'/payment-failed');
         }
 
-        $stockCheck = setting('inventory_source', 'hesabfa') === 'rahkaran'
+        $stockCheck = InventorySource::usesRahkaranInventory()
             ? ['valid' => true]
             : $this->validateOrderStock($order);
         if (! $stockCheck['valid']) {
@@ -554,7 +555,7 @@ class PaymentController extends Controller
                 $canConfirm = $verificationWithinDeadline
                     && ! in_array($order->status, ['cancelled', 'expired'], true)
                     && $order->payment_status !== 'paid';
-                if ($canConfirm && setting('inventory_source', 'hesabfa') === 'rahkaran') {
+                if ($canConfirm && InventorySource::usesRahkaranInventory()) {
                     try {
                         app(RahkaranInventoryService::class)->reserveForOrder($order);
                     } catch (DomainException) {
@@ -624,7 +625,7 @@ class PaymentController extends Controller
                     ],
                 ])->saveQuietly();
 
-                if (setting('inventory_source', 'hesabfa') === 'rahkaran' || in_array($order->status, ['cancelled', 'expired'], true)) {
+                if (InventorySource::usesRahkaranInventory() || in_array($order->status, ['cancelled', 'expired'], true)) {
                     $order->addNote("پرداخت موفق نیازمند تطبیق مالی است | کد رهگیری: {$receipt->getReferenceId()}", 'payment');
 
                     return redirect($frontendUrl.'/checkout');
@@ -757,7 +758,7 @@ class PaymentController extends Controller
     private function validateOrderStock(Order $order): array
     {
         $serialTrackingEnabled = setting('rahkaran_serial_tracking_enabled', false)
-            || setting('inventory_source', 'hesabfa') === 'rahkaran';
+            || InventorySource::usesRahkaranInventory();
         $reservedEnabled = $serialTrackingEnabled
             || config('hesabfa.enable_reserved_stock', false);
         if (! $reservedEnabled) {
@@ -791,6 +792,7 @@ class PaymentController extends Controller
                 $serialsAvailable = RahkaranSerial::query()
                     ->where('product_id', $stockProduct->id)
                     ->where('status', 'available')
+                    ->forCurrentInventory()
                     ->count();
                 $serialsRequired = (int) $item->quantity * $product->pack_size;
 

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Enums\Product\Ayar;
 use App\Enums\Product\MetalType;
+use App\Support\InventorySource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -19,7 +20,7 @@ class RigeProductResource extends JsonResource
             'weight' => $this->weight ? (float) $this->weight : null,
             'wage' => 0,
             'discount' => 0,
-            'in_stock' => ($this->stock_quantity ?? 0) > 0,
+            'in_stock' => (InventorySource::isOffline() ? $this->sellable_stock : ($this->stock_quantity ?? 0)) > 0,
             'used' => false,
             'production_code' => $this->sku,
             'variants' => [

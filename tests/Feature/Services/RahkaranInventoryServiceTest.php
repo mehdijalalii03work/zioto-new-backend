@@ -96,6 +96,45 @@ class RahkaranInventoryServiceTest extends TestCase
         $this->assertSame(2, $product->refresh()->rahkaran_physical_stock);
     }
 
+    public function test_stored_serial_source_uses_local_statuses_and_queries_only_non_serial_stock(): void
+    {
+        Setting::create(['key' => 'inventory_source', 'value' => 'rahkaran', 'type' => 'string', 'category' => 'inventory', 'label' => 'Inventory source']);
+        Setting::create(['key' => 'rahkaran_stock_quantity_source', 'value' => 'stored_serials', 'type' => 'string', 'category' => 'inventory', 'label' => 'Quantity source']);
+        config(['rahkaran.inventory_id' => 21, 'rahkaran.plant_id' => 1]);
+        $serialProduct = $this->product('SERIAL', 'published', 'public', 101);
+        $serialProduct->update(['rahkaran_serial_tracked' => true, 'hesabfa_manual_reserved' => 1]);
+        $emptyProduct = $this->product('EMPTY', 'published', 'public', 103);
+        $emptyProduct->update(['rahkaran_serial_tracked' => true]);
+        $plainProduct = $this->product('PLAIN', 'published', 'public', 102);
+        foreach (['available', 'available', 'reserved', 'reserved', 'sold', 'unavailable'] as $index => $status) {
+            $serial = RahkaranSerial::create(['product_id' => $serialProduct->id, 'serial' => 'LOCAL-'.$index, 'status' => $status]);
+            if ($index === 3) {
+                $serial->forceFill(['missing_from_warehouse' => true])->save();
+            }
+        }
+
+        $rahkaran = $this->mock(RahkaranService::class);
+        $rahkaran->shouldReceive('isConfigured')->once()->andReturnTrue();
+        $rahkaran->shouldReceive('getSerialsForParts')->never();
+        $rahkaran->shouldReceive('getStock')->once()->with(102, 21, 1)->andReturn(7.0);
+
+        $inventory = app(RahkaranInventoryService::class);
+        $result = $inventory->syncAllSerials();
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(3, $result['updated_products']);
+        $this->assertSame(0, $result['updated']);
+        $this->assertSame(3, $serialProduct->refresh()->rahkaran_physical_stock);
+        $this->assertSame(1, $serialProduct->stock_quantity);
+        $this->assertSame(0, $emptyProduct->refresh()->stock_quantity);
+        $this->assertSame(7, $plainProduct->refresh()->rahkaran_physical_stock);
+
+        $order = Order::factory()->create();
+        $order->items()->create(['product_id' => $serialProduct->id, 'product_name' => $serialProduct->name, 'product_price' => 100, 'quantity' => 1, 'subtotal' => 100]);
+        $this->assertTrue($inventory->reserveForOrder($order));
+        $this->assertSame(0, $serialProduct->refresh()->stock_quantity);
+    }
+
     public static function reservationTypes(): array
     {
         return [

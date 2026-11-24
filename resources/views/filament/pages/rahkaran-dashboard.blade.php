@@ -40,7 +40,7 @@
                     <div class="rounded-lg bg-gray-50 px-4 py-3 dark:bg-white/5">
                         <p class="text-xs text-gray-500 dark:text-gray-400">منبع موجودی سایت</p>
                         <p class="mt-1 font-semibold {{ $inventorySource === 'rahkaran' ? 'text-primary-700 dark:text-primary-300' : 'text-gray-700 dark:text-gray-200' }}">
-                            {{ $inventorySource === 'rahkaran' ? 'راهکاران' : 'حسابفا' }}
+                            {{ match ($inventorySource) { 'rahkaran' => 'راهکاران', 'offline' => 'آفلاین', default => 'حسابفا' } }}
                         </p>
                     </div>
                 </div>

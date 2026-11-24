@@ -11,7 +11,8 @@ class SyncRahkaranStock extends Command
 {
     public function handle(RahkaranInventoryService $inventory): int
     {
-        if (setting('inventory_source', 'hesabfa') !== 'rahkaran' && ! setting('rahkaran_serial_tracking_enabled', false)) {
+        if (setting('inventory_source', 'hesabfa') === 'offline'
+            || (setting('inventory_source', 'hesabfa') !== 'rahkaran' && ! setting('rahkaran_serial_tracking_enabled', false))) {
             $this->components->info('راهکاران منبع موجودی سایت نیست؛ همگام‌سازی انجام نشد.');
 
             return self::SUCCESS;

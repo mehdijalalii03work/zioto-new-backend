@@ -153,6 +153,11 @@ class ProductForm
                                     ->minValue(1)
                                     ->helperText('برای همگام‌سازی موجودی و صدور فاکتور.'),
 
+                                TextInput::make('rahkaran_item_code')
+                                    ->label('کد کالای راهکاران')
+                                    ->maxLength(100)
+                                    ->unique(ignoreRecord: true),
+
                                 Select::make('rahkaran_unit_ref')
                                     ->label('واحد کالا در راهکاران')
                                     ->options(config('rahkaran.units'))

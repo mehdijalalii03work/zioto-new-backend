@@ -9,6 +9,7 @@ use App\Models\RahkaranSerial;
 use App\Services\RahkaranInventoryService;
 use App\Services\RahkaranService;
 use App\Services\RahkaranSettings;
+use App\Support\InventorySource;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -62,6 +63,7 @@ class RahkaranDashboard extends Page
                 ->icon('heroicon-o-arrow-path')
                 ->color('primary')
                 ->authorize(Permission::HesabfaSync->value)
+                ->visible(fn (): bool => ! InventorySource::isOffline())
                 ->action(fn () => $this->syncInventory()),
             Action::make('settings')
                 ->label('تنظیمات راهکاران')

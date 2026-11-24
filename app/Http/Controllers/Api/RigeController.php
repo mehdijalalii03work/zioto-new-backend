@@ -18,7 +18,7 @@ class RigeController extends Controller
     {
         $products = Cache::remember('rige:products', 60, function () {
             return Product::publiclyListed()
-                ->with(['category:id,name', 'brand:id,name'])
+                ->with(['category:id,name', 'brand:id,name', 'baseProduct'])
                 ->orderBy('sort_order')
                 ->orderBy('id')
                 ->get()

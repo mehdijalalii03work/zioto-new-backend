@@ -50,14 +50,14 @@ class AccountingInventorySettingsTest extends TestCase
             ->assertFormFieldExists('send_invoices_to_rahkaran')
             ->fillForm([
                 'inventory_source' => 'rahkaran',
-                'rahkaran_stock_quantity_source' => 'live_serials',
+                'rahkaran_stock_quantity_source' => 'stored_serials',
                 'send_invoices_to_hesabfa' => false,
             ])
             ->call('save')
             ->assertHasNoFormErrors();
 
         $this->assertSame('rahkaran', Setting::where('key', 'inventory_source')->value('value'));
-        $this->assertSame('live_serials', setting('rahkaran_stock_quantity_source'));
+        $this->assertSame('stored_serials', setting('rahkaran_stock_quantity_source'));
         $this->assertSame('false', Setting::where('key', 'send_invoices_to_hesabfa')->value('value'));
         $this->assertSame('inventory', Setting::where('key', 'inventory_source')->value('category'));
     }
@@ -104,6 +104,24 @@ class AccountingInventorySettingsTest extends TestCase
                 ->warning());
 
         $this->assertSame('rahkaran', Setting::where('key', 'inventory_source')->value('value'));
+    }
+
+    public function test_offline_inventory_source_and_serial_origin_are_saved_without_sync(): void
+    {
+        $admin = User::factory()->create()->assignRole(Role::Admin->value);
+        $this->mock(RahkaranInventoryService::class)->shouldReceive('syncAllSerials')->never();
+        $this->mock(StockSyncService::class)->shouldReceive('syncAllStock')->never();
+
+        Livewire::actingAs($admin, 'web')
+            ->test(ManageSettings::class)
+            ->fillForm(['inventory_source' => 'offline'])
+            ->fillForm(['offline_serial_origin' => 'excel'])
+            ->call('save')
+            ->assertHasNoFormErrors()
+            ->assertNotified('تنظیمات با موفقیت ذخیره شد');
+
+        $this->assertSame('offline', setting('inventory_source'));
+        $this->assertSame('excel', setting('offline_serial_origin'));
     }
 
     public function test_rahkaran_connection_uses_config_instead_of_legacy_database_settings(): void

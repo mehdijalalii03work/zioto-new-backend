@@ -20,6 +20,7 @@ use App\Services\Pricing\DynamicPriceService;
 use App\Services\Pricing\SalesRestrictionService;
 use App\Services\RahkaranInventoryService;
 use App\Services\ShahkarService;
+use App\Support\InventorySource;
 use App\Support\Platform;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -231,7 +232,7 @@ class OrderSubmitController extends Controller
 
                 if ($existingOrder) {
                     $existingOrder = Order::query()->lockForUpdate()->findOrFail($existingOrder->id);
-                    if ($existingOrder->status === 'pending' && setting('inventory_source', 'hesabfa') === 'rahkaran') {
+                    if ($existingOrder->status === 'pending' && InventorySource::usesRahkaranInventory()) {
                         app(RahkaranInventoryService::class)->reserveForOrder($existingOrder);
                     }
 
@@ -343,7 +344,7 @@ class OrderSubmitController extends Controller
 
     private function validateCartStock($cartItems): array
     {
-        if (setting('inventory_source', 'hesabfa') === 'rahkaran' || ! config('hesabfa.enable_reserved_stock', false)) {
+        if (InventorySource::usesRahkaranInventory() || ! config('hesabfa.enable_reserved_stock', false)) {
             return ['valid' => true];
         }
 
@@ -440,7 +441,7 @@ class OrderSubmitController extends Controller
             $order->items()->create($orderItem);
         }
 
-        if (setting('inventory_source', 'hesabfa') === 'rahkaran') {
+        if (InventorySource::usesRahkaranInventory()) {
             app(RahkaranInventoryService::class)->reserveForOrder($order);
         }
 
