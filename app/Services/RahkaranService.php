@@ -10,6 +10,8 @@ use RuntimeException;
 
 class RahkaranService
 {
+    private const string SESSION_COOKIES_CACHE_KEY = 'rahkaran:session-cookies';
+
     public function __construct(private RahkaranSettings $settings) {}
 
     public function isConfigured(): bool
@@ -135,14 +137,14 @@ class RahkaranService
 
         return Http::timeout(30)
             ->acceptJson()
-            ->withCookies(['sg-auth' => $this->sessionCookie()], (string) parse_url((string) $this->settings->get('base_url'), PHP_URL_HOST));
+            ->withCookies($this->sessionCookies(), (string) parse_url((string) $this->settings->get('base_url'), PHP_URL_HOST));
     }
 
     private function get(string $url): Response
     {
         $response = $this->request()->get($url);
         if (in_array($response->status(), [401, 403], true)) {
-            Cache::forget('rahkaran:session-cookie');
+            Cache::forget(self::SESSION_COOKIES_CACHE_KEY);
             $response = $this->request()->get($url);
         }
 
@@ -153,16 +155,19 @@ class RahkaranService
     {
         $response = $this->request()->post($url, $payload);
         if (in_array($response->status(), [401, 403], true)) {
-            Cache::forget('rahkaran:session-cookie');
+            Cache::forget(self::SESSION_COOKIES_CACHE_KEY);
             $response = $this->request()->post($url, $payload);
         }
 
         return $response;
     }
 
-    private function sessionCookie(): string
+    /**
+     * @return array<string, string>
+     */
+    private function sessionCookies(): array
     {
-        return Cache::remember('rahkaran:session-cookie', now()->addMinutes(20), function (): string {
+        return Cache::remember(self::SESSION_COOKIES_CACHE_KEY, now()->addMinutes(20), function (): array {
             $baseUrl = rtrim((string) $this->settings->get('base_url'), '/');
             $session = Http::timeout(30)->acceptJson()->get($baseUrl.'/Framework/Services/AuthenticationService.svc/session')->throw()->json();
             $encryptedPassword = $this->encryptPassword(
@@ -183,7 +188,7 @@ class RahkaranService
                 throw new RuntimeException('ورود به راهکاران انجام شد اما کوکی نشست دریافت نشد.');
             }
 
-            return $cookie;
+            return [$sessionCookie['Name'] => $cookie];
         });
     }
 
