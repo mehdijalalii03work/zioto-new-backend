@@ -110,6 +110,25 @@ class OrderDateFilterTest extends TestCase
             ->assertCanNotSeeTableRecords([$outside]);
     }
 
+    public function test_payment_reconciliation_tab_includes_flagged_orders_in_any_status(): void
+    {
+        $cancelled = Order::factory()->create(['status' => 'cancelled']);
+        $cancelled->addNote('نتیجهٔ پرداخت مشخص نشد و نیازمند تطبیق مالی است.', 'payment');
+        $pending = Order::factory()->create(['status' => 'pending']);
+        $pending->addNote('پرداخت موفق نیازمند تطبیق مالی است | کد رهگیری: 123', 'payment');
+        $ordinary = Order::factory()->create();
+        $ordinary->addNote('پرداخت موفق بود', 'payment');
+
+        Livewire::actingAs($this->admin(), 'web')
+            ->test(ListOrders::class)
+            ->filterTable('payment_reconciliation')
+            ->assertCanSeeTableRecords([$pending])
+            ->assertCanNotSeeTableRecords([$ordinary])
+            ->set('activeTab', 'payment_reconciliation')
+            ->assertCanSeeTableRecords([$cancelled, $pending])
+            ->assertCanNotSeeTableRecords([$ordinary]);
+    }
+
     public function test_parse_filter_date_supports_both_calendars(): void
     {
         $this->assertTrue(

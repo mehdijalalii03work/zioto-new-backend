@@ -15,7 +15,9 @@ use App\Services\InstallmentService;
 use App\Services\OrderSmsNotificationService;
 use App\Services\Pricing\DynamicPriceService;
 use App\Services\Pricing\SalesRestrictionService;
+use App\Services\RahkaranInventoryService;
 use App\Support\Platform;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -107,7 +109,7 @@ class PaymentController extends Controller
             ->where('platform', $request->user('api')->platform)
             ->findOrFail($validated['order_id']);
 
-        if ($order->payment_status === 'paid') {
+        if ($order->payment_status === 'paid' || $order->payments()->where('status', 'paid')->exists()) {
             return response()->json(['message' => 'سفارش قبلاً پرداخت شده', 'error_code' => 'ORDER_ALREADY_PAID'], 422);
         }
 
@@ -166,13 +168,33 @@ class PaymentController extends Controller
             }
         }
 
-        $stockCheck = $this->validateOrderStock($order);
-        if (! $stockCheck['valid']) {
-            return response()->json([
-                'message' => 'موجودی برخی محصولات کافی نیست: '.$stockCheck['product'],
-                'error_code' => 'INSUFFICIENT_STOCK',
-                'products' => $stockCheck['items'] ?? [],
-            ], 422);
+        if (setting('inventory_source', 'hesabfa') === 'rahkaran') {
+            try {
+                $active = DB::transaction(function () use ($order): bool {
+                    $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
+                    if ($lockedOrder->status !== 'pending' || $lockedOrder->payment_status === 'paid'
+                        || $lockedOrder->created_at->copy()->addMinutes(20)->lte(now())) {
+                        return false;
+                    }
+
+                    return app(RahkaranInventoryService::class)->reserveForOrder($lockedOrder);
+                }, attempts: 3);
+            } catch (DomainException $exception) {
+                return response()->json(['message' => $exception->getMessage(), 'error_code' => 'INSUFFICIENT_STOCK'], 422);
+            }
+
+            if (! $active) {
+                return response()->json(['message' => 'مهلت پرداخت سفارش پایان یافته است', 'error_code' => 'ORDER_NOT_ACTIVE'], 422);
+            }
+        } else {
+            $stockCheck = $this->validateOrderStock($order);
+            if (! $stockCheck['valid']) {
+                return response()->json([
+                    'message' => 'موجودی برخی محصولات کافی نیست: '.$stockCheck['product'],
+                    'error_code' => 'INSUFFICIENT_STOCK',
+                    'products' => $stockCheck['items'] ?? [],
+                ], 422);
+            }
         }
 
         $nationalCode = $order->user?->national_code ?? '';
@@ -315,6 +337,10 @@ class PaymentController extends Controller
                 ->where('platform', $order->platform)
                 ->first();
 
+            if ($resolvedPayment && $resolvedPayment->gateway !== $gateway) {
+                return redirect($frontendUrl.'/checkout');
+            }
+
             if ($resolvedPayment && ! in_array($resolvedPayment->status, ['pending', 'processing'])) {
                 return redirect($frontendUrl.'/confirm?order_id='.$order->id);
             }
@@ -329,8 +355,13 @@ class PaymentController extends Controller
             }
         }
 
+        $verificationWithinDeadline = true;
         try {
-            $payment = DB::transaction(function () use ($order, $gateway, $resolvedPayment) {
+            $payment = DB::transaction(function () use ($order, $gateway, $resolvedPayment, &$verificationWithinDeadline) {
+                $lockedOrder = Order::withoutTenantScope()->lockForUpdate()->findOrFail($order->id);
+                if (setting('inventory_source', 'hesabfa') === 'rahkaran') {
+                    $verificationWithinDeadline = $lockedOrder->created_at->copy()->addMinutes(20)->isFuture();
+                }
 
                 if ($resolvedPayment) {
                     $payment = Payment::withoutTenantScope()
@@ -347,11 +378,11 @@ class PaymentController extends Controller
                         ->first();
                 }
 
-                if ($payment && $payment->status === 'pending') {
-                    $payment->update([
-                        'status' => 'processing',
-                    ]);
+                if (! $payment || $payment->status !== 'pending') {
+                    return null;
                 }
+
+                $payment->update(['status' => 'processing']);
 
                 return $payment;
             });
@@ -505,7 +536,9 @@ class PaymentController extends Controller
             return redirect($frontendUrl.'/payment-failed');
         }
 
-        $stockCheck = $this->validateOrderStock($order);
+        $stockCheck = setting('inventory_source', 'hesabfa') === 'rahkaran'
+            ? ['valid' => true]
+            : $this->validateOrderStock($order);
         if (! $stockCheck['valid']) {
             Log::channel('payment')->warning('Payment verified successfully but stock insufficient - order confirmed anyway', [
                 'order_id' => $order->id,
@@ -516,7 +549,18 @@ class PaymentController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($payment, $order, $receipt, $gateway) {
+            $confirmed = DB::transaction(function () use ($payment, $order, $receipt, $gateway, $verificationWithinDeadline): bool {
+                $order = Order::withoutTenantScope()->lockForUpdate()->findOrFail($order->id);
+                $canConfirm = $verificationWithinDeadline
+                    && ! in_array($order->status, ['cancelled', 'expired'], true)
+                    && $order->payment_status !== 'paid';
+                if ($canConfirm && setting('inventory_source', 'hesabfa') === 'rahkaran') {
+                    try {
+                        app(RahkaranInventoryService::class)->reserveForOrder($order);
+                    } catch (DomainException) {
+                        $canConfirm = false;
+                    }
+                }
 
                 $payment->update([
                     'status' => 'paid',
@@ -526,6 +570,13 @@ class PaymentController extends Controller
                     ],
                     'paid_at' => now(),
                 ]);
+
+                if (! $canConfirm) {
+                    $order->addNote("پرداخت تأیید شد اما سفارش قابل تأیید نیست. بررسی مالی و برگشت وجه | کد رهگیری: {$receipt->getReferenceId()}", 'payment');
+                    Log::channel('payment')->warning('Verified payment requires reconciliation', ['order_id' => $order->id, 'payment_id' => $payment->id]);
+
+                    return false;
+                }
 
                 $order->update([
                     'payment_status' => 'paid',
@@ -541,7 +592,13 @@ class PaymentController extends Controller
                 );
 
                 Cart::where('user_id', $order->user_id)->delete();
-            });
+
+                return true;
+            }, attempts: 3);
+
+            if (! $confirmed) {
+                return redirect($frontendUrl.'/checkout');
+            }
 
         } catch (\Throwable $e) {
             Log::channel('payment')->critical('Payment verified successfully but post-processing failed - needs manual review', [
@@ -566,6 +623,12 @@ class PaymentController extends Controller
                         'details' => $receipt->getDetails(),
                     ],
                 ])->saveQuietly();
+
+                if (setting('inventory_source', 'hesabfa') === 'rahkaran' || in_array($order->status, ['cancelled', 'expired'], true)) {
+                    $order->addNote("پرداخت موفق نیازمند تطبیق مالی است | کد رهگیری: {$receipt->getReferenceId()}", 'payment');
+
+                    return redirect($frontendUrl.'/checkout');
+                }
 
                 $order->forceFill([
                     'payment_status' => 'paid',

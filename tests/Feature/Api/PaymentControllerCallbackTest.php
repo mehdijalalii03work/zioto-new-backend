@@ -72,6 +72,29 @@ class PaymentControllerCallbackTest extends TestCase
     }
 
     #[RunInSeparateProcess]
+    public function test_late_successful_payment_is_recorded_without_reopening_cancelled_order(): void
+    {
+        [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');
+        $order->update(['status' => 'cancelled']);
+        Queue::fake([SendOrderSms::class]);
+        $receipt = Mockery::mock(Receipt::class);
+        $receipt->shouldReceive('getReferenceId')->andReturn('LATE-123');
+        $receipt->shouldReceive('getDetails')->andReturn([]);
+        $gateway = Mockery::mock('overload:'.ShetabitPayment::class);
+        $gateway->shouldReceive('via', 'amount', 'transactionId')->andReturnSelf();
+        $gateway->shouldReceive('verify')->andReturn($receipt);
+
+        $this->post("/api/payment/callback/{$order->id}/digipay", ['Token' => $payment->transaction_id])
+            ->assertRedirect();
+
+        $this->assertSame('cancelled', $order->refresh()->status);
+        $this->assertSame('paid', $payment->refresh()->status);
+        $this->assertSame('LATE-123', $payment->gateway_response['reference_id']);
+        $this->assertTrue($order->orderNotes()->exists());
+        Queue::assertNotPushed(SendOrderSms::class);
+    }
+
+    #[RunInSeparateProcess]
     public function test_generic_verify_exception_marks_failed_not_pending(): void
     {
         [$order, $payment] = $this->makeOrderWithPendingPayment('digipay');

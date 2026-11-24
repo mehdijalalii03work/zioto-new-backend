@@ -41,6 +41,12 @@ class StockReservationObserver
 
     public function updated(Order $order): void
     {
+        if ($order->getOriginal('status') === 'pending' && in_array($order->status, ['cancelled', 'expired'], true)) {
+            $this->rahkaranInventory->releaseOrder($order);
+
+            return;
+        }
+
         if (! $this->isEnabled()) {
             return;
         }
@@ -80,6 +86,12 @@ class StockReservationObserver
 
     public function deleted(Order $order): void
     {
+        if ($order->status === 'pending') {
+            $this->rahkaranInventory->releaseOrder($order);
+
+            return;
+        }
+
         if (! $this->isEnabled()) {
             return;
         }

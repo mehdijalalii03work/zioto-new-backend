@@ -18,8 +18,10 @@ use App\Services\DiscountCodeService;
 use App\Services\InstallmentService;
 use App\Services\Pricing\DynamicPriceService;
 use App\Services\Pricing\SalesRestrictionService;
+use App\Services\RahkaranInventoryService;
 use App\Services\ShahkarService;
 use App\Support\Platform;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -205,33 +207,42 @@ class OrderSubmitController extends Controller
             ]);
         }
 
-        $result = DB::transaction(function () use ($validated, $user, $cartItems, $requestedDiscountCode, $discountCodeService) {
-            $address = empty($validated['user_address_id'])
-                ? null
-                : $user->addresses()->with(['province', 'city'])->find($validated['user_address_id']);
+        try {
+            $result = DB::transaction(function () use ($validated, $user, $cartItems, $requestedDiscountCode, $discountCodeService) {
+                $address = empty($validated['user_address_id'])
+                    ? null
+                    : $user->addresses()->with(['province', 'city'])->find($validated['user_address_id']);
 
-            if ($requestedDiscountCode !== null) {
-                DiscountCode::query()
-                    ->where('code', $requestedDiscountCode)
-                    ->lockForUpdate()
-                    ->first();
-            }
+                if ($requestedDiscountCode !== null) {
+                    DiscountCode::query()
+                        ->where('code', $requestedDiscountCode)
+                        ->lockForUpdate()
+                        ->first();
+                }
 
-            $existingOrder = $this->findExistingSimilarOrder(
-                $user,
-                $cartItems,
-                $validated,
-                $requestedDiscountCode,
-                $discountCodeService,
-                $address,
-            );
+                $existingOrder = $this->findExistingSimilarOrder(
+                    $user,
+                    $cartItems,
+                    $validated,
+                    $requestedDiscountCode,
+                    $discountCodeService,
+                    $address,
+                );
 
-            if ($existingOrder) {
-                return ['order' => $existingOrder, 'is_existing' => true];
-            }
+                if ($existingOrder) {
+                    $existingOrder = Order::query()->lockForUpdate()->findOrFail($existingOrder->id);
+                    if ($existingOrder->status === 'pending' && setting('inventory_source', 'hesabfa') === 'rahkaran') {
+                        app(RahkaranInventoryService::class)->reserveForOrder($existingOrder);
+                    }
 
-            return $this->createOrder($validated, $user, $cartItems, $requestedDiscountCode, $discountCodeService, $address);
-        }, attempts: 3);
+                    return ['order' => $existingOrder, 'is_existing' => true];
+                }
+
+                return $this->createOrder($validated, $user, $cartItems, $requestedDiscountCode, $discountCodeService, $address);
+            }, attempts: 3);
+        } catch (DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage(), 'error_code' => 'INSUFFICIENT_STOCK'], 422);
+        }
 
         if (isset($result['error'])) {
             return response()->json([
@@ -332,7 +343,7 @@ class OrderSubmitController extends Controller
 
     private function validateCartStock($cartItems): array
     {
-        if (! config('hesabfa.enable_reserved_stock', false)) {
+        if (setting('inventory_source', 'hesabfa') === 'rahkaran' || ! config('hesabfa.enable_reserved_stock', false)) {
             return ['valid' => true];
         }
 
@@ -427,6 +438,10 @@ class OrderSubmitController extends Controller
 
         foreach ($orderData['items'] as $orderItem) {
             $order->items()->create($orderItem);
+        }
+
+        if (setting('inventory_source', 'hesabfa') === 'rahkaran') {
+            app(RahkaranInventoryService::class)->reserveForOrder($order);
         }
 
         $discountCodeService->reserveUsage($order);

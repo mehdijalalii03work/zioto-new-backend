@@ -22,6 +22,7 @@ class OrderResource extends JsonResource
             'payment_status' => $this->payment_status,
             'cancel_reason' => $this->cancel_reason,
             'installment_fee' => $notesData['installment_fee'] ?? null,
+            'expires_at' => $this->status === 'pending' ? $this->created_at?->copy()->addMinutes(20) : null,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'items' => OrderItemResource::collection($this->whenLoaded('items')),

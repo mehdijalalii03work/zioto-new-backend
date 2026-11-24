@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Orders\Pages;
 
 use App\Filament\Resources\Orders\Exports\OrderExcelExport;
 use App\Filament\Resources\Orders\OrderResource;
+use App\Filament\Resources\Orders\Tables\OrdersTable;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -55,6 +56,8 @@ class ListOrders extends ListRecords
             'completed' => Tab::make('تکمیل شده')
                 ->query(fn ($query) => $query->where('status', 'completed'))
                 ->badge(fn () => Order::where('status', 'completed')->count()),
+            'payment_reconciliation' => Tab::make('نیازمند تطبیق مالی')
+                ->query(OrdersTable::requiringPaymentReconciliation(...)),
             'cancelled' => Tab::make('لغو شده')
                 ->query(fn ($query) => $query->where('status', 'cancelled'))
                 ->badge(fn () => Order::where('status', 'cancelled')->count()),

@@ -224,6 +224,9 @@ class OrdersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Filter::make('payment_reconciliation')
+                    ->label('نیازمند تطبیق مالی')
+                    ->query(self::requiringPaymentReconciliation(...)),
                 Filter::make('created_at')
                     ->label('تاریخ ثبت')
                     ->schema([
@@ -376,6 +379,16 @@ class OrdersTable
      * DatePicker با ->jalali() معمولاً میلادی (Y-m-d) برمی‌گرداند،
      * ولی برای اطمینان ورودی شمسی (Y/m/d) هم پشتیبانی می‌شود.
      */
+    public static function requiringPaymentReconciliation(Builder $query): Builder
+    {
+        return $query->whereHas('orderNotes', fn (Builder $notes): Builder => $notes
+            ->where('type', 'payment')
+            ->where(fn (Builder $messages): Builder => $messages
+                ->where('note', 'like', 'نتیجهٔ پرداخت مشخص نشد و نیازمند تطبیق مالی است.%')
+                ->orWhere('note', 'like', 'پرداخت تأیید شد اما سفارش قابل تأیید نیست. بررسی مالی و برگشت وجه%')
+                ->orWhere('note', 'like', 'پرداخت موفق نیازمند تطبیق مالی است%')));
+    }
+
     public static function parseFilterDate(mixed $value): ?Carbon
     {
         if (blank($value)) {

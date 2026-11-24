@@ -4,12 +4,12 @@ namespace App\Services;
 
 use App\Models\HesabfaSyncLog;
 use App\Models\RahkaranSerial;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Order\Models\Order;
 use Modules\Order\Models\OrderItem;
 use Modules\Product\Models\Product;
-use RuntimeException;
 
 class RahkaranInventoryService
 {
@@ -98,7 +98,7 @@ class RahkaranInventoryService
         $order->loadMissing('items.product');
 
         return DB::transaction(function () use ($order): bool {
-            foreach ($order->items as $item) {
+            foreach ($order->items->sortBy(fn ($item) => [$item->product?->base_product_id ?? $item->product_id, $item->id]) as $item) {
                 if (! $item->product) {
                     continue;
                 }
@@ -113,7 +113,7 @@ class RahkaranInventoryService
 
                 if ($stockProduct->rahkaran_serial_tracked) {
                     $required = (int) $item->quantity * $item->product->pack_size;
-                    $existing = RahkaranSerial::query()->where('order_item_id', $item->id)->count();
+                    $existing = RahkaranSerial::query()->where('order_item_id', $item->id)->lockForUpdate()->get(['id'])->count();
                     $needed = max(0, $required - $existing);
                     if ($needed === 0) {
                         continue;
@@ -122,11 +122,11 @@ class RahkaranInventoryService
                     $availableSerialCount = RahkaranSerial::query()
                         ->where('product_id', $stockProduct->id)
                         ->where('status', 'available')
-                        ->count();
+                        ->lockForUpdate()->get(['id'])->count();
                     $reservedSerialCount = RahkaranSerial::query()
                         ->where('product_id', $stockProduct->id)
                         ->where('status', 'reserved')
-                        ->count();
+                        ->lockForUpdate()->get(['id'])->count();
                     $remainingPhysicalStock = max(
                         0,
                         (int) ($stockProduct->rahkaran_physical_stock ?? 0)
@@ -134,7 +134,7 @@ class RahkaranInventoryService
                             - (int) $stockProduct->hesabfa_manual_reserved,
                     );
                     if ($needed > min($availableSerialCount, $remainingPhysicalStock)) {
-                        throw new RuntimeException("موجودی سریالی محصول {$item->product->sku} کافی نیست.");
+                        throw new DomainException("موجودی سریالی محصول {$item->product->sku} کافی نیست.");
                     }
 
                     $serials = RahkaranSerial::query()
@@ -146,7 +146,7 @@ class RahkaranInventoryService
                         ->get();
 
                     if ($serials->count() < $needed) {
-                        throw new RuntimeException("سریال کافی برای محصول {$item->product->sku} موجود نیست.");
+                        throw new DomainException("سریال کافی برای محصول {$item->product->sku} موجود نیست.");
                     }
 
                     foreach ($serials as $serial) {
@@ -170,7 +170,7 @@ class RahkaranInventoryService
 
                 $required = (int) $item->quantity * $item->product->pack_size;
                 if ($required > $stockProduct->sellableRahkaranStock()) {
-                    throw new RuntimeException("موجودی کالای {$item->product->sku} کافی نیست.");
+                    throw new DomainException("موجودی کالای {$item->product->sku} کافی نیست.");
                 }
 
                 $stockProduct->increment('rahkaran_reserved_stock', $required);
@@ -188,10 +188,14 @@ class RahkaranInventoryService
         $order->loadMissing('items.product');
 
         DB::transaction(function () use ($order): void {
-            RahkaranSerial::query()
+            $releasedSerials = RahkaranSerial::query()
                 ->whereIn('order_item_id', $order->items->pluck('id'))
                 ->where('status', 'reserved')
                 ->update(['status' => 'available', 'order_item_id' => null]);
+
+            if ($releasedSerials === 0 && ! $order->items->contains(fn ($item) => $item->rahkaran_stock_reserved_quantity > 0)) {
+                return;
+            }
 
             foreach ($order->items as $item) {
                 $this->releaseUnconsumedStockReservation($item->id, $item->product?->base_product_id ?? $item->product_id);
