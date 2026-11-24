@@ -23,11 +23,36 @@ class RahkaranService
 
     public function getSerialsForPart(int $partRef): array
     {
-        $response = $this->get($this->url("/Logistics/InventorySerialManagement/WebServices/LicenseBasedServices/InventorySerialManagement.svc/SerialsInfo/{$partRef}"));
-
+        $response = $this->post($this->url('/Sales/SalesDocument/Services/SalesDocumentService.svc/products'), [
+            'ProductIDs' => [$partRef],
+            'InventoryID' => (int) $this->settings->get('inventory_id'),
+            'CalculateRemaining' => true,
+            'IncludeTrackingFactors' => true,
+            'PageIndex' => 0,
+            'PageSize' => 1,
+        ]);
         $data = $this->decode($response->throw()->json());
+        $product = collect($data)->first(fn (array $product): bool => (int) ($product['id'] ?? 0) === $partRef);
+        if ($product === null) {
+            throw new RuntimeException('کالای راهکاران در پاسخ دریافت سریال پیدا نشد.');
+        }
 
-        return is_array($data) ? $data : [];
+        $trackingFactors = $product['trackingFactors'] ?? [];
+        $serialIndex = collect($trackingFactors['structure'] ?? [])
+            ->search(fn (array $factor): bool => trim((string) ($factor['title'] ?? '')) === 'سریال');
+        if ($serialIndex === false) {
+            return [];
+        }
+
+        $serials = [];
+        foreach ($trackingFactors['values'] ?? [] as $record) {
+            $serial = trim((string) ($record['values'][$serialIndex] ?? ''));
+            if ($serial !== '' && (float) ($record['remaining']['physical'] ?? 0) > 0) {
+                $serials[$serial] = ['Serial' => $serial];
+            }
+        }
+
+        return array_values($serials);
     }
 
     public function getPartBySerial(string $serial): ?array

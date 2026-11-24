@@ -81,6 +81,47 @@ class RahkaranServiceTest extends TestCase
         ];
     }
 
+    public function test_serials_are_read_from_the_serial_tracking_factor_in_the_selected_inventory(): void
+    {
+        config(['rahkaran.inventory_id' => 21]);
+        Http::preventStrayRequests();
+        Cache::put('rahkaran:session-cookies', ['sg-auth-sg' => 'test-session']);
+        $url = self::BASE_URL.'/Sales/SalesDocument/Services/SalesDocumentService.svc/products';
+        Http::fake([$url => Http::response([[
+            'id' => 580,
+            'trackingFactors' => [
+                'structure' => [['title' => 'بچ'], ['title' => 'سریال']],
+                'values' => [
+                    ['values' => ['batch', '00123'], 'remaining' => ['physical' => 0.5]],
+                    ['values' => ['batch', '00123'], 'remaining' => ['physical' => 0.5]],
+                    ['values' => ['batch', 'unavailable'], 'remaining' => ['physical' => 0]],
+                    ['values' => ['batch', ''], 'remaining' => ['physical' => 1]],
+                ],
+            ],
+        ]])]);
+
+        $serials = app(RahkaranService::class)->getSerialsForPart(580);
+
+        $this->assertSame([['Serial' => '00123']], $serials);
+        Http::assertSent(fn (Request $request): bool => $request->url() === $url
+            && $request->method() === 'POST'
+            && $request['ProductIDs'] === [580]
+            && $request['InventoryID'] === 21
+            && $request['CalculateRemaining'] === true
+            && $request['IncludeTrackingFactors'] === true);
+    }
+
+    public function test_a_missing_product_in_the_serial_response_raises_an_error(): void
+    {
+        Http::preventStrayRequests();
+        Cache::put('rahkaran:session-cookies', ['sg-auth-sg' => 'test-session']);
+        Http::fake([self::BASE_URL.'/Sales/SalesDocument/Services/SalesDocumentService.svc/products' => Http::response([])]);
+
+        $this->expectException(\RuntimeException::class);
+
+        app(RahkaranService::class)->getSerialsForPart(580);
+    }
+
     /**
      * @return array{id: string, rsa: array{M: string, E: string}}
      */
