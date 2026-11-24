@@ -179,6 +179,13 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-white/10">
                             @foreach($recentLogs as $log)
+                                @php
+                                    $isStockSync = $log->sync_type === 'rahkaran_stock_sync';
+                                    $updatedProducts = $log->response_data['updated_product_count'] ?? null;
+                                    $serialsRead = $log->response_data['synced_serial_count'] ?? null;
+                                    $errors = $log->response_data['errors'] ?? null;
+                                    $partial = $isStockSync && $log->status === 'failed' && $updatedProducts > 0;
+                                @endphp
                                 <tr>
                                     <td class="px-3 py-3 text-gray-700 dark:text-gray-200">
                                         {{ $log->sync_type === 'rahkaran_invoice' ? 'فاکتور فروش' : 'همگام‌سازی موجودی' }}
@@ -196,12 +203,33 @@
                                         <span @class([
                                             'rounded-full px-2 py-1 text-xs font-medium',
                                             'bg-success-50 text-success-700 dark:bg-success-400/10 dark:text-success-400' => $log->status === 'success',
-                                            'bg-danger-50 text-danger-700 dark:bg-danger-400/10 dark:text-danger-400' => $log->status === 'failed',
+                                            'bg-danger-50 text-danger-700 dark:bg-danger-400/10 dark:text-danger-400' => $log->status === 'failed' && ! $partial,
+                                            'bg-warning-50 text-warning-700 dark:bg-warning-400/10 dark:text-warning-400' => $partial,
                                             'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300' => ! in_array($log->status, ['success', 'failed'], true),
-                                        ])>{{ $log->status === 'success' ? 'موفق' : ($log->status === 'failed' ? 'ناموفق' : $log->status) }}</span>
+                                        ])>{{ $partial ? 'موفقیت جزئی' : ($log->status === 'success' ? 'موفق' : ($log->status === 'failed' ? 'ناموفق' : $log->status)) }}</span>
                                     </td>
-                                    <td class="max-w-sm truncate px-3 py-3 text-gray-500 dark:text-gray-400" title="{{ $log->error_message }}">
-                                        {{ $log->error_message ?: ($log->response_data['message'] ?? '—') }}
+                                    <td class="max-w-sm px-3 py-3 text-gray-500 dark:text-gray-400">
+                                        @if($isStockSync && $updatedProducts !== null)
+                                            <div class="font-medium text-gray-700 dark:text-gray-200">
+                                                {{ $updatedProducts }} کالا به‌روز شد · {{ is_array($errors) ? count($errors) : '—' }} کالای خطادار · {{ $serialsRead ?? '—' }} سریال خوانده شد
+                                            </div>
+                                            @if($log->error_message || $errors)
+                                                <details class="mt-2 text-xs">
+                                                    <summary class="cursor-pointer">جزئیات خطا</summary>
+                                                    @if($errors)
+                                                        <ul class="mt-2 space-y-1">
+                                                            @foreach($errors as $sku => $error)
+                                                                <li><bdi>{{ $sku }}</bdi> · {{ $error }}</li>
+                                                            @endforeach
+                                                        </ul>
+                                                    @else
+                                                        <p class="mt-2">{{ $log->error_message }}</p>
+                                                    @endif
+                                                </details>
+                                            @endif
+                                        @else
+                                            {{ $log->error_message ?: ($log->response_data['message'] ?? '—') }}
+                                        @endif
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-3 text-xs text-gray-500 dark:text-gray-400">{{ $log->created_at->diffForHumans() }}</td>
                                 </tr>
