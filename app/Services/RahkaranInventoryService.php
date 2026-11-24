@@ -31,7 +31,7 @@ class RahkaranInventoryService
         $updatedProducts = 0;
         $errors = [];
 
-        foreach (Product::query()->publiclyListed()->whereNotNull('sku')->get() as $product) {
+        foreach (Product::query()->published()->whereNotNull('sku')->get() as $product) {
             $partRef = $product->rahkaran_part_ref;
             if (! $partRef) {
                 $errors[$product->sku] = 'نگاشت کالای راهکاران تنظیم نشده است';
