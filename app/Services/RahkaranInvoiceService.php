@@ -207,13 +207,15 @@ class RahkaranInvoiceService
             return $address?->rahkaran_address_id;
         }
 
-        $regionalDivisionRef = ($this->settings->get('regional_division_refs') ?? [])[$address->city_id] ?? null;
-        if (! $regionalDivisionRef) {
+        $regionalDivisionRef = ($this->settings->get('regional_division_refs') ?? [])[$address->city_id]
+            ?? $this->settings->get('default_regional_division_ref');
+        $regionalDivisionRef = filter_var($regionalDivisionRef, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($regionalDivisionRef === false) {
             throw new RuntimeException("نگاشت شهر سفارش به ناحیه راهکاران برای شهر {$address->city_id} تنظیم نشده است.");
         }
 
         $addressId = $this->rahkaran->createCustomerAddress($customerId, [
-            'regional_division_ref' => (int) $regionalDivisionRef,
+            'regional_division_ref' => $regionalDivisionRef,
             'details' => $address->full_address,
             'phone' => (string) $address->receiver_phone,
             'zip_code' => (string) $address->postal_code,

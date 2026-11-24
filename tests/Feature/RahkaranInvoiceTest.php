@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Jobs\SyncRahkaranInvoice;
+use App\Models\City;
+use App\Models\Province;
 use App\Models\RahkaranSerial;
 use App\Models\Setting;
+use App\Models\UserAddress;
 use App\Services\RahkaranInvoiceService;
 use App\Services\RahkaranService;
 use App\Services\TapsiOrderProjector;
@@ -70,6 +73,48 @@ class RahkaranInvoiceTest extends TestCase
         $result = app(RahkaranInvoiceService::class)->syncOrder($order);
         $this->assertTrue($result['success'], $result['message']);
         $this->assertSame($areas, $order->rahkaranInvoices()->orderBy('sales_area_id')->pluck('sales_area_id')->all());
+    }
+
+    #[DataProvider('addressRegions')]
+    public function test_address_uses_city_mapping_before_default(?int $cityRef, ?int $defaultRef, ?int $expectedRef): void
+    {
+        $this->enableInvoicing();
+        $province = Province::factory()->create(['name' => 'آذربایجان شرقی']);
+        $city = City::factory()->for($province)->create(['name' => 'تبریز']);
+        $address = UserAddress::factory()->for($province)->for($city)->create();
+        $order = $this->order(['user_address_id' => $address->id], ['gold']);
+        config([
+            'rahkaran.regional_division_refs' => $cityRef === null ? [] : [$city->id => $cityRef],
+            'rahkaran.default_regional_division_ref' => $defaultRef,
+        ]);
+
+        $gateway = $this->mock(RahkaranService::class);
+        $gateway->shouldReceive('isConfigured')->andReturnTrue();
+        if ($expectedRef === null) {
+            $gateway->shouldNotReceive('createCustomerAddress');
+            $gateway->shouldNotReceive('placeInvoice');
+        } else {
+            $gateway->shouldReceive('createCustomerAddress')->once()
+                ->withArgs(fn (int $customerId, array $data): bool => $customerId === 1
+                    && $data['regional_division_ref'] === $expectedRef
+                    && str_starts_with($data['details'], 'آذربایجان شرقی، تبریز، '))
+                ->andReturn(123);
+            $gateway->shouldReceive('placeInvoice')->once()
+                ->withArgs(fn (array $payload): bool => $payload['addressId'] === '123')
+                ->andReturn(106);
+        }
+
+        $result = app(RahkaranInvoiceService::class)->syncOrder($order);
+        $this->assertSame($expectedRef !== null, $result['success'], $result['message']);
+    }
+
+    public static function addressRegions(): array
+    {
+        return [
+            'default' => [null, 41588, 41588],
+            'city mapping has priority' => [25, 41588, 25],
+            'no configured region' => [null, null, null],
+        ];
     }
 
     public function test_retry_only_sends_the_rejected_invoice_and_keeps_the_original_payload(): void

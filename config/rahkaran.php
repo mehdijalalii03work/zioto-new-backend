@@ -19,6 +19,7 @@ return [
     'inventory_id' => env('RAHKARAN_INVENTORY_ID', ''),
     'plant_id' => env('RAHKARAN_PLANT_ID', ''),
     'unit_refs' => json_decode(env('RAHKARAN_UNIT_REFS', '{}'), true) ?: [],
+    'default_regional_division_ref' => env('RAHKARAN_DEFAULT_REGIONAL_DIVISION_REF'),
     'regional_division_refs' => json_decode(env('RAHKARAN_REGIONAL_DIVISION_REFS', '{}'), true) ?: [],
     'inventory_voucher_specification_ref' => env('RAHKARAN_INVENTORY_VOUCHER_SPECIFICATION_REF', ''),
     'fiscal_year_ref' => env('RAHKARAN_FISCAL_YEAR_REF', ''),
