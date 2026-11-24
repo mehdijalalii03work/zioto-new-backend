@@ -18,6 +18,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
+use Throwable;
 
 class ManageSettings extends Page
 {
@@ -218,7 +219,7 @@ class ManageSettings extends Page
                             $notification->danger();
                         }
                         $notification->send();
-                    } catch (\Throwable $exception) {
+                    } catch (Throwable $exception) {
                         Notification::make()
                             ->title('آزمون اتصال راهکاران ناموفق بود')
                             ->body($exception->getMessage())
@@ -411,18 +412,28 @@ class ManageSettings extends Page
 
         $inventorySource = $data['inventory_source'] ?? 'hesabfa';
         $currentInventorySource = setting('inventory_source', 'hesabfa');
+        $inventorySyncFailure = null;
         if ($inventorySource !== $currentInventorySource) {
-            $syncResult = $inventorySource === 'rahkaran'
-                ? app(RahkaranInventoryService::class)->syncAllSerials()
-                : app(StockSyncService::class)->syncAllStock(force: true);
-            if (! $syncResult['success']) {
-                Notification::make()
-                    ->title('منبع موجودی تغییر نکرد')
-                    ->body($syncResult['message'])
-                    ->danger()
-                    ->send();
+            try {
+                $syncResult = $inventorySource === 'rahkaran'
+                    ? app(RahkaranInventoryService::class)->syncAllSerials()
+                    : app(StockSyncService::class)->syncAllStock(force: true);
 
-                return;
+                if (! ($syncResult['success'] ?? false)) {
+                    $syncErrors = collect($syncResult['errors'] ?? [])
+                        ->map(fn (string $error, string|int $key): string => "{$key}: {$error}")
+                        ->implode('; ');
+
+                    $inventorySyncFailure = collect([
+                        $syncResult['message'] ?? null,
+                        $syncErrors,
+                        empty($syncResult['message']) && $syncErrors === ''
+                            ? 'همگام‌سازی موجودی ناموفق بود.'
+                            : null,
+                    ])->filter()->implode("\n");
+                }
+            } catch (Throwable $exception) {
+                $inventorySyncFailure = $exception->getMessage();
             }
         }
 
@@ -432,6 +443,16 @@ class ManageSettings extends Page
             'category' => 'inventory',
             'label' => 'منبع موجودی سایت',
         ]);
+
+        if ($inventorySyncFailure !== null) {
+            Notification::make()
+                ->title('منبع موجودی تغییر کرد؛ همگام‌سازی ناقص است')
+                ->body($inventorySyncFailure)
+                ->warning()
+                ->send();
+
+            return;
+        }
 
         Notification::make()
             ->title('تنظیمات با موفقیت ذخیره شد')

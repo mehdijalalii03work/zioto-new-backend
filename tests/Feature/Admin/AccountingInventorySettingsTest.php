@@ -7,10 +7,12 @@ use App\Filament\Pages\ManageSettings;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\HesabfaService;
+use App\Services\RahkaranInventoryService;
 use App\Services\RahkaranSettings;
 use App\Services\StockSyncService;
 use Database\Seeders\RolePermissionSeeder;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -56,6 +58,50 @@ class AccountingInventorySettingsTest extends TestCase
         $this->assertSame('rahkaran', Setting::where('key', 'inventory_source')->value('value'));
         $this->assertSame('false', Setting::where('key', 'send_invoices_to_hesabfa')->value('value'));
         $this->assertSame('inventory', Setting::where('key', 'inventory_source')->value('category'));
+    }
+
+    public function test_inventory_source_is_saved_even_when_rahkaran_stock_sync_reports_product_errors(): void
+    {
+        $admin = User::factory()->create()->assignRole(Role::Admin->value);
+        $this->mock(RahkaranInventoryService::class)
+            ->shouldReceive('syncAllSerials')
+            ->once()
+            ->andReturn([
+                'success' => false,
+                'message' => 'موجودی 72 کالا همگام شد؛ 1736 سریال خوانده شد',
+                'errors' => ['ZPGB5-00200-0' => 'نگاشت کالای راهکاران تنظیم نشده است'],
+            ]);
+
+        Livewire::actingAs($admin, 'web')
+            ->test(ManageSettings::class)
+            ->fillForm(['inventory_source' => 'rahkaran'])
+            ->call('save')
+            ->assertNotified(Notification::make()
+                ->title('منبع موجودی تغییر کرد؛ همگام‌سازی ناقص است')
+                ->body("موجودی 72 کالا همگام شد؛ 1736 سریال خوانده شد\nZPGB5-00200-0: نگاشت کالای راهکاران تنظیم نشده است")
+                ->warning());
+
+        $this->assertSame('rahkaran', Setting::where('key', 'inventory_source')->value('value'));
+    }
+
+    public function test_inventory_source_is_saved_even_when_rahkaran_stock_sync_throws(): void
+    {
+        $admin = User::factory()->create()->assignRole(Role::Admin->value);
+        $this->mock(RahkaranInventoryService::class)
+            ->shouldReceive('syncAllSerials')
+            ->once()
+            ->andThrow(new \RuntimeException('Rahkaran is unavailable'));
+
+        Livewire::actingAs($admin, 'web')
+            ->test(ManageSettings::class)
+            ->fillForm(['inventory_source' => 'rahkaran'])
+            ->call('save')
+            ->assertNotified(Notification::make()
+                ->title('منبع موجودی تغییر کرد؛ همگام‌سازی ناقص است')
+                ->body('Rahkaran is unavailable')
+                ->warning());
+
+        $this->assertSame('rahkaran', Setting::where('key', 'inventory_source')->value('value'));
     }
 
     public function test_rahkaran_connection_uses_config_instead_of_legacy_database_settings(): void
