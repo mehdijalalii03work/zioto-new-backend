@@ -212,7 +212,7 @@ class RahkaranInvoiceService
             ?? $this->settings->get('default_regional_division_ref');
         $regionalDivisionRef = filter_var($regionalDivisionRef, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         if ($regionalDivisionRef === false) {
-            throw new RuntimeException("نگاشت شهر سفارش به ناحیه راهکاران برای شهر {$address->city_id} تنظیم نشده است.");
+            throw new RuntimeException("ناحیهٔ راهکاران برای شهر {$address->city_id} تنظیم نشده است.");
         }
 
         $addressId = $this->rahkaran->createCustomerAddress($customerId, [
@@ -249,7 +249,7 @@ class RahkaranInvoiceService
                 ?? $unitRefs[$product->sku]
                 ?? null;
             if (! $partRef || ! $unitRef) {
-                throw new RuntimeException("نگاشت کالا یا واحد راهکاران برای SKU {$item->product->sku} تنظیم نشده است.");
+                throw new RuntimeException("شناسهٔ کالا یا واحد راهکاران برای SKU {$item->product->sku} تنظیم نشده است.");
             }
 
             $items[] = [

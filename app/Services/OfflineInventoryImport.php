@@ -202,7 +202,7 @@ class OfflineInventoryImport
             $code = $row['code'];
             $product = $products->get($code);
             if (! $product || $product->base_product_id) {
-                $errors[] = "ردیف {$number} · کد «{$code}» به یک کالای پایه نگاشت نشده است.";
+                $errors[] = "ردیف {$number} · کد «{$code}» به کالای پایه‌ای متصل نشده است.";
 
                 continue;
             }

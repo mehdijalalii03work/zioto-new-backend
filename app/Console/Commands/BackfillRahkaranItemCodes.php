@@ -6,6 +6,8 @@ use App\Services\RahkaranService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Modules\Product\Models\Product;
@@ -28,7 +30,13 @@ class BackfillRahkaranItemCodes extends Command
             $catalog = $this->readCatalog($service);
         } catch (Throwable $exception) {
             report($exception);
-            $this->error('دریافت فهرست کالاهای راهکاران ناموفق بود.');
+            $reason = match (true) {
+                $exception instanceof RequestException => 'HTTP '.$exception->response->status(),
+                $exception instanceof ConnectionException => 'ارتباط با راهکاران برقرار نشد.',
+                $exception::class === RuntimeException::class => $exception->getMessage(),
+                default => $exception::class,
+            };
+            $this->error('دریافت فهرست کالاهای راهکاران ناموفق بود. '.$reason);
 
             return self::FAILURE;
         }
@@ -48,7 +56,7 @@ class BackfillRahkaranItemCodes extends Command
     {
         $catalog = [];
         $seenPages = [];
-        $pageSize = 100;
+        $pageSize = 10000;
 
         for ($page = 0; $page < 100; $page++) {
             $rows = $service->getProductCatalogPage($page, $pageSize);

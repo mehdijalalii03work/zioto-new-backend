@@ -70,7 +70,7 @@ class RahkaranInventoryService
         foreach ($products as $product) {
             $partRef = (int) $product->rahkaran_part_ref;
             if ($partRef <= 0) {
-                $errors[$product->sku] = 'نگاشت کالای راهکاران تنظیم نشده است';
+                $errors[$product->sku] = 'شناسهٔ کالای راهکاران تنظیم نشده است';
 
                 continue;
             }

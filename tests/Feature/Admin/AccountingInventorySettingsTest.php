@@ -71,7 +71,7 @@ class AccountingInventorySettingsTest extends TestCase
             ->andReturn([
                 'success' => false,
                 'message' => 'موجودی 72 کالا همگام شد؛ 1736 سریال خوانده شد',
-                'errors' => ['ZPGB5-00200-0' => 'نگاشت کالای راهکاران تنظیم نشده است'],
+                'errors' => ['ZPGB5-00200-0' => 'شناسهٔ کالای راهکاران تنظیم نشده است'],
             ]);
 
         Livewire::actingAs($admin, 'web')
@@ -80,7 +80,7 @@ class AccountingInventorySettingsTest extends TestCase
             ->call('save')
             ->assertNotified(Notification::make()
                 ->title('منبع موجودی تغییر کرد؛ همگام‌سازی ناقص است')
-                ->body("موجودی 72 کالا همگام شد؛ 1736 سریال خوانده شد\nZPGB5-00200-0: نگاشت کالای راهکاران تنظیم نشده است")
+                ->body("موجودی 72 کالا همگام شد؛ 1736 سریال خوانده شد\nZPGB5-00200-0: شناسهٔ کالای راهکاران تنظیم نشده است")
                 ->warning());
 
         $this->assertSame('rahkaran', Setting::where('key', 'inventory_source')->value('value'));

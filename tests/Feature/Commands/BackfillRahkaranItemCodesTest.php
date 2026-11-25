@@ -38,7 +38,9 @@ class BackfillRahkaranItemCodesTest extends TestCase
         $this->assertNull($conflict->refresh()->rahkaran_item_code);
         $this->assertSame('existing', $existing->refresh()->rahkaran_item_code);
         Http::assertSent(fn (Request $request): bool => $request->url() === $url
-            && $request['filter']['PageIndex'] === 0 && $request['filter']['TrackingFactorFilter'] === 'All');
+            && $request['filter']['PageIndex'] === 0 && $request['filter']['PageSize'] === 10000
+            && $request['filter']['TrackingFactorFilter'] === 'All');
+        Http::assertSentCount(2);
     }
 
     private function product(int $salesId, ?string $code = null): Product

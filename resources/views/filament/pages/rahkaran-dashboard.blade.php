@@ -67,8 +67,8 @@
         <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             @foreach([
                 ['title' => 'کالاهای منتشرشده', 'value' => $productStats['total'], 'icon' => 'heroicon-o-cube', 'icon_class' => 'text-gray-500 dark:text-gray-400'],
-                ['title' => 'دارای نگاشت', 'value' => $productStats['mapped'], 'icon' => 'heroicon-o-link', 'icon_class' => 'text-success-600 dark:text-success-400'],
-                ['title' => 'بدون نگاشت', 'value' => $productStats['unmapped'], 'icon' => 'heroicon-o-exclamation-triangle', 'icon_class' => 'text-warning-600 dark:text-warning-400'],
+                ['title' => 'دارای کد راهکاران', 'value' => $productStats['mapped'], 'icon' => 'heroicon-o-link', 'icon_class' => 'text-success-600 dark:text-success-400'],
+                ['title' => 'بدون کد راهکاران', 'value' => $productStats['unmapped'], 'icon' => 'heroicon-o-exclamation-triangle', 'icon_class' => 'text-warning-600 dark:text-warning-400'],
                 ['title' => 'سریال آزاد', 'value' => $serialStats['available'], 'icon' => 'heroicon-o-qr-code', 'icon_class' => 'text-primary-600 dark:text-primary-400'],
                 ['title' => 'رزرو سریال', 'value' => $serialStats['reserved'], 'icon' => 'heroicon-o-bookmark', 'icon_class' => 'text-info-600 dark:text-info-400'],
             ] as $stat)
@@ -128,15 +128,15 @@
             <div class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
                 <div class="flex items-center justify-between gap-4">
                     <div>
-                        <h2 class="font-semibold text-gray-950 dark:text-white">نگاشت کالاها</h2>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">نگاشت SKU سایت به شناسه کالای راهکاران</p>
+                        <h2 class="font-semibold text-gray-950 dark:text-white">کدهای کالا در راهکاران</h2>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">تطبیق SKU سایت با شناسهٔ کالای راهکاران</p>
                     </div>
                     <span class="text-sm tabular-nums text-gray-600 dark:text-gray-300">{{ number_format($productStats['mapped']) }} از {{ number_format($productStats['total']) }}</span>
                 </div>
                 @if($productsWithoutMapping->isNotEmpty())
                     <div class="mt-4 overflow-hidden rounded-lg border border-warning-200 dark:border-warning-400/20">
                         <div class="bg-warning-50 px-4 py-2 text-xs font-medium text-warning-800 dark:bg-warning-400/10 dark:text-warning-300">
-                            چند کالای منتشرشده نگاشت نشده‌اند
+                            برای چند کالای منتشرشده کد راهکاران ثبت نشده است
                         </div>
                         <ul class="divide-y divide-gray-100 dark:divide-white/10">
                             @foreach($productsWithoutMapping as $product)
@@ -150,7 +150,7 @@
                 @else
                     <div class="mt-5 flex items-center gap-2 rounded-lg bg-success-50 px-4 py-3 text-sm text-success-700 dark:bg-success-400/10 dark:text-success-400">
                         <x-heroicon-o-check-circle class="h-5 w-5" />
-                        همهٔ کالاهای منتشرشده نگاشت دارند.
+                        برای همهٔ کالاهای منتشرشده کد راهکاران ثبت شده است.
                     </div>
                 @endif
             </div>
