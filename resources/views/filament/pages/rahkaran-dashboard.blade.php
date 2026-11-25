@@ -157,6 +157,42 @@
         </section>
 
         <section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="font-semibold text-gray-950 dark:text-white">کالاهای غیرسریالی</h2>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">کالاهای منتشرشده‌ای که ردیابی سریال برایشان غیرفعال است</p>
+                </div>
+                <span class="rounded-full bg-gray-100 px-2.5 py-1 text-sm font-medium tabular-nums text-gray-700 dark:bg-white/10 dark:text-gray-300">
+                    {{ number_format($nonSerialProducts->count()) }} کالا
+                </span>
+            </div>
+
+            @if($nonSerialProducts->isNotEmpty())
+                <ul class="mt-4 divide-y divide-gray-100 dark:divide-white/10">
+                    @foreach($nonSerialProducts as $product)
+                        <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+                            <div class="min-w-0">
+                                @if(auth()->user()?->can(\App\Enums\Permission::ProductEdit->value))
+                                    <a class="font-medium text-primary-600 underline decoration-dotted underline-offset-2 hover:decoration-solid dark:text-primary-400" href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', ['record' => $product]) }}">{{ $product->name }}</a>
+                                @else
+                                    <span class="font-medium text-gray-800 dark:text-gray-100">{{ $product->name }}</span>
+                                @endif
+                            </div>
+                            <div class="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                                <span>{{ $product->visibility === 'private' ? 'خصوصی' : 'عمومی' }}</span>
+                                <span>موجودی سایت: {{ number_format((int) $product->stock_quantity) }}</span>
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="mt-4 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:bg-white/5 dark:text-gray-300">
+                    کالای منتشرشدهٔ غیرسریالی وجود ندارد.
+                </p>
+            @endif
+        </section>
+
+        <section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 class="font-semibold text-gray-950 dark:text-white">رخدادهای اخیر راهکاران</h2>

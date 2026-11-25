@@ -86,6 +86,10 @@ class RahkaranDashboard extends Page
         $totalProductCount = (clone $eligibleProducts)->count();
         $mappedProductCount = (clone $eligibleProducts)->whereNotNull('rahkaran_part_ref')->count();
         $productsWithoutMapping = (clone $eligibleProducts)->whereNull('rahkaran_part_ref')->orderBy('name')->limit(6)->get(['id', 'name', 'sku']);
+        $nonSerialProducts = (clone $eligibleProducts)
+            ->where('rahkaran_serial_tracked', false)
+            ->orderBy('name')
+            ->get(['id', 'name', 'visibility', 'stock_quantity']);
         $serialCounts = RahkaranSerial::query()
             ->select('status')
             ->selectRaw('COUNT(*) AS total')
@@ -152,6 +156,7 @@ class RahkaranDashboard extends Page
                 'failed' => (int) ($orderCounts['failed'] ?? 0),
             ],
             'productsWithoutMapping' => $productsWithoutMapping,
+            'nonSerialProducts' => $nonSerialProducts,
             'recentLogs' => $recentLogs,
             'errorProducts' => $errorProducts,
             'latestStockSync' => $latestStockSync,
