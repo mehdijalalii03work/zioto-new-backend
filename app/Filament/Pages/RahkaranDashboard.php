@@ -110,7 +110,7 @@ class RahkaranDashboard extends Page
         $errorProductIds = $recentLogs
             ->flatMap(fn (HesabfaSyncLog $log): array => collect($log->response_data['error_details'] ?? [])->flatMap(
                 fn (array $details): array => array_filter([$details['product_id'] ?? null, $details['conflicting_product_id'] ?? null]),
-            ))
+            )->all())
             ->unique()
             ->values();
         $errorProducts = Product::query()
