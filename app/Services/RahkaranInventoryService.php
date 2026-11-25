@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\RahkaranSerialConflictException;
 use App\Models\HesabfaSyncLog;
 use App\Models\RahkaranSerial;
 use App\Support\InventorySource;
@@ -51,6 +52,7 @@ class RahkaranInventoryService
         $updated = 0;
         $updatedProducts = 0;
         $errors = [];
+        $errorDetails = [];
 
         $serialProductIds = $useStoredSerials ? [] : $products
             ->filter(fn (Product $product): bool => $product->rahkaran_serial_tracked && $product->rahkaran_part_ref)
@@ -71,6 +73,7 @@ class RahkaranInventoryService
             $partRef = (int) $product->rahkaran_part_ref;
             if ($partRef <= 0) {
                 $errors[$product->sku] = 'شناسهٔ کالای راهکاران تنظیم نشده است';
+                $errorDetails[$product->sku] = ['product_id' => $product->id];
 
                 continue;
             }
@@ -98,6 +101,13 @@ class RahkaranInventoryService
                 $updatedProducts++;
             } catch (Throwable $exception) {
                 $errors[$product->sku] = $exception->getMessage();
+                $errorDetails[$product->sku] = ['product_id' => $product->id];
+                if ($exception instanceof RahkaranSerialConflictException) {
+                    $errorDetails[$product->sku] += [
+                        'serial' => $exception->serial,
+                        'conflicting_product_id' => $exception->conflictingProduct->id,
+                    ];
+                }
                 Log::error('Rahkaran serial sync failed', ['sku' => $product->sku, 'message' => $exception->getMessage()]);
             }
         }
@@ -106,7 +116,7 @@ class RahkaranInventoryService
             'sync_type' => 'rahkaran_stock_sync',
             'status' => $errors === [] ? 'success' : 'failed',
             'request_data' => ['mapped_products' => Product::query()->whereNotNull('rahkaran_part_ref')->count(), 'quantity_source' => $quantitySource],
-            'response_data' => ['synced_serial_count' => $updated, 'updated_product_count' => $updatedProducts, 'errors' => $errors],
+            'response_data' => ['synced_serial_count' => $updated, 'updated_product_count' => $updatedProducts, 'errors' => $errors, 'error_details' => $errorDetails],
             'error_message' => $errors === [] ? null : implode('; ', array_map(static fn ($sku, $error) => "{$sku}: {$error}", array_keys($errors), $errors)),
         ]);
 
@@ -174,6 +184,11 @@ class RahkaranInventoryService
                     );
 
                     if ((int) $serial->product_id !== $product->id) {
+                        $conflictingProduct = Product::query()->find($serial->product_id);
+                        if ($conflictingProduct) {
+                            throw new RahkaranSerialConflictException($number, $conflictingProduct);
+                        }
+
                         throw new RuntimeException('سریال راهکاران قبلاً برای کالای دیگری ثبت شده است.');
                     }
 

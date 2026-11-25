@@ -184,6 +184,7 @@
                                     $updatedProducts = $log->response_data['updated_product_count'] ?? null;
                                     $serialsRead = $log->response_data['synced_serial_count'] ?? null;
                                     $errors = $log->response_data['errors'] ?? null;
+                                    $errorDetails = $log->response_data['error_details'] ?? [];
                                     $partial = $isStockSync && $log->status === 'failed' && $updatedProducts > 0;
                                 @endphp
                                 <tr>
@@ -219,7 +220,37 @@
                                                     @if($errors)
                                                         <ul class="mt-2 space-y-1">
                                                             @foreach($errors as $sku => $error)
-                                                                <li><bdi>{{ $sku }}</bdi> · {{ $error }}</li>
+                                                                @php
+                                                                    $details = $errorDetails[$sku] ?? [];
+                                                                    $product = $errorProducts->get($details['product_id'] ?? null);
+                                                                    $conflictingProduct = $errorProducts->get($details['conflicting_product_id'] ?? null);
+                                                                    $canEditProducts = auth()->user()?->can(\App\Enums\Permission::ProductEdit->value) ?? false;
+                                                                @endphp
+                                                                <li>
+                                                                    @if($product)
+                                                                        @if($canEditProducts)
+                                                                            <a class="font-medium text-primary-600 hover:underline dark:text-primary-400" href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', ['record' => $product]) }}">{{ $product->name }}</a>
+                                                                        @else
+                                                                            <span class="font-medium">{{ $product->name }}</span>
+                                                                        @endif
+                                                                        · <bdi>{{ $sku }}</bdi>
+                                                                    @else
+                                                                        <bdi>{{ $sku }}</bdi>
+                                                                    @endif
+                                                                    · {{ $error }}
+                                                                    @if(isset($details['serial']))
+                                                                        <span> (سریال: <bdi>{{ $details['serial'] }}</bdi>)</span>
+                                                                    @endif
+                                                                    @if($conflictingProduct)
+                                                                        · کالای ثبت‌شدهٔ قبلی:
+                                                                        @if($canEditProducts)
+                                                                            <a class="font-medium text-primary-600 hover:underline dark:text-primary-400" href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', ['record' => $conflictingProduct]) }}">{{ $conflictingProduct->name }}</a>
+                                                                        @else
+                                                                            <span class="font-medium">{{ $conflictingProduct->name }}</span>
+                                                                        @endif
+                                                                        <bdi>({{ $conflictingProduct->sku }})</bdi>
+                                                                    @endif
+                                                                </li>
                                                             @endforeach
                                                         </ul>
                                                     @else

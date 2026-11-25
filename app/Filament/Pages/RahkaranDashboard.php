@@ -103,6 +103,21 @@ class RahkaranDashboard extends Page
             ->latest()
             ->limit(8)
             ->get();
+        $errorSkus = $recentLogs
+            ->flatMap(fn (HesabfaSyncLog $log): array => array_keys($log->response_data['errors'] ?? []))
+            ->unique()
+            ->values();
+        $errorProductIds = $recentLogs
+            ->flatMap(fn (HesabfaSyncLog $log): array => collect($log->response_data['error_details'] ?? [])->flatMap(
+                fn (array $details): array => array_filter([$details['product_id'] ?? null, $details['conflicting_product_id'] ?? null]),
+            ))
+            ->unique()
+            ->values();
+        $errorProducts = Product::query()
+            ->whereIn('sku', $errorSkus)
+            ->orWhereIn('id', $errorProductIds)
+            ->get(['id', 'name', 'sku'])
+            ->keyBy('id');
         $latestStockSync = HesabfaSyncLog::query()
             ->where('sync_type', 'rahkaran_stock_sync')
             ->latest()
@@ -138,6 +153,7 @@ class RahkaranDashboard extends Page
             ],
             'productsWithoutMapping' => $productsWithoutMapping,
             'recentLogs' => $recentLogs,
+            'errorProducts' => $errorProducts,
             'latestStockSync' => $latestStockSync,
         ];
     }
