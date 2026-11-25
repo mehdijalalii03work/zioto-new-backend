@@ -167,14 +167,14 @@
 
             @if($recentLogs->isNotEmpty())
                 <div class="mt-4 overflow-x-auto">
-                    <table class="w-full min-w-[42rem] text-sm">
+                    <table class="mx-auto w-full min-w-[64rem] max-w-7xl table-fixed text-sm">
                         <thead>
                             <tr class="border-b border-gray-200 text-start text-xs text-gray-500 dark:border-white/10 dark:text-gray-400">
-                                <th class="px-3 py-3 text-start font-medium">رخداد</th>
-                                <th class="px-3 py-3 text-start font-medium">سفارش</th>
-                                <th class="px-3 py-3 text-start font-medium">وضعیت</th>
-                                <th class="px-3 py-3 text-start font-medium">جزئیات</th>
-                                <th class="px-3 py-3 text-start font-medium">زمان</th>
+                                <th class="w-[13%] px-3 py-3 text-start font-medium">رخداد</th>
+                                <th class="w-[12%] px-3 py-3 text-start font-medium">سفارش</th>
+                                <th class="w-[13%] px-3 py-3 text-start font-medium">وضعیت</th>
+                                <th class="w-[52%] px-3 py-3 text-start font-medium">جزئیات</th>
+                                <th class="w-[10%] px-3 py-3 text-start font-medium">زمان</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-white/10">
@@ -187,8 +187,8 @@
                                     $errorDetails = $log->response_data['error_details'] ?? [];
                                     $partial = $isStockSync && $log->status === 'failed' && $updatedProducts > 0;
                                 @endphp
-                                <tr>
-                                    <td class="px-3 py-3 text-gray-700 dark:text-gray-200">
+                                <tr class="align-top">
+                                    <td class="break-words px-3 py-3 text-gray-700 dark:text-gray-200">
                                         {{ $log->sync_type === 'rahkaran_invoice' ? 'فاکتور فروش' : 'همگام‌سازی موجودی' }}
                                     </td>
                                     <td class="px-3 py-3 font-mono text-xs text-gray-600 dark:text-gray-300">
@@ -209,10 +209,18 @@
                                             'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300' => ! in_array($log->status, ['success', 'failed'], true),
                                         ])>{{ $partial ? 'موفقیت جزئی' : ($log->status === 'success' ? 'موفق' : ($log->status === 'failed' ? 'ناموفق' : $log->status)) }}</span>
                                     </td>
-                                    <td class="max-w-sm px-3 py-3 text-gray-500 dark:text-gray-400">
+                                    <td class="break-words px-3 py-3 text-gray-500 dark:text-gray-400">
                                         @if($isStockSync && $updatedProducts !== null)
-                                            <div class="font-medium text-gray-700 dark:text-gray-200">
-                                                {{ $updatedProducts }} کالا با موفقیت به‌روزرسانی شد · {{ is_array($errors) ? count($errors) : '—' }} کالا به‌روزرسانی نشد · {{ $serialsRead ?? '—' }} سریال خوانده شد
+                                            <div class="flex flex-wrap gap-2 text-xs">
+                                                <span class="rounded-full bg-success-50 px-2.5 py-1 font-medium text-success-700 dark:bg-success-400/10 dark:text-success-400">
+                                                    {{ $updatedProducts }} کالا با موفقیت به‌روزرسانی شد
+                                                </span>
+                                                <span class="rounded-full bg-warning-50 px-2.5 py-1 font-medium text-warning-700 dark:bg-warning-400/10 dark:text-warning-400">
+                                                    {{ is_array($errors) ? count($errors) : '—' }} کالا به‌روزرسانی نشد
+                                                </span>
+                                                <span class="rounded-full bg-gray-100 px-2.5 py-1 font-medium text-gray-700 dark:bg-white/10 dark:text-gray-300">
+                                                    {{ $serialsRead ?? '—' }} سریال خوانده شد
+                                                </span>
                                             </div>
                                             @if($log->error_message || $errors)
                                                 <details class="mt-2 text-xs">
@@ -228,9 +236,9 @@
                                                                 @endphp
                                                                 <li class="rounded-lg border border-gray-200 p-3 dark:border-white/10">
                                                                     <div class="font-semibold text-gray-800 dark:text-gray-100">
-                                                                        کالای به‌روزرسانی‌نشده:
+                                                                        کالای خطادار:
                                                                         @if($product && $canEditProducts)
-                                                                            <a class="text-primary-600 hover:underline dark:text-primary-400" href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', ['record' => $product]) }}">{{ $product->name }}</a>
+                                                                            <a class="text-primary-600 underline decoration-dotted underline-offset-2 hover:decoration-solid dark:text-primary-400" href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', ['record' => $product]) }}">{{ $product->name }}</a>
                                                                         @else
                                                                             {{ $product?->name ?? 'کالای شناسایی‌نشده' }}
                                                                         @endif
@@ -238,15 +246,15 @@
                                                                     <p class="mt-1">{{ $error }}</p>
                                                                     @if(isset($details['serial']))
                                                                         <div class="mt-2 flex flex-wrap items-center gap-2">
-                                                                            <span>سریال تکراری:</span>
+                                                                            <span class="font-medium">سریال تکراری:</span>
                                                                             <bdi dir="ltr" class="rounded bg-gray-100 px-2 py-1 font-mono text-gray-900 dark:bg-white/10 dark:text-gray-100">{{ $details['serial'] }}</bdi>
                                                                         </div>
                                                                     @endif
                                                                     @if($conflictingProduct)
                                                                         <div class="mt-3 border-t border-gray-200 pt-3 dark:border-white/10">
-                                                                            <span class="font-medium">این سریال قبلاً برای این کالا ثبت شده:</span>
+                                                                            <span class="font-medium">ثبت قبلی سریال برای:</span>
                                                                             @if($canEditProducts)
-                                                                                <a class="ms-1 font-semibold text-primary-600 hover:underline dark:text-primary-400" href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', ['record' => $conflictingProduct]) }}">{{ $conflictingProduct->name }}</a>
+                                                                                <a class="ms-1 font-semibold text-primary-600 underline decoration-dotted underline-offset-2 hover:decoration-solid dark:text-primary-400" href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', ['record' => $conflictingProduct]) }}">{{ $conflictingProduct->name }}</a>
                                                                             @else
                                                                                 <span class="ms-1 font-semibold">{{ $conflictingProduct->name }}</span>
                                                                             @endif
