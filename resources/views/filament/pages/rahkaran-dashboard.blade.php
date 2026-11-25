@@ -212,13 +212,13 @@
                                     <td class="max-w-sm px-3 py-3 text-gray-500 dark:text-gray-400">
                                         @if($isStockSync && $updatedProducts !== null)
                                             <div class="font-medium text-gray-700 dark:text-gray-200">
-                                                {{ $updatedProducts }} کالا به‌روز شد · {{ is_array($errors) ? count($errors) : '—' }} کالای خطادار · {{ $serialsRead ?? '—' }} سریال خوانده شد
+                                                {{ $updatedProducts }} کالا با موفقیت به‌روزرسانی شد · {{ is_array($errors) ? count($errors) : '—' }} کالا به‌روزرسانی نشد · {{ $serialsRead ?? '—' }} سریال خوانده شد
                                             </div>
                                             @if($log->error_message || $errors)
                                                 <details class="mt-2 text-xs">
                                                     <summary class="cursor-pointer">جزئیات خطا</summary>
                                                     @if($errors)
-                                                        <ul class="mt-2 space-y-1">
+                                                        <ul class="mt-3 space-y-3">
                                                             @foreach($errors as $sku => $error)
                                                                 @php
                                                                     $details = $errorDetails[$sku] ?? [];
@@ -226,29 +226,31 @@
                                                                     $conflictingProduct = $errorProducts->get($details['conflicting_product_id'] ?? null);
                                                                     $canEditProducts = auth()->user()?->can(\App\Enums\Permission::ProductEdit->value) ?? false;
                                                                 @endphp
-                                                                <li>
-                                                                    @if($product)
-                                                                        @if($canEditProducts)
-                                                                            <a class="font-medium text-primary-600 hover:underline dark:text-primary-400" href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', ['record' => $product]) }}">{{ $product->name }}</a>
+                                                                <li class="rounded-lg border border-gray-200 p-3 dark:border-white/10">
+                                                                    <div class="font-semibold text-gray-800 dark:text-gray-100">
+                                                                        کالای به‌روزرسانی‌نشده:
+                                                                        @if($product && $canEditProducts)
+                                                                            <a class="text-primary-600 hover:underline dark:text-primary-400" href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', ['record' => $product]) }}">{{ $product->name }}</a>
                                                                         @else
-                                                                            <span class="font-medium">{{ $product->name }}</span>
+                                                                            {{ $product?->name ?? 'کالای شناسایی‌نشده' }}
                                                                         @endif
-                                                                        · <bdi>{{ $sku }}</bdi>
-                                                                    @else
-                                                                        <bdi>{{ $sku }}</bdi>
-                                                                    @endif
-                                                                    · {{ $error }}
+                                                                    </div>
+                                                                    <p class="mt-1">{{ $error }}</p>
                                                                     @if(isset($details['serial']))
-                                                                        <span> (سریال: <bdi>{{ $details['serial'] }}</bdi>)</span>
+                                                                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                                                                            <span>سریال تکراری:</span>
+                                                                            <bdi dir="ltr" class="rounded bg-gray-100 px-2 py-1 font-mono text-gray-900 dark:bg-white/10 dark:text-gray-100">{{ $details['serial'] }}</bdi>
+                                                                        </div>
                                                                     @endif
                                                                     @if($conflictingProduct)
-                                                                        · کالای ثبت‌شدهٔ قبلی:
-                                                                        @if($canEditProducts)
-                                                                            <a class="font-medium text-primary-600 hover:underline dark:text-primary-400" href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', ['record' => $conflictingProduct]) }}">{{ $conflictingProduct->name }}</a>
-                                                                        @else
-                                                                            <span class="font-medium">{{ $conflictingProduct->name }}</span>
-                                                                        @endif
-                                                                        <bdi>({{ $conflictingProduct->sku }})</bdi>
+                                                                        <div class="mt-3 border-t border-gray-200 pt-3 dark:border-white/10">
+                                                                            <span class="font-medium">این سریال قبلاً برای این کالا ثبت شده:</span>
+                                                                            @if($canEditProducts)
+                                                                                <a class="ms-1 font-semibold text-primary-600 hover:underline dark:text-primary-400" href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', ['record' => $conflictingProduct]) }}">{{ $conflictingProduct->name }}</a>
+                                                                            @else
+                                                                                <span class="ms-1 font-semibold">{{ $conflictingProduct->name }}</span>
+                                                                            @endif
+                                                                        </div>
                                                                     @endif
                                                                 </li>
                                                             @endforeach
