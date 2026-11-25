@@ -82,7 +82,7 @@ class RahkaranDashboard extends Page
     protected function getViewData(): array
     {
         $settings = app(RahkaranSettings::class);
-        $eligibleProducts = Product::query()->published()->whereNotNull('sku');
+        $eligibleProducts = Product::query()->published();
         $totalProductCount = (clone $eligibleProducts)->count();
         $mappedProductCount = (clone $eligibleProducts)->whereNotNull('rahkaran_part_ref')->count();
         $productsWithoutMapping = (clone $eligibleProducts)->whereNull('rahkaran_part_ref')->orderBy('name')->limit(6)->get(['id', 'name', 'sku']);

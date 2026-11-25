@@ -58,7 +58,6 @@ class RahkaranDashboardTest extends TestCase
         Product::create([
             'name' => 'محصول خصوصی منتشرشده غیرسریالی',
             'slug' => 'private-published-product',
-            'sku' => 'PRIVATE-1',
             'status' => 'published',
             'visibility' => 'private',
             'rahkaran_serial_tracked' => false,
