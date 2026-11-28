@@ -52,12 +52,16 @@ class OrderDateFilterTest extends TestCase
         $karajAddress = UserAddress::factory()->create(['city_id' => $karaj->id]);
         $tehranOrder = Order::factory()->create(['user_address_id' => $tehranAddress->id]);
         $karajOrder = Order::factory()->create(['user_address_id' => $karajAddress->id]);
+        $tapsiOrder = Order::factory()->create([
+            'platform' => 'tapsi',
+            'shipping_address_snapshot' => json_encode(['city' => $tehran->name], JSON_UNESCAPED_UNICODE),
+        ]);
 
         Livewire::actingAs($admin, 'web')
             ->test(ListOrders::class)
             ->assertTableFilterExists('city')
             ->filterTable('city', (string) $tehran->id)
-            ->assertCanSeeTableRecords([$tehranOrder])
+            ->assertCanSeeTableRecords([$tehranOrder, $tapsiOrder])
             ->assertCanNotSeeTableRecords([$karajOrder]);
     }
 

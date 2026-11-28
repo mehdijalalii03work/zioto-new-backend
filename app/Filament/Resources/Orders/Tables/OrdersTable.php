@@ -235,8 +235,17 @@ class OrdersTable
                             return $query;
                         }
 
-                        return $query->whereHas('address', fn (Builder $address): Builder => $address
-                            ->where('city_id', $data['value']));
+                        $city = City::query()->find($data['value']);
+
+                        if (! $city) {
+                            return $query->whereRaw('1 = 0');
+                        }
+
+                        return $query->where(function (Builder $orders) use ($city): void {
+                            $orders
+                                ->whereHas('address', fn (Builder $address): Builder => $address->where('city_id', $city->id))
+                                ->orWhere('shipping_address_snapshot->city', $city->name);
+                        });
                     }),
                 Filter::make('created_at')
                     ->label('تاریخ ثبت')
