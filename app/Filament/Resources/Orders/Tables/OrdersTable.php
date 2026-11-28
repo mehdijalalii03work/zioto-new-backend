@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Orders\Tables;
 
 use App\Filament\Resources\Orders\Exports\OrderExcelExport;
+use App\Models\City;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -227,6 +228,19 @@ class OrdersTable
                 Filter::make('payment_reconciliation')
                     ->label('نیازمند تطبیق مالی')
                     ->query(self::requiringPaymentReconciliation(...)),
+                SelectFilter::make('city')
+                    ->label('شهر')
+                    ->placeholder('همه شهرها')
+                    ->searchable()
+                    ->options(fn (): array => City::query()->orderBy('name')->pluck('name', 'id')->all())
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (blank($data['value'] ?? null)) {
+                            return $query;
+                        }
+
+                        return $query->whereHas('address', fn (Builder $address): Builder => $address
+                            ->where('city_id', $data['value']));
+                    }),
                 Filter::make('created_at')
                     ->label('تاریخ ثبت')
                     ->schema([

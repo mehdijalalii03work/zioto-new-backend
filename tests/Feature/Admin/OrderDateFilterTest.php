@@ -5,7 +5,9 @@ namespace Tests\Feature\Admin;
 use App\Enums\Role;
 use App\Filament\Resources\Orders\Pages\ListOrders;
 use App\Filament\Resources\Orders\Tables\OrdersTable;
+use App\Models\City;
 use App\Models\User;
+use App\Models\UserAddress;
 use Database\Seeders\RolePermissionSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,6 +41,24 @@ class OrderDateFilterTest extends TestCase
         Livewire::actingAs(User::first(), 'web')
             ->test(ListOrders::class)
             ->assertTableFilterExists('created_at');
+    }
+
+    public function test_orders_can_be_filtered_by_city(): void
+    {
+        $admin = $this->admin();
+        $tehran = City::factory()->create(['name' => 'تهران']);
+        $karaj = City::factory()->create(['name' => 'کرج']);
+        $tehranAddress = UserAddress::factory()->create(['city_id' => $tehran->id]);
+        $karajAddress = UserAddress::factory()->create(['city_id' => $karaj->id]);
+        $tehranOrder = Order::factory()->create(['user_address_id' => $tehranAddress->id]);
+        $karajOrder = Order::factory()->create(['user_address_id' => $karajAddress->id]);
+
+        Livewire::actingAs($admin, 'web')
+            ->test(ListOrders::class)
+            ->assertTableFilterExists('city')
+            ->filterTable('city', (string) $tehran->id)
+            ->assertCanSeeTableRecords([$tehranOrder])
+            ->assertCanNotSeeTableRecords([$karajOrder]);
     }
 
     public function test_tapsi_order_list_displays_customer_name_from_order_notes(): void
