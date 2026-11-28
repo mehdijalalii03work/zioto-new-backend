@@ -17,7 +17,9 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
@@ -94,7 +96,14 @@ class DigiExpressCityMappingResource extends Resource
                 IconColumn::make('is_verified')->label('تأیید')->boolean(),
                 IconColumn::make('is_destination_enabled')->label('فعال در checkout')->boolean(),
             ])
-            ->filters([])
+            ->filters([
+                Filter::make('unmapped')
+                    ->label('نگاشت نشده')
+                    ->query(fn (Builder $query): Builder => $query->whereNull('city_id')),
+                Filter::make('without_suggestion')
+                    ->label('بدون پیشنهاد')
+                    ->query(fn (Builder $query): Builder => $query->whereNull('suggested_city_id')),
+            ])
             ->defaultSort('digiexpress_city_id')
             ->recordActions([
                 EditAction::make(),
